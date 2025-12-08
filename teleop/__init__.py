@@ -6,6 +6,7 @@ from typing import Callable, List
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import transforms3d as t3d
 import numpy as np
 import json
@@ -278,18 +279,14 @@ class Teleop:
         self.__notify_subscribers(self.__pose, message)
 
     def __setup_routes(self):
+        # Mount static files directory
+        assets_dir = os.path.join(THIS_DIR, "assets")
+        self.__app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
         @self.__app.get("/")
         async def index():
             self.__logger.debug("Serving the index.html file")
             return FileResponse(os.path.join(THIS_DIR, "index.html"))
-
-        @self.__app.get("/{filename:path}")
-        async def serve_file(filename: str):
-            self.__logger.debug(f"Serving the {filename} file")
-            file_path = os.path.join(THIS_DIR, filename)
-            if os.path.exists(file_path):
-                return FileResponse(file_path)
-            return {"error": "File not found"}
 
         @self.__app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):

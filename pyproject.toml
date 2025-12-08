@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teleop"
-version = "0.1.3"
+version = "0.1.4"
 description = "Turns your phone into a robot arm teleoperation device by leveraging the WebXR API"
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
@@ -31,4 +31,4 @@ utils = ["pin"]
 include = ["teleop*"]
 
 [tool.setuptools.package-data]
-teleop = ["cert.pem", "key.pem", "index.html", "teleop-ui.js", "utils/lite6.urdf"]
+teleop = ["cert.pem", "key.pem", "index.html", "assets/*", "utils/lite6.urdf"]
