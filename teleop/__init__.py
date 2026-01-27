@@ -155,6 +155,7 @@ class Teleop:
         port=4443,
         natural_phone_orientation_euler=None,
         natural_phone_position=None,
+        input_mode="controller",
     ):
         self.__logger = logging.getLogger("teleop")
         self.__logger.setLevel(logging.INFO)
@@ -162,6 +163,7 @@ class Teleop:
 
         self.__host = host
         self.__port = port
+        self.__input_mode = input_mode
 
         self.__relative_pose_init = None
         self.__absolute_pose_init = None
@@ -185,6 +187,10 @@ class Teleop:
         # Configure logging
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
         self.__setup_routes()
+
+    @property
+    def input_mode(self):
+        return self.__input_mode
 
     def set_pose(self, pose: np.ndarray) -> None:
         """
@@ -211,13 +217,11 @@ class Teleop:
         for callback in self.__callbacks:
             callback(pose, message)
 
-    def __update(self, message):
-        move = message["move"]
-        position = message["position"]
-        orientation = message["orientation"]
-        scale = message.get("scale", 1.0)
+    def apply(self, position, orientation, move=True, scale=1.0, info=None):
+        if info is None:
+            info = {}
 
-        position = np.array([position["x"], position["y"], position["z"]])
+        position_arr = np.array([position["x"], position["y"], position["z"]])
         quat = np.array(
             [orientation["w"], orientation["x"], orientation["y"], orientation["z"]]
         )
@@ -225,11 +229,11 @@ class Teleop:
         if not move:
             self.__relative_pose_init = None
             self.__absolute_pose_init = None
-            self.__notify_subscribers(self.__pose, message)
+            self.__notify_subscribers(self.__pose, info)
             return
 
         received_pose_rub = t3d.affines.compose(
-            position, t3d.quaternions.quat2mat(quat), [1, 1, 1]
+            position_arr, t3d.quaternions.quat2mat(quat), [1, 1, 1]
         )
         received_pose = TF_RUB2FLU @ received_pose_rub
         received_pose[:3, :3] = received_pose[:3, :3] @ np.linalg.inv(
@@ -276,7 +280,61 @@ class Teleop:
             )
 
         # Notify the subscribers
-        self.__notify_subscribers(self.__pose, message)
+        self.__notify_subscribers(self.__pose, info)
+
+    def __handle_xr_state(self, message):
+        input_mode = self.__input_mode
+        devices = message.get("devices", [])
+
+        filtered_devices = []
+        for d in devices:
+            role = d.get("role")
+            if role == "head":
+                filtered_devices.append(d)
+            elif role == "controller" and input_mode in ["controller", "auto"]:
+                filtered_devices.append(d)
+            elif role == "hand" and input_mode in ["hand", "auto"]:
+                filtered_devices.append(d)
+
+        message["devices"] = filtered_devices
+
+        # Derive pose from controller device (prefer right then left; prefer gripPose then targetRayPose)
+        target_device = None
+        for handedness in ["right", "left"]:
+            for d in filtered_devices:
+                if d.get("role") == "controller" and d.get("handedness") == handedness:
+                    target_device = d
+                    break
+            if target_device:
+                break
+
+        if target_device:
+            pose_data = target_device.get("gripPose") or target_device.get(
+                "targetRayPose"
+            )
+            if pose_data:
+                self.apply(
+                    pose_data["position"],
+                    pose_data["orientation"],
+                    move=True,
+                    scale=1.0,
+                    info=message,
+                )
+                return
+
+        # Fallback to head pose
+        for d in filtered_devices:
+            if d.get("role") == "head":
+                pose_data = d.get("pose")
+                if pose_data:
+                    self.apply(
+                        pose_data["position"],
+                        pose_data["orientation"],
+                        move=True,
+                        scale=1.0,
+                        info=message,
+                    )
+                    return
 
     def __setup_routes(self):
         # Mount static files directory
@@ -293,14 +351,20 @@ class Teleop:
             await self.__manager.connect(websocket)
             self.__logger.info("Client connected")
 
+            # Send config message on connect
+            await websocket.send_text(
+                json.dumps(
+                    {"type": "config", "data": {"input_mode": self.__input_mode}}
+                )
+            )
+
             try:
                 while True:
                     data = await websocket.receive_text()
                     message = json.loads(data)
 
-                    if message.get("type") == "pose":
-                        self.__logger.debug(f"Received pose data: {message['data']}")
-                        self.__update(message["data"])
+                    if message.get("type") == "xr_state":
+                        self.__handle_xr_state(message["data"])
                     elif message.get("type") == "log":
                         self.__logger.info(f"Received log message: {message['data']}")
 
