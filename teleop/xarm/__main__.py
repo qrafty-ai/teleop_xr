@@ -98,10 +98,50 @@ def main():
 
     gripper = Lite6Gripper(arm)
 
-    def callback(pose, message):
-        servo(arm, pose)
+    def callback(pose, xr_state):
+        # Helper to select controller device from xr_state (prefer right, fallback left)
+        devices = xr_state.get("devices", [])
+        controller = next(
+            (
+                d
+                for d in devices
+                if d.get("role") == "controller" and d.get("handedness") == "right"
+            ),
+            None,
+        )
+        if not controller:
+            controller = next(
+                (
+                    d
+                    for d in devices
+                    if d.get("role") == "controller" and d.get("handedness") == "left"
+                ),
+                None,
+            )
 
-        gripper_state = 1.0 if message['gripper'] == "close" else 0.0 
+        if not controller:
+            return
+
+        buttons = controller.get("gamepad", {}).get("buttons", [])
+        # Map move gating to controller trigger: buttons[0].pressed (or value > 0.5 if present)
+        move = False
+        if len(buttons) > 0:
+            move = (
+                buttons[0].get("pressed", False) or buttons[0].get("value", 0.0) > 0.5
+            )
+
+        if move:
+            servo(arm, pose)
+
+        # Map gripper to controller grip: buttons[1] value/pressed; output string "close" if grip > 0.5 else "open"
+        gripper_command = "open"
+        if len(buttons) > 1:
+            grip_val = buttons[1].get(
+                "value", 1.0 if buttons[1].get("pressed", False) else 0.0
+            )
+            gripper_command = "close" if grip_val > 0.5 else "open"
+
+        gripper_state = 1.0 if gripper_command == "close" else 0.0
         gripper.set_gripper_state(gripper_state)
 
     teleop = Teleop(natural_phone_orientation_euler=[0, 0, 0])

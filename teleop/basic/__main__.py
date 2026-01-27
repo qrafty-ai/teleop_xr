@@ -3,9 +3,9 @@ from teleop import Teleop
 
 
 def main():
-    def callback(pose, message):
+    def callback(pose, xr_state):
         print(f"Pose: {pose}")
-        print(f"Message: {message}")
+        print(f"XR State: {xr_state}")
 
     teleop = Teleop()
     teleop.set_pose(np.eye(4))

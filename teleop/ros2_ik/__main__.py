@@ -52,6 +52,13 @@ def main():
         help="List of joint names",
     )
     parser.add_argument(
+        "--input-mode",
+        type=str,
+        default="controller",
+        choices=["controller", "hand", "auto"],
+        help="Input mode for the teleop (default: controller)",
+    )
+    parser.add_argument(
         "--ros-args",
         nargs=argparse.REMAINDER,
         help="Arguments to pass to ROS",
@@ -63,16 +70,13 @@ def main():
     rclpy.init(args=["--ros-args"] + args.ros_args)
 
     node = rclpy.create_node("teleop")
-    gripper_publisher = node.create_publisher(
-        String,
-        "/gripper_command",
-        1
-    )
+    gripper_publisher = node.create_publisher(String, "/gripper_command", 1)
     teleop = Teleop(
         host=args.host,
         port=args.port,
         natural_phone_orientation_euler=args.natural_orientation,
         natural_phone_position=args.natural_position,
+        input_mode=args.input_mode,
     )
     robot = JacobiRobotROS(
         node,
@@ -83,17 +87,56 @@ def main():
     ee_pose = robot.get_ee_pose()
     teleop.set_pose(ee_pose)
 
-    def teleop_pose_callback(pose, params):
+    def teleop_pose_callback(pose, xr_state):
         nonlocal teleop
         nonlocal node
         nonlocal robot
 
-        gripper_publisher.publish(String(data=params["gripper"]))
+        # Helper to select controller device from xr_state (prefer right, fallback left)
+        devices = xr_state.get("devices", [])
+        controller = next(
+            (
+                d
+                for d in devices
+                if d.get("role") == "controller" and d.get("handedness") == "right"
+            ),
+            None,
+        )
+        if not controller:
+            controller = next(
+                (
+                    d
+                    for d in devices
+                    if d.get("role") == "controller" and d.get("handedness") == "left"
+                ),
+                None,
+            )
+
+        if not controller:
+            return
+
+        buttons = controller.get("gamepad", {}).get("buttons", [])
+        # Map move gating to controller trigger: buttons[0].pressed (or value > 0.5 if present)
+        move = False
+        if len(buttons) > 0:
+            move = (
+                buttons[0].get("pressed", False) or buttons[0].get("value", 0.0) > 0.5
+            )
+
+        # Map gripper to controller grip: buttons[1] value/pressed; output string "close" if grip > 0.5 else "open"
+        gripper = "open"
+        if len(buttons) > 1:
+            grip_val = buttons[1].get(
+                "value", 1.0 if buttons[1].get("pressed", False) else 0.0
+            )
+            gripper = "close" if grip_val > 0.5 else "open"
+
+        gripper_publisher.publish(String(data=gripper))
 
         if not robot.are_joint_states_received():
             return
 
-        if not params["move"]:
+        if not move:
             return
 
         robot.servo_to_pose(pose, 0.2)

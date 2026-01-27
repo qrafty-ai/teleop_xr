@@ -43,22 +43,56 @@ def main():
     teleop = Teleop(natural_phone_orientation_euler=[0, 0, 0])
     target_pose = None
 
-    def on_teleop_callback(pose, message):
+    def on_teleop_callback(pose, xr_state):
         nonlocal target_pose
 
-        if message["move"]:
+        # Helper to select controller device from xr_state (prefer right, fallback left)
+        devices = xr_state.get("devices", [])
+        controller = next(
+            (
+                d
+                for d in devices
+                if d.get("role") == "controller" and d.get("handedness") == "right"
+            ),
+            None,
+        )
+        if not controller:
+            controller = next(
+                (
+                    d
+                    for d in devices
+                    if d.get("role") == "controller" and d.get("handedness") == "left"
+                ),
+                None,
+            )
+
+        if not controller:
+            target_pose = None
+            return
+
+        buttons = controller.get("gamepad", {}).get("buttons", [])
+        # Map move gating to controller trigger: buttons[0].pressed (or value > 0.5 if present)
+        move = False
+        if len(buttons) > 0:
+            move = (
+                buttons[0].get("pressed", False) or buttons[0].get("value", 0.0) > 0.5
+            )
+
+        if move:
             target_pose = pose
         else:
             target_pose = None
 
-    robot.move_joints({
-        "shoulder_pan_joint": 0.0,
-        "shoulder_lift_joint": -1.0,
-        "elbow_joint": 1.8,
-        "wrist_1_joint": -2.0,
-        "wrist_2_joint": -1.3,
-        "wrist_3_joint": 0.4
-    })
+    robot.move_joints(
+        {
+            "shoulder_pan_joint": 0.0,
+            "shoulder_lift_joint": -1.0,
+            "elbow_joint": 1.8,
+            "wrist_1_joint": -2.0,
+            "wrist_2_joint": -1.3,
+            "wrist_3_joint": 0.4,
+        }
+    )
     timestep = int(robot.getBasicTimeStep())
     for _ in range(100):
         robot.step(timestep) != -1
