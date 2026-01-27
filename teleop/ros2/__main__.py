@@ -1,67 +1,111 @@
-from teleop import Teleop
-import transforms3d as t3d
 import argparse
+from teleop import Teleop, TF_RUB2FLU
+import transforms3d as t3d
 
 try:
     import rclpy
-    import geometry_msgs.msg
-    from geometry_msgs.msg import PoseStamped, TransformStamped
+    from geometry_msgs.msg import Pose, PoseStamped, PoseArray, TransformStamped
+    from sensor_msgs.msg import Joy
     from tf2_ros import TransformBroadcaster
+    from builtin_interfaces.msg import Time
 except ImportError:
     raise ImportError(
         "ROS2 is not sourced. Please source ROS2 before running this script."
     )
 
+XR_HAND_JOINTS = [
+    "wrist",
+    "thumb-metacarpal",
+    "thumb-phalanx-proximal",
+    "thumb-phalanx-distal",
+    "thumb-tip",
+    "index-finger-metacarpal",
+    "index-finger-phalanx-proximal",
+    "index-finger-phalanx-intermediate",
+    "index-finger-phalanx-distal",
+    "index-finger-tip",
+    "middle-finger-metacarpal",
+    "middle-finger-phalanx-proximal",
+    "middle-finger-phalanx-intermediate",
+    "middle-finger-phalanx-distal",
+    "middle-finger-tip",
+    "ring-finger-metacarpal",
+    "ring-finger-phalanx-proximal",
+    "ring-finger-phalanx-intermediate",
+    "ring-finger-phalanx-distal",
+    "ring-finger-tip",
+    "pinky-finger-metacarpal",
+    "pinky-finger-phalanx-proximal",
+    "pinky-finger-phalanx-intermediate",
+    "pinky-finger-phalanx-distal",
+    "pinky-finger-tip",
+]
 
-def ros2numpy(pose):
-    xyz = None
-    q = None
 
-    if isinstance(pose, geometry_msgs.msg.PoseStamped):
-        pose = pose.pose
-    elif isinstance(pose, geometry_msgs.msg.TransformStamped):
-        pose = pose.transform
+def pose_dict_to_matrix(pose):
+    if not pose or "position" not in pose or "orientation" not in pose:
+        return None
+    pos = pose["position"]
+    quat = pose["orientation"]
+    mat = t3d.affines.compose(
+        [pos["x"], pos["y"], pos["z"]],
+        t3d.quaternions.quat2mat([quat["w"], quat["x"], quat["y"], quat["z"]]),
+        [1.0, 1.0, 1.0],
+    )
+    return TF_RUB2FLU @ mat
 
-    if isinstance(pose, geometry_msgs.msg.Pose):
-        xyz = [pose.position.x, pose.position.y, pose.position.z]
-        q = [
-            pose.orientation.w,
-            pose.orientation.x,
-            pose.orientation.y,
-            pose.orientation.z,
-        ]
-    elif isinstance(pose, geometry_msgs.msg.Transform):
-        xyz = [pose.translation.x, pose.translation.y, pose.translation.z]
-        q = [pose.rotation.w, pose.rotation.x, pose.rotation.y, pose.rotation.z]
-    else:
-        raise ValueError("Unknown type")
 
-    transform = t3d.affines.compose(xyz, t3d.quaternions.quat2mat(q), [1, 1, 1])
-    return transform
+def matrix_to_pose_msg(mat):
+    pose = Pose()
+    pose.position.x, pose.position.y, pose.position.z = (
+        float(mat[0, 3]),
+        float(mat[1, 3]),
+        float(mat[2, 3]),
+    )
+    quat = t3d.quaternions.mat2quat(mat[:3, :3])
+    pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z = (
+        float(quat[0]),
+        float(quat[1]),
+        float(quat[2]),
+        float(quat[3]),
+    )
+    return pose
+
+
+def ms_to_time(ms):
+    sec = int(ms / 1000)
+    nanosec = int((ms % 1000) * 1e6)
+    return Time(sec=sec, nanosec=nanosec)
+
+
+def build_joy(gamepad):
+    if not gamepad:
+        return None, None
+    buttons_list = gamepad.get("buttons", [])
+    buttons = [1 if b.get("pressed") else 0 for b in buttons_list]
+    axes = list(gamepad.get("axes", [])) + [
+        float(b.get("value", 0.0)) for b in buttons_list
+    ]
+    touched = [1 if b.get("touched") else 0 for b in buttons_list]
+    return (buttons, axes), touched
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--omit-current-pose", action="store_true", help="Omit usage of current pose"
-    )
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host address")
     parser.add_argument("--port", type=int, default=4443, help="Port number")
     parser.add_argument(
-        "--natural-position",
-        nargs=3,
-        type=float,
-        default=[0.0, 0.0, 0.0],
-        help="Natural position of the phone",
+        "--input-mode",
+        choices=["controller", "hand", "auto"],
+        default="controller",
+        help="Input mode for XR state",
     )
     parser.add_argument(
-        "--natural-orientation",
-        nargs=3,
-        type=float,
-        default=[0.0, -45, 0.0],
-        help="Natural orientation of the phone (in degrees)",
+        "--frame-id", default="xr_local", help="Fixed frame ID for XR poses"
     )
-
+    parser.add_argument(
+        "--publish-hand-tf", action="store_true", help="Publish TF for hand joints"
+    )
     parser.add_argument(
         "--ros-args",
         nargs=argparse.REMAINDER,
@@ -76,75 +120,134 @@ def main():
     teleop = Teleop(
         host=args.host,
         port=args.port,
-        natural_phone_orientation_euler=args.natural_orientation,
-        natural_phone_position=args.natural_position,
+        input_mode=args.input_mode,
     )
-    current_robot_pose_message = None
-    if args.omit_current_pose:
-        current_robot_pose_message = PoseStamped()
-        current_robot_pose_message.pose.orientation.w = 1.0
-    pose_initiated = False
     node = rclpy.create_node("teleop")
-    pose_publisher = node.create_publisher(PoseStamped, "target_frame", 1)
     broadcaster = TransformBroadcaster(node)
 
-    def ros_current_pose_callback(msg):
-        nonlocal current_robot_pose_message
-        current_robot_pose_message = msg
+    publishers = {}
 
-    def teleop_pose_callback(pose, params):
-        nonlocal current_robot_pose_message
-        nonlocal teleop
-        nonlocal node
-        nonlocal pose_publisher
-        nonlocal pose_initiated
+    def get_publisher(msg_type, topic):
+        if topic not in publishers:
+            publishers[topic] = node.create_publisher(msg_type, topic, 1)
+        return publishers[topic]
 
-        tf_message = TransformStamped()
-        tf_message.header.stamp = node.get_clock().now().to_msg()
-        tf_message.header.frame_id = "base_link"
-        tf_message.child_frame_id = "teleop_target"
-        tf_message.transform.translation.x = pose[0, 3]
-        tf_message.transform.translation.y = pose[1, 3]
-        tf_message.transform.translation.z = pose[2, 3]
-        quat = t3d.quaternions.mat2quat(pose[:3, :3])
-        tf_message.transform.rotation.w = quat[0]
-        tf_message.transform.rotation.x = quat[1]
-        tf_message.transform.rotation.y = quat[2]
-        tf_message.transform.rotation.z = quat[3]
-        broadcaster.sendTransform(tf_message)
+    def publish_pose(topic, pose_dict, stamp, child_frame_id):
+        if not pose_dict:
+            return
+        mat = pose_dict_to_matrix(pose_dict)
+        if mat is None:
+            return
+        msg = PoseStamped()
+        msg.header.stamp = stamp
+        msg.header.frame_id = args.frame_id
+        msg.pose = matrix_to_pose_msg(mat)
+        get_publisher(PoseStamped, topic).publish(msg)
+
+        tf = TransformStamped()
+        tf.header.stamp = stamp
+        tf.header.frame_id = args.frame_id
+        tf.child_frame_id = child_frame_id
+        tf.transform.translation.x = msg.pose.position.x
+        tf.transform.translation.y = msg.pose.position.y
+        tf.transform.translation.z = msg.pose.position.z
+        tf.transform.rotation = msg.pose.orientation
+        broadcaster.sendTransform(tf)
+
+    def publish_joy(topic, joy_data, stamp):
+        buttons, axes = joy_data
+        msg = Joy()
+        msg.header.stamp = stamp
+        msg.header.frame_id = args.frame_id
+        msg.buttons = buttons
+        msg.axes = axes
+        get_publisher(Joy, topic).publish(msg)
+
+    def publish_hand(device, stamp):
+        handed = device.get("handedness", "none")
+        joints_dict = device.get("joints", {})
+        if not joints_dict:
+            return
+
+        pose_array = PoseArray()
+        pose_array.header.stamp = stamp
+        pose_array.header.frame_id = args.frame_id
+
+        for joint_name in XR_HAND_JOINTS:
+            joint_pose_dict = joints_dict.get(joint_name)
+            mat = pose_dict_to_matrix(joint_pose_dict)
+            if mat is None:
+                continue
+            pose_msg = matrix_to_pose_msg(mat)
+            pose_array.poses.append(pose_msg)
+
+            if args.publish_hand_tf:
+                tf = TransformStamped()
+                tf.header.stamp = stamp
+                tf.header.frame_id = args.frame_id
+                tf.child_frame_id = f"xr/hand_{handed}/{joint_name}"
+                tf.transform.translation.x = pose_msg.position.x
+                tf.transform.translation.y = pose_msg.position.y
+                tf.transform.translation.z = pose_msg.position.z
+                tf.transform.rotation = pose_msg.orientation
+                broadcaster.sendTransform(tf)
+
+        get_publisher(PoseArray, f"xr/hand_{handed}/joints").publish(pose_array)
+
+    def teleop_xr_state_callback(_pose, xr_state):
+        try:
+            ms = xr_state.get("timestamp_unix_ms") if xr_state else None
+            stamp = (
+                ms_to_time(ms) if ms is not None else node.get_clock().now().to_msg()
+            )
+
+            for device in xr_state.get("devices", []) if xr_state else []:
+                role = device.get("role")
+                handed = device.get("handedness", "none")
+
+                if role == "head":
+                    publish_pose(
+                        "xr/head/pose",
+                        device.get("pose"),
+                        stamp,
+                        "xr/head",
+                    )
+
+                if role == "controller":
+                    publish_pose(
+                        f"xr/controller_{handed}/target_ray",
+                        device.get("targetRayPose"),
+                        stamp,
+                        f"xr/controller_{handed}/target_ray",
+                    )
+                    publish_pose(
+                        f"xr/controller_{handed}/grip",
+                        device.get("gripPose"),
+                        stamp,
+                        f"xr/controller_{handed}/grip",
+                    )
+
+                    joy_payload, touched = build_joy(device.get("gamepad"))
+                    if joy_payload:
+                        publish_joy(f"xr/controller_{handed}/joy", joy_payload, stamp)
+                    if touched:
+                        publish_joy(
+                            f"xr/controller_{handed}/joy_touched",
+                            (touched, []),
+                            stamp,
+                        )
+
+                if role == "hand":
+                    publish_hand(device, stamp)
+        except Exception as exc:
+            node.get_logger().warning(f"xr_state callback error: {exc}")
 
         try:
-            rclpy.spin_once(node, timeout_sec=0.01)
-        except Exception as e:
-            pass
+            rclpy.spin_once(node, timeout_sec=0.0)
+        except Exception as exc:
+            node.get_logger().debug(f"spin_once failed: {exc}")
 
-        if current_robot_pose_message is None:
-            return
-
-        if not params["move"] and not pose_initiated:
-            current_robot_pose = ros2numpy(current_robot_pose_message.pose)
-            teleop.set_pose(current_robot_pose)
-            pose_initiated = True
-            return
-
-        message = PoseStamped()
-        message.header.stamp = node.get_clock().now().to_msg()
-        message.header.frame_id = "link_base"
-        message.pose.position.x = pose[0, 3]
-        message.pose.position.y = pose[1, 3]
-        message.pose.position.z = pose[2, 3]
-        quat = t3d.quaternions.mat2quat(pose[:3, :3])
-        message.pose.orientation.w = quat[0]
-        message.pose.orientation.x = quat[1]
-        message.pose.orientation.y = quat[2]
-        message.pose.orientation.z = quat[3]
-        pose_publisher.publish(message)
-
-    current_pose_subscriber = node.create_subscription(
-        PoseStamped, "/current_pose", ros_current_pose_callback, 1
-    )
-
-    teleop.subscribe(teleop_pose_callback)
+    teleop.subscribe(teleop_xr_state_callback)
     teleop.run()
 
 
