@@ -4,7 +4,7 @@ Transform your phone into a robot arm teleoperation device in three simple steps
 
 1. Install and launch the server on your computer.
 2. Open the provided URL on your phone.
-3. Tap `Start`, then press and hold the `Move` button to control the robot arm.
+3. Tap `Start`, then enter XR and move your controllers/hands to stream poses and inputs.
 
 > [!IMPORTANT]  
 > Your phone has to support the [WebXR API](https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API). Unfortunately, the iPhone doesn't support the WebXR API.
@@ -53,20 +53,48 @@ Smart phones are typically 30fps while VR joysticks 90fps which is much more pre
 The ROS 2 interface is designed primarily for use with the [cartesian_controllers](https://github.com/fzi-forschungszentrum-informatik/cartesian_controllers) package, but it can also be adapted for [MoveIt Servo](https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html) or other packages.
 
 ```bash
-python -m teleop.ros2
+python -m teleop.ros2 --input-mode controller
 ```
 
 **Published topics:**
-- `target_frame` ([geometry_msgs/PoseStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)): The target pose of the robot arm’s end effector in the robot base frame.
-- `tf` ([tf2_msgs/TFMessage](https://docs.ros2.org/latest/api/tf2_msgs/msg/TFMessage.html)): The transform between the robot base frame and the target frame for visualization.
+- `xr/head/pose` ([geometry_msgs/PoseStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)): Head pose in `--frame-id`.
+- `xr/controller_left/target_ray` ([geometry_msgs/PoseStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)): Left controller target-ray pose.
+- `xr/controller_left/grip` ([geometry_msgs/PoseStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)): Left controller grip pose.
+- `xr/controller_left/joy` ([sensor_msgs/Joy](https://docs.ros2.org/latest/api/sensor_msgs/msg/Joy.html)): Pressed buttons + axes + button values.
+- `xr/controller_left/joy_touched` ([sensor_msgs/Joy](https://docs.ros2.org/latest/api/sensor_msgs/msg/Joy.html)): Touched buttons.
+- Same topics for `xr/controller_right/...`
+- `xr/hand_left/joints` ([geometry_msgs/PoseArray](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseArray.html)): Hand joint poses in XR_HAND_JOINTS order.
+- `xr/hand_right/joints` ([geometry_msgs/PoseArray](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseArray.html)): Hand joint poses in XR_HAND_JOINTS order.
 
-**Subscribed topics:**
-- `current_pose` ([geometry_msgs/PoseStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)): The current pose of the robot arm’s end effector in the robot base frame. Used to update the reference pose.
+**Options:**
+- `--input-mode {controller,hand,auto}`: Choose which devices to stream.
+- `--frame-id`: Override frame id (default `xr_local`).
+- `--publish-hand-tf`: Publish TF frames for each hand joint.
 
 You can override the default topic names using standard ROS 2 arguments:
 
 ```bash
 python -m teleop.ros2 --ros-args -r target_frame:=/some_other_topic_name
+```
+
+### XR State Schema
+
+Each XR frame sends:
+
+```json
+{
+  "type": "xr_state",
+  "data": {
+    "timestamp_unix_ms": 1700000000000,
+    "reference_space": "local",
+    "input_mode": "controller",
+    "devices": [
+      { "role": "head", "handedness": "none", "pose": { "position": {}, "orientation": {} } },
+      { "role": "controller", "handedness": "right", "targetRayPose": {}, "gripPose": {}, "gamepad": { "buttons": [], "axes": [] } },
+      { "role": "hand", "handedness": "left", "joints": { "wrist": { "position": {}, "orientation": {}, "radius": 0.0 } } }
+    ]
+  }
+}
 ```
 
 ### ROS 2 Interface with IK
@@ -99,15 +127,15 @@ import numpy as np
 from teleop import Teleop
 
 
-def callback(pose: np.ndarray, message: dict) -> None:
+def callback(pose: np.ndarray, xr_state: dict) -> None:
     """
     Callback function triggered when pose updates are received.
     Arguments:
         - np.ndarray: A 4x4 transformation matrix representing the end-effector target pose.
-        - dict: A dictionary containing additional information.
+        - dict: A dictionary containing XR state (devices, buttons, timestamps).
     """
     print(f'Pose: {pose}')
-    print(f'Message: {message}')
+    print(f'XR state: {xr_state}')
 
 teleop = Teleop()
 teleop.subscribe(callback)
