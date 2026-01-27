@@ -103,65 +103,8 @@
     </div>
 
     <script>
-        class TeleopJoystick {
-            constructor() {
-                this.gripper = 'open';
-                this.moveButtonPressed = false;
-                this.reservedButtonA = false;
-                this.reservedButtonB = false;
-                this.scale = 1.0;
-            }
-
-            handleControllerInput(session, frame) {
-                const inputSources = session.inputSources;
-                for (let inputSource of inputSources) {
-                    if (inputSource.gamepad && inputSource.handedness === 'right') {
-                        const gamepad = inputSource.gamepad;
-                        if (gamepad.buttons[1] && gamepad.buttons[1].pressed) {
-                            this.moveButtonPressed = true;
-                        } else {
-                            this.moveButtonPressed = false;
-                        }
-
-                        if (gamepad.buttons[0] && gamepad.buttons[0].pressed && !gamepad.buttons[0].wasPressed) {
-                            this.gripper = (this.gripper === 'open') ? 'close' : 'open';
-                        }
-                        gamepad.buttons[0].wasPressed = gamepad.buttons[0].pressed;
-
-                        this.reservedButtonA = gamepad.buttons[4] && gamepad.buttons[4].pressed;
-                        this.reservedButtonB = gamepad.buttons[5] && gamepad.buttons[5].pressed;
-
-                        const gamepadAxis = gamepad.axes[0];
-                        if (gamepadAxis !== undefined && Math.abs(gamepadAxis) > 0.1) {
-                            this.scale = Math.max(0.2, Math.min(1.0, this.scale + gamepadAxis * 0.1));
-                        }
-                    }
-                }
-            }
-
-            isMotionEnabled() {
-                return this.moveButtonPressed;
-            }
-
-            isGripperEngaged() {
-                return this.gripper === 'close';
-            }
-
-            isReservedButtonAActive() {
-                return this.reservedButtonA;
-            }
-
-            isReservedButtonBActive() {
-                return this.reservedButtonB;
-            }
-
-            getScale() {
-                return this.scale;
-            }
-        }
-
         const teleopUI = document.querySelector('#teleop-ui');
-        const teleopJoystick = new TeleopJoystick();
+        let inputMode = 'auto';
         const startButtonDom = document.querySelector('#start-button');
         const appDom = document.querySelector('#app');
 
@@ -224,6 +167,9 @@
 
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
+                if (message.type === 'config' && message.data && message.data.input_mode) {
+                    inputMode = message.data.input_mode;
+                }
                 console.log('Received message:', message);
             };
         }
@@ -238,14 +184,12 @@
             message = msg;
         }
 
-        const sendPose = (pose) => {
+        const sendPose = (xrState) => {
             if (isConnected && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
-                    type: 'pose',
-                    data: pose
+                    type: 'xr_state',
+                    data: xrState
                 }));
-            } else {
-                console.error('WebSocket not connected, cannot send pose');
             }
         }
 
@@ -261,28 +205,12 @@
             return false;
         }
 
-        function getPoseFromInputSource(session, frame, referenceSpace) {
-            const inputSources = session.inputSources;
-            for (let inputSource of inputSources) {
-                if (inputSource.handedness === 'right' && inputSource.targetRayMode === 'tracked-pointer') {
-                    const pose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
-                    if (pose) {
-                        return {
-                            position: pose.transform.position,
-                            orientation: pose.transform.orientation
-                        };
-                    }
-                }
-            }
-            return null;
-        }
 
         setMessage('Click the button to start WebXR');
         let lastSendTime = performance.now();
         startButtonDom.addEventListener('click', () => {
             if (navigator.xr) {
                 navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['local-floor'],
                     optionalFeatures: ['hand-tracking', 'unbounded', 'dom-overlay', 'dom-overlay-for-handheld-ar', 'hit-test', 'high-fixed-foveation-level'],
                     domOverlay: { root: document.querySelector('#app') }
                 }).then((session) => {
@@ -322,66 +250,150 @@
                         })
                     });
 
-                    session.requestReferenceSpace('local-floor').then((referenceSpace) => {
+                    session.requestReferenceSpace('local').then((referenceSpace) => {
                         let xrReferenceSpace = referenceSpace;
+                        const timeOrigin = Date.now() - performance.now();
 
                         function onXRFrame(time, frame) {
                             // Update FPS counter
                             updateFPS();
 
-                            let position, orientation;
+                            const timestamp_unix_ms = Math.round(timeOrigin + frame.predictedDisplayTime);
+                            const devices = [];
 
-                            if (isVRDevice) {
-                                teleopJoystick.handleControllerInput(session, frame);
-                                const controllerPose = getPoseFromInputSource(session, frame, xrReferenceSpace);
-                                if (controllerPose) {
-                                    position = controllerPose.position;
-                                    orientation = controllerPose.orientation;
-                                } else {
-                                    const viewerPose = frame.getViewerPose(xrReferenceSpace);
-                                    if (viewerPose && viewerPose.views[0]) {
-                                        position = viewerPose.views[0].transform.position;
-                                        orientation = viewerPose.views[0].transform.orientation;
+                            // Head
+                            const viewerPose = frame.getViewerPose(xrReferenceSpace);
+                            if (viewerPose) {
+                                devices.push({
+                                    role: 'head',
+                                    handedness: 'none',
+                                    pose: {
+                                        position: {
+                                            x: viewerPose.transform.position.x,
+                                            y: viewerPose.transform.position.y,
+                                            z: viewerPose.transform.position.z
+                                        },
+                                        orientation: {
+                                            x: viewerPose.transform.orientation.x,
+                                            y: viewerPose.transform.orientation.y,
+                                            z: viewerPose.transform.orientation.z,
+                                            w: viewerPose.transform.orientation.w
+                                        }
+                                    },
+                                    emulated: viewerPose.emulatedPosition
+                                });
+                            }
+
+                            // Other input sources
+                            for (const inputSource of session.inputSources) {
+                                const isHand = !!inputSource.hand;
+                                const isController = !isHand;
+
+                                if (inputMode === 'controller' && isHand) continue;
+                                if (inputMode === 'hand' && isController) continue;
+
+                                if (isHand) {
+                                    const joints = {};
+                                    for (const [jointName, jointSpace] of inputSource.hand) {
+                                        const jointPose = frame.getJointPose(jointSpace, xrReferenceSpace);
+                                        if (jointPose) {
+                                            joints[jointName] = {
+                                                position: {
+                                                    x: jointPose.transform.position.x,
+                                                    y: jointPose.transform.position.y,
+                                                    z: jointPose.transform.position.z
+                                                },
+                                                orientation: {
+                                                    x: jointPose.transform.orientation.x,
+                                                    y: jointPose.transform.orientation.y,
+                                                    z: jointPose.transform.orientation.z,
+                                                    w: jointPose.transform.orientation.w
+                                                },
+                                                radius: jointPose.radius,
+                                                emulated: jointPose.emulatedPosition
+                                            };
+                                        }
                                     }
-                                }
-                            } else {
-                                const viewerPose = frame.getViewerPose(xrReferenceSpace);
-                                if (viewerPose && viewerPose.views[0]) {
-                                    position = viewerPose.views[0].transform.position;
-                                    orientation = viewerPose.views[0].transform.orientation;
+                                    devices.push({
+                                        role: 'hand',
+                                        handedness: inputSource.handedness,
+                                        joints: joints
+                                    });
+                                } else {
+                                    const targetRayPose = frame.getPose(inputSource.targetRaySpace, xrReferenceSpace);
+                                    const gripPose = inputSource.gripSpace ? frame.getPose(inputSource.gripSpace, xrReferenceSpace) : null;
+
+                                    const device = {
+                                        role: 'controller',
+                                        handedness: inputSource.handedness,
+                                        targetRayPose: targetRayPose ? {
+                                            position: {
+                                                x: targetRayPose.transform.position.x,
+                                                y: targetRayPose.transform.position.y,
+                                                z: targetRayPose.transform.position.z
+                                            },
+                                            orientation: {
+                                                x: targetRayPose.transform.orientation.x,
+                                                y: targetRayPose.transform.orientation.y,
+                                                z: targetRayPose.transform.orientation.z,
+                                                w: targetRayPose.transform.orientation.w
+                                            }
+                                        } : null,
+                                        gripPose: gripPose ? {
+                                            position: {
+                                                x: gripPose.transform.position.x,
+                                                y: gripPose.transform.position.y,
+                                                z: gripPose.transform.position.z
+                                            },
+                                            orientation: {
+                                                x: gripPose.transform.orientation.x,
+                                                y: gripPose.transform.orientation.y,
+                                                z: gripPose.transform.orientation.z,
+                                                w: gripPose.transform.orientation.w
+                                            }
+                                        } : null,
+                                        targetRayMode: inputSource.targetRayMode,
+                                        profiles: inputSource.profiles
+                                    };
+
+                                    if (inputSource.gamepad) {
+                                        device.gamepad = {
+                                            buttons: Array.from(inputSource.gamepad.buttons).map(b => ({
+                                                pressed: b.pressed,
+                                                touched: b.touched,
+                                                value: b.value
+                                            })),
+                                            axes: Array.from(inputSource.gamepad.axes)
+                                        };
+                                    }
+                                    devices.push(device);
                                 }
                             }
 
-                            if (position && orientation) {
+                            if (devices.length > 0) {
                                 if (time - lastSendTime > 10) {
-                                    const teleopFrontEnd = (isVRDevice) ? teleopJoystick : teleopUI;
                                     lastSendTime = time;
-                                    const state = {
-                                        position: {
-                                            x: position.x,
-                                            y: position.y,
-                                            z: position.z
-                                        },
-                                        orientation: {
-                                            x: orientation.x,
-                                            y: orientation.y,
-                                            z: orientation.z,
-                                            w: orientation.w
-                                        },
-                                        move: teleopFrontEnd.isMotionEnabled(),
-                                        gripper: teleopFrontEnd.isGripperEngaged() ? 'close' : 'open',
+                                    const xr_state = {
+                                        timestamp_unix_ms,
+                                        reference_space: "local",
+                                        input_mode: inputMode,
+                                        devices: devices,
                                         fps: fps,
-                                        scale: teleopFrontEnd.getScale(),
-                                        reservedButtonA: teleopFrontEnd.isReservedButtonAActive(),
-                                        reservedButtonB: teleopFrontEnd.isReservedButtonBActive(),
-                                        device: isVRDevice ? 'VR' : 'Phone',
-                                        message: message
+                                        device: isVRDevice ? 'VR' : 'Phone'
+                                    };
+                                    sendPose(xr_state);
+
+                                    const head = devices.find(d => d.role === 'head');
+                                    if (head && head.pose) {
+                                        teleopUI.updateLocalStats({
+                                            position: head.pose.position,
+                                            orientation: head.pose.orientation,
+                                            fps: fps
+                                        });
                                     }
-                                    sendPose(state);
-                                    teleopUI.updateLocalStats(state);
                                 }
                             } else {
-                                setMessage('No pose available');
+                                setMessage('No devices available');
                             }
                             session.requestAnimationFrame(onXRFrame);
                         }
