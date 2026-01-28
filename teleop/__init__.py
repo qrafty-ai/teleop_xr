@@ -15,6 +15,19 @@ TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+def _resolve_frontend_paths(package_dir: str) -> tuple[str, str, str, str]:
+    repo_root = os.path.abspath(os.path.join(package_dir, os.pardir))
+    dist_dir = os.path.join(repo_root, "webxr", "dist")
+    dist_index = os.path.join(dist_dir, "index.html")
+
+    if os.path.exists(dist_index):
+        return dist_dir, dist_index, "/", "webxr"
+
+    assets_dir = os.path.join(package_dir, "assets")
+    index_path = os.path.join(package_dir, "index.html")
+    return assets_dir, index_path, "/assets", "assets"
+
+
 def get_local_ip():
     try:
         # Connect to an external address (doesn't actually send data)
