@@ -67,20 +67,24 @@ export class TeleopSystem extends createSystem({
   }
 
   execute(delta: number, time: number) {
-    // 1. Calculate FPS
+    // 1. Calculate FPS (always, even outside XR)
     this.frameCount++;
     if (time - this.lastFpsTime >= 1.0) {
       this.currentFps = Math.round(this.frameCount / (time - this.lastFpsTime));
       this.frameCount = 0;
       this.lastFpsTime = time;
+      // Update FPS in UI even when not in XR session
+      if (this.fpsText) {
+        this.fpsText.setProperties({ text: `${this.currentFps}` });
+      }
     }
 
     // 2. Send XR State (Rate limit: 10ms)
     if (time - this.lastSendTime > 0.01) {
       this.lastSendTime = time;
       const state = this.gatherXRState(time);
-      if (state) {
-        // 3. Update local stats
+      if (state && state.devices.length > 0) {
+        // 3. Update local stats with XR data
         const head = state.devices.find((d: any) => d.role === "head");
         this.updateLocalStats(head?.pose, this.currentFps, state.fetch_latency_ms);
 
@@ -105,13 +109,22 @@ export class TeleopSystem extends createSystem({
 
   gatherXRState(time: number) {
     const fetchStart = performance.now();
-    const renderer = (this.world as any).app.renderer;
+    const renderer = (this.world as any).app?.renderer;
+    if (!renderer || !renderer.xr) {
+      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
+    }
+    
     const session = renderer.xr.getSession();
-    if (!session) return null;
+    if (!session) {
+      // Not in XR session yet - return empty state
+      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
+    }
 
     const frame = renderer.xr.getFrame();
     const referenceSpace = renderer.xr.getReferenceSpace();
-    if (!frame || !referenceSpace) return null;
+    if (!frame || !referenceSpace) {
+      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
+    }
 
     const timestamp_unix_ms = Math.round(this.timeOrigin + frame.predictedDisplayTime);
 
