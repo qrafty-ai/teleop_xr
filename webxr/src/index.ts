@@ -24,6 +24,8 @@ import { EnvironmentType, LocomotionEnvironment } from "@iwsdk/core";
 
 import { PanelSystem } from "./panel.js";
 
+import { TeleopSystem } from "./teleop_system.js";
+
 import { Robot } from "./robot.js";
 
 import { RobotSystem } from "./robot.js";
@@ -108,7 +110,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   const panelEntity = world
     .createTransformEntity()
     .addComponent(PanelUI, {
-      config: "./ui/welcome.json",
+      config: "./ui/teleop.json",
       maxHeight: 0.8,
       maxWidth: 1.6,
     })
@@ -133,5 +135,6 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   logoBanner.position.set(0, 1, 1.8);
   logoBanner.rotateY(Math.PI);
 
-  world.registerSystem(PanelSystem).registerSystem(RobotSystem);
+  world.registerSystem(PanelSystem);
+  world.registerSystem(new TeleopSystem(world));
 });
