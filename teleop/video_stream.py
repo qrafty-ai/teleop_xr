@@ -1,5 +1,11 @@
 from dataclasses import dataclass
 from typing import Any
+import asyncio
+import cv2
+from av import VideoFrame
+from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc import RTCConfiguration, RTCIceServer
+from aiortc.mediastreams import VideoStreamTrack
 
 
 @dataclass(frozen=True)
@@ -41,3 +47,66 @@ def parse_video_config(payload: dict[str, Any]) -> list[VideoStreamConfig]:
             )
         )
     return configs
+
+
+class CameraStreamTrack(VideoStreamTrack):
+    kind = "video"
+
+    def __init__(self, config: VideoStreamConfig):
+        super().__init__()
+        self.stream_id = config.id
+        self._config = config
+        self._capture: cv2.VideoCapture | None = None
+
+    def _ensure_capture(self) -> cv2.VideoCapture:
+        if self._capture is None:
+            self._capture = cv2.VideoCapture(self._config.device)
+            self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._config.width)
+            self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._config.height)
+            self._capture.set(cv2.CAP_PROP_FPS, self._config.fps)
+        return self._capture
+
+    async def recv(self):
+        pts, time_base = await self.next_timestamp()
+        capture = self._ensure_capture()
+        ok, frame = capture.read()
+        if not ok:
+            await asyncio.sleep(0.01)
+            return await self.recv()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
+        video_frame.pts = pts
+        video_frame.time_base = time_base
+        return video_frame
+
+
+def build_tracks(configs: list[VideoStreamConfig]) -> list[CameraStreamTrack]:
+    return [CameraStreamTrack(cfg) for cfg in configs if cfg.enabled]
+
+
+class VideoStreamManager:
+    def __init__(
+        self, configs: list[VideoStreamConfig], ice_servers: list[str] | None = None
+    ):
+        servers = [RTCIceServer(urls=url) for url in (ice_servers or [])]
+        self._pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=servers))
+        self._configs = configs
+
+    async def create_offer(self) -> RTCSessionDescription:
+        for track in build_tracks(self._configs):
+            self._pc.addTrack(track)
+        offer = await self._pc.createOffer()
+        await self._pc.setLocalDescription(offer)
+        return self._pc.localDescription
+
+    async def handle_answer(self, sdp: str, sdp_type: str = "answer") -> None:
+        await self._pc.setRemoteDescription(
+            RTCSessionDescription(sdp=sdp, type=sdp_type)
+        )
+
+    async def add_ice(self, candidate: dict) -> None:
+        if candidate:
+            await self._pc.addIceCandidate(candidate)
+
+    async def close(self) -> None:
+        await self._pc.close()
