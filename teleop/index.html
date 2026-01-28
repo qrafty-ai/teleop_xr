@@ -83,6 +83,25 @@
             background-color: #f44336;
             color: white;
         }
+
+        #camera-stats-panel {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #f2f2f2;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        #camera-stats-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 
@@ -100,6 +119,11 @@
 
     <div class="app" id="app">
         <teleop-ui id="teleop-ui"></teleop-ui>
+    </div>
+
+    <div id="camera-stats-panel">
+        <div id="camera-stats-title">Camera Stream Stats</div>
+        <pre id="camera-stats">awaiting stream...</pre>
     </div>
 
     <script>
