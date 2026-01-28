@@ -5,6 +5,7 @@ import cv2
 from av import VideoFrame
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc import RTCConfiguration, RTCIceServer
+from aiortc.sdp import candidate_from_sdp
 from aiortc.mediastreams import VideoStreamTrack
 
 
@@ -105,8 +106,11 @@ class VideoStreamManager:
         )
 
     async def add_ice(self, candidate: dict) -> None:
-        if candidate:
-            await self._pc.addIceCandidate(candidate)
+        if candidate and candidate.get("candidate"):
+            ice = candidate_from_sdp(candidate["candidate"])
+            ice.sdpMid = candidate.get("sdpMid")
+            ice.sdpMLineIndex = candidate.get("sdpMLineIndex")
+            await self._pc.addIceCandidate(ice)
 
     async def close(self) -> None:
         await self._pc.close()
