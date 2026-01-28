@@ -110,3 +110,12 @@ class VideoStreamManager:
 
     async def close(self) -> None:
         await self._pc.close()
+
+
+def route_video_message(manager: VideoStreamManager, message: dict) -> Any:
+    msg_type = message.get("type")
+    data = message.get("data", {})
+    if msg_type == "video_answer":
+        return manager.handle_answer(data.get("sdp", ""), data.get("type", "answer"))
+    if msg_type == "video_ice":
+        return manager.add_ice(data)
