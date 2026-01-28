@@ -1,35 +1,37 @@
-import { System, World, XRInputSource } from "@iwsdk/core";
+import { createSystem, PanelUI, PanelDocument, eq, UIKitDocument, UIKit } from "@iwsdk/core";
 
-export class TeleopSystem extends System {
+export class TeleopSystem extends createSystem({
+  teleopPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, "config", "./ui/teleop.json")],
+  },
+}) {
   private ws: WebSocket | null = null;
   private statusText: any = null;
   private fpsText: any = null;
   private latencyText: any = null;
-  private lastTime = 0;
   private frameCount = 0;
   private lastFpsTime = 0;
 
-  constructor(world: World) {
-    super(world);
-  }
-
   init() {
     this.connectWS();
-    // Query UI elements
-    const ui = this.world.entityManager.getComponents("PanelUI")[0]; // Assuming one panel
-    if (ui && ui.root) {
-      this.statusText = ui.root.querySelector("#status-text");
-      this.fpsText = ui.root.querySelector("#fps-text");
-      this.latencyText = ui.root.querySelector("#latency-text");
-    }
+
+    this.queries.teleopPanel.subscribe("qualify", (entity) => {
+      const document = PanelDocument.data.document[entity.index] as UIKitDocument;
+      if (document) {
+        this.statusText = document.getElementById("status-text");
+        this.fpsText = document.getElementById("fps-text");
+        this.latencyText = document.getElementById("latency-text");
+      }
+    });
   }
 
   connectWS() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
+
     this.ws = new WebSocket(wsUrl);
-    
+
     this.ws.onopen = () => {
       this.updateStatus("Connected", true);
     };
@@ -45,16 +47,17 @@ export class TeleopSystem extends System {
 
     this.ws.onmessage = (msg) => {
       // Handle config/latency logic if needed
-      // Simple echo for latency check usually, or server sends stats
     };
   }
 
   updateStatus(text: string, connected: boolean) {
     if (this.statusText) {
-      this.statusText.text = text;
-      // Note: uikitml might not support classList toggle easily via JS yet,
-      // so we might just set color directly or text.
-      // Assuming direct text update works.
+      this.statusText.setProperties({ text: text });
+      // Change color based on connection?
+      // this.statusText.style.color = connected ? "#22c55e" : "#ef4444"; 
+      // uikitml might support classes, but setProperties is safer for text content.
+      // For color, we might need to access style or classes if exposed.
+      // For now just text.
     }
   }
 
@@ -63,7 +66,7 @@ export class TeleopSystem extends System {
     this.frameCount++;
     if (time - this.lastFpsTime >= 1.0) {
       const fps = Math.round(this.frameCount / (time - this.lastFpsTime));
-      if (this.fpsText) this.fpsText.text = `${fps}`;
+      if (this.fpsText) this.fpsText.setProperties({ text: `${fps}` });
       this.frameCount = 0;
       this.lastFpsTime = time;
     }
@@ -76,14 +79,8 @@ export class TeleopSystem extends System {
   }
 
   gatherXRState(time: number) {
-    const inputs = this.world.input.sources; // Abstracted input access
-    // This part requires checking iwsdk input API.
-    // Fallback to standard WebXR if needed, but iwsdk abstracts it.
-    // For now, assume we can access raw XRFrame or sources via world.app.xr
-    
-    // Simplification: Send head pose
     const head = this.world.camera.transform; // Main camera is head
-    
+
     return {
       timestamp: time,
       devices: [
@@ -91,11 +88,16 @@ export class TeleopSystem extends System {
           role: "head",
           pose: {
             position: { x: head.position.x, y: head.position.y, z: head.position.z },
-            orientation: { x: head.rotation.x, y: head.rotation.y, z: head.rotation.z, w: head.rotation.w }
-          }
-        }
+            orientation: {
+              x: head.rotation.x,
+              y: head.rotation.y,
+              z: head.rotation.z,
+              w: head.rotation.w,
+            },
+          },
+        },
         // TODO: Add controllers iterating inputs
-      ]
+      ],
     };
   }
 }

@@ -136,5 +136,5 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   logoBanner.rotateY(Math.PI);
 
   world.registerSystem(PanelSystem);
-  world.registerSystem(new TeleopSystem(world));
+  world.registerSystem(TeleopSystem);
 });
