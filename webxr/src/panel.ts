@@ -9,13 +9,13 @@ import {
 } from "@iwsdk/core";
 
 export class PanelSystem extends createSystem({
-  welcomePanel: {
+  teleopPanel: {
     required: [PanelUI, PanelDocument],
-    where: [eq(PanelUI, "config", "./ui/welcome.json")],
+    where: [eq(PanelUI, "config", "./ui/teleop.json")],
   },
 }) {
   init() {
-    this.queries.welcomePanel.subscribe("qualify", (entity) => {
+    this.queries.teleopPanel.subscribe("qualify", (entity) => {
       const document = PanelDocument.data.document[
         entity.index
       ] as UIKitDocument;
@@ -23,7 +23,12 @@ export class PanelSystem extends createSystem({
         return;
       }
 
-      const xrButton = document.getElementById("xr-button") as UIKit.Text;
+      const xrButton = document.getElementById("xr-button") as
+        | UIKit.Text
+        | null;
+      if (!xrButton) {
+        return;
+      }
       xrButton.addEventListener("click", () => {
         if (this.world.visibilityState.value === VisibilityState.NonImmersive) {
           this.world.launchXR();

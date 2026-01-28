@@ -24,6 +24,8 @@ import { EnvironmentType, LocomotionEnvironment } from "@iwsdk/core";
 
 import { PanelSystem } from "./panel.js";
 
+import { TeleopSystem } from "./teleop_system.js";
+
 import { Robot } from "./robot.js";
 
 import { RobotSystem } from "./robot.js";
@@ -110,7 +112,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   const panelEntity = world
     .createTransformEntity()
     .addComponent(PanelUI, {
-      config: "./ui/welcome.json",
+      config: "./ui/teleop.json",
       maxHeight: 0.8,
       maxWidth: 1.6,
     })
@@ -135,20 +137,6 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   logoBanner.position.set(0, 1, 1.8);
   logoBanner.rotateY(Math.PI);
 
-  world.registerSystem(PanelSystem).registerSystem(RobotSystem);
-
-  const statsEl = document.getElementById("camera-stats");
-  new VideoClient(`wss://${location.host}/ws`, (stats) => {
-    if (!statsEl) return;
-    const lines = [
-      `state: ${stats.state}`,
-      ...stats.streams.map(
-        (s) =>
-          `${s.id} ${s.width}x${s.height} ${s.fps.toFixed(1)}fps ${
-            s.bitrateKbps
-          }kbps lost:${s.packetsLost} jitter:${s.jitter}`,
-      ),
-    ];
-    statsEl.textContent = lines.join("\n");
-  });
+  world.registerSystem(PanelSystem);
+  world.registerSystem(TeleopSystem);
 });

@@ -22,6 +22,19 @@ TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+def _resolve_frontend_paths(package_dir: str) -> tuple[str, str, str, str]:
+    repo_root = os.path.abspath(os.path.join(package_dir, os.pardir))
+    dist_dir = os.path.join(repo_root, "webxr", "dist")
+    dist_index = os.path.join(dist_dir, "index.html")
+
+    if os.path.exists(dist_index):
+        return dist_dir, dist_index, "/", "webxr"
+
+    assets_dir = os.path.join(package_dir, "assets")
+    index_path = os.path.join(package_dir, "index.html")
+    return assets_dir, index_path, "/assets", "assets"
+
+
 def get_local_ip():
     try:
         # Connect to an external address (doesn't actually send data)
@@ -373,14 +386,13 @@ class Teleop:
                     return
 
     def __setup_routes(self):
-        # Mount static files directory
-        assets_dir = os.path.join(THIS_DIR, "assets")
-        self.__app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        static_dir, index_path, mount_path, mount_name = _resolve_frontend_paths(
+            THIS_DIR
+        )
 
         @self.__app.get("/")
         async def index():
-            self.__logger.debug("Serving the index.html file")
-            return FileResponse(os.path.join(THIS_DIR, "index.html"))
+            return FileResponse(index_path)
 
         @self.__app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
@@ -429,6 +441,8 @@ class Teleop:
                     await session.close()
                 self.__manager.disconnect(websocket)
                 self.__logger.info("Client disconnected")
+
+        self.__app.mount(mount_path, StaticFiles(directory=static_dir), name=mount_name)
 
     def run(self) -> None:
         """
