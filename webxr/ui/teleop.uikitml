@@ -1,0 +1,59 @@
+<style>
+  .panel-container {
+    width: 60;
+    padding: 2;
+    background-color: #09090b;
+    border-color: #27272a;
+    border-width: 0.15;
+    border-radius: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .title {
+    font-size: 5;
+    color: #fafafa;
+    margin-bottom: 2;
+  }
+  .status-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    margin-bottom: 1;
+  }
+  .label {
+    font-size: 2.5;
+    color: #a1a1aa;
+  }
+  .value {
+    font-size: 2.5;
+    color: #fafafa;
+  }
+  .status-value {
+    font-size: 2.5;
+    color: #ef4444; /* Red for disconnected */
+  }
+  .connected {
+    color: #22c55e; /* Green for connected */
+  }
+</style>
+
+<div class="panel-container">
+  <span class="title">Teleop Control</span>
+  
+  <div class="status-row">
+    <span class="label">Status:</span>
+    <span id="status-text" class="status-value">Disconnected</span>
+  </div>
+
+  <div class="status-row">
+    <span class="label">FPS:</span>
+    <span id="fps-text" class="value">0</span>
+  </div>
+
+  <div class="status-row">
+    <span class="label">Latency:</span>
+    <span id="latency-text" class="value">0ms</span>
+  </div>
+</div>
