@@ -33,6 +33,8 @@ import { VideoClient } from "./video.js";
 
 import { DraggablePanel, CameraPanel } from "./panels.js";
 
+import { GlobalRefs } from "./global_refs.js";
+
 const assets: AssetManifest = {
   chimeSound: {
     url: "./audio/chime.mp3",
@@ -118,9 +120,10 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
   const cameraPanel = new CameraPanel(world);
   cameraPanel.setPosition(1.2, 1.3, -1.5);
-  // Default to visible
+  // Default to visible and store root reference globally for TeleopSystem
   if (cameraPanel.entity.object3D) {
     cameraPanel.entity.object3D.visible = true;
+    GlobalRefs.cameraPanelRoot = cameraPanel.entity.object3D;
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";

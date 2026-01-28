@@ -1,4 +1,4 @@
-import { World, PanelUI, Interactable, DistanceGrabbable, MovementMode } from "@iwsdk/core";
+import { World, PanelUI, Interactable, DistanceGrabbable, MovementMode, Visibility } from "@iwsdk/core";
 import { Mesh, PlaneGeometry, MeshBasicMaterial, VideoTexture, DoubleSide, BoxGeometry } from "three";
 
 export class DraggablePanel {
@@ -12,8 +12,10 @@ export class DraggablePanel {
     const gap = 0.02;
 
     // 1. Create Handle (Root) - Interactable and Grabbable
+    // Pre-add Visibility component to enable safe toggling at runtime
     this.entity = world.createTransformEntity()
       .addComponent(Interactable)
+      .addComponent(Visibility, { isVisible: true })
       .addComponent(DistanceGrabbable, {
         movementMode: MovementMode.MoveFromTarget
       });

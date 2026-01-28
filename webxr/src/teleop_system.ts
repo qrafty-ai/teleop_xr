@@ -6,6 +6,8 @@ import {
   UIKitDocument,
 } from "@iwsdk/core";
 import { Quaternion, Vector3 } from "@iwsdk/core";
+import { Robot } from "./robot";
+import { GlobalRefs } from "./global_refs";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
@@ -17,9 +19,8 @@ export class TeleopSystem extends createSystem({
     required: [PanelUI, PanelDocument],
     where: [eq(PanelUI, "config", "./ui/teleop.json")],
   },
-  cameraPanel: {
-    required: [PanelUI],
-    where: [eq(PanelUI, "config", "./ui/camera.uikitml")],
+  robot: {
+    required: [Robot],
   },
 }) {
   private ws: WebSocket | null = null;
@@ -50,25 +51,11 @@ export class TeleopSystem extends createSystem({
       const cameraButton = document.getElementById("camera-button");
       if (cameraButton) {
         cameraButton.addEventListener("click", () => {
-          this.queries.cameraPanel.results.forEach((entity) => {
-            if (entity.object3D) {
-              // Traverse up to find the root-most object (Handle) that is attached to the Scene
-              let target = entity.object3D;
-              // Add safety counter to prevent infinite loops (max 100 levels deep)
-              let depth = 0;
-              while (target.parent && target.parent.type !== 'Scene' && depth < 100) {
-                target = target.parent;
-                depth++;
-              }
-              
-              if (depth >= 100) {
-                 console.warn("TeleopSystem: Max depth reached while traversing up for camera panel");
-              }
-
-              target.visible = !target.visible;
-              console.log("Toggled camera panel visibility to:", target.visible);
-            }
-          });
+          // Use GlobalRefs - populated by index.ts at creation time
+          // DO NOT access ECS queries during click events (causes freeze)
+          if (GlobalRefs.cameraPanelRoot) {
+            GlobalRefs.cameraPanelRoot.visible = !GlobalRefs.cameraPanelRoot.visible;
+          }
         });
       }
 
