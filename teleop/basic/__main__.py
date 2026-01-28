@@ -9,6 +9,7 @@ def main():
 
     teleop = Teleop()
     teleop.set_pose(np.eye(4))
+    teleop.set_video_streams({"streams": [{"id": "cam0", "device": 0}]})
     teleop.subscribe(callback)
     teleop.run()
 
