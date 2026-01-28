@@ -5,6 +5,7 @@ import {
   eq,
   UIKitDocument,
 } from "@iwsdk/core";
+import { Quaternion, Vector3 } from "@iwsdk/core";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
@@ -25,9 +26,9 @@ export class TeleopSystem extends createSystem({
   private lastFpsTime = 0;
   private currentFps = 0;
   private lastSendTime = 0;
-  private timeOrigin = 0;
-  private lastSession: XRSession | null = null;
   private inputMode = "auto";
+  private tempPosition = new Vector3();
+  private tempQuaternion = new Quaternion();
 
   init() {
     this.connectWS();
@@ -89,13 +90,72 @@ export class TeleopSystem extends createSystem({
     });
   }
 
-  update(delta: number, time: number) {
-    const renderer = (this.world as any).app?.renderer;
-    const frame = this.xrFrame ?? renderer?.xr?.getFrame?.();
-    if (!frame) {
-      return;
+  poseFromObject(object: any): DevicePose | null {
+    if (!object?.getWorldPosition || !object?.getWorldQuaternion) {
+      return null;
+    }
+    object.getWorldPosition(this.tempPosition);
+    object.getWorldQuaternion(this.tempQuaternion);
+    return {
+      position: {
+        x: this.tempPosition.x,
+        y: this.tempPosition.y,
+        z: this.tempPosition.z,
+      },
+      orientation: {
+        x: this.tempQuaternion.x,
+        y: this.tempQuaternion.y,
+        z: this.tempQuaternion.z,
+        w: this.tempQuaternion.w,
+      },
+    };
+  }
+
+  buildControllerDevice(
+    handedness: "left" | "right",
+    raySpace: any,
+    gamepad: any,
+    isHandPrimary: boolean,
+  ) {
+    if (isHandPrimary) {
+      return null;
     }
 
+    const pose = this.poseFromObject(raySpace);
+    if (!pose) {
+      return null;
+    }
+
+    const device: {
+      role: string;
+      handedness: string;
+      gripPose: DevicePose;
+      gamepad?: {
+        buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+        axes: number[];
+      };
+    } = {
+      role: "controller",
+      handedness,
+      gripPose: pose,
+    };
+
+    const rawGamepad = gamepad?.gamepad;
+    if (rawGamepad) {
+      device.gamepad = {
+        buttons: Array.from(rawGamepad.buttons).map((button: any) => ({
+          pressed: button.pressed,
+          touched: button.touched,
+          value: button.value,
+        })),
+        axes: Array.from(rawGamepad.axes),
+      };
+    }
+
+    return device;
+  }
+
+  update(delta: number, time: number) {
     if (this.lastFpsTime === 0) {
       this.lastFpsTime = time;
     }
@@ -113,19 +173,9 @@ export class TeleopSystem extends createSystem({
       return;
     }
     this.lastSendTime = time;
+    const input = (this as any).input ?? this.world.input;
 
-    const session = (this.world as any).session ?? renderer?.xr?.getSession?.();
-    const referenceSpace = renderer?.xr?.getReferenceSpace?.();
-    if (!session || !referenceSpace) {
-      return;
-    }
-
-    if (this.lastSession !== session) {
-      this.lastSession = session;
-      this.timeOrigin = Date.now() - performance.now();
-    }
-
-    const state = this.gatherXRState(frame, referenceSpace, session);
+    const state = this.gatherInputState(input);
     if (!state || state.devices.length === 0) {
       return;
     }
@@ -154,16 +204,9 @@ export class TeleopSystem extends createSystem({
     }
   }
 
-  gatherXRState(
-    frame: XRFrame,
-    referenceSpace: XRReferenceSpace,
-    session: XRSession,
-  ) {
+  gatherInputState(input: any) {
     const fetchStart = performance.now();
-    const timestamp_unix_ms = Math.round(
-      this.timeOrigin + frame.predictedDisplayTime,
-    );
-
+    const timestamp_unix_ms = Date.now();
     const devices: Array<{
       role: string;
       handedness: string;
@@ -175,61 +218,38 @@ export class TeleopSystem extends createSystem({
       };
     }> = [];
 
-    const viewerPose = frame.getViewerPose(referenceSpace);
-    if (viewerPose) {
-      const pos = viewerPose.transform.position;
-      const ori = viewerPose.transform.orientation;
+    const player = (this as any).player ?? this.world.player;
+    const headPose = this.poseFromObject(player?.head);
+    if (headPose) {
       devices.push({
         role: "head",
         handedness: "none",
-        pose: {
-          position: { x: pos.x, y: pos.y, z: pos.z },
-          orientation: { x: ori.x, y: ori.y, z: ori.z, w: ori.w },
-        },
+        pose: headPose,
       });
     }
 
-    for (const inputSource of session.inputSources) {
-      if (inputSource.hand) {
-        continue;
-      }
+    const leftDevice = this.buildControllerDevice(
+      "left",
+      player?.raySpaces?.left,
+      input?.gamepads?.left,
+      Boolean(input?.isPrimary?.("hand", "left")),
+    );
+    if (leftDevice) {
+      devices.push(leftDevice);
+    }
 
-      const pose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
-      if (!pose) {
-        continue;
-      }
+    const rightDevice = this.buildControllerDevice(
+      "right",
+      player?.raySpaces?.right,
+      input?.gamepads?.right,
+      Boolean(input?.isPrimary?.("hand", "right")),
+    );
+    if (rightDevice) {
+      devices.push(rightDevice);
+    }
 
-      const pos = pose.transform.position;
-      const ori = pose.transform.orientation;
-      const device: {
-        role: string;
-        handedness: string;
-        gripPose: DevicePose;
-        gamepad?: {
-          buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
-          axes: number[];
-        };
-      } = {
-        role: "controller",
-        handedness: inputSource.handedness,
-        gripPose: {
-          position: { x: pos.x, y: pos.y, z: pos.z },
-          orientation: { x: ori.x, y: ori.y, z: ori.z, w: ori.w },
-        },
-      };
-
-      if (inputSource.gamepad) {
-        device.gamepad = {
-          buttons: Array.from(inputSource.gamepad.buttons).map((button) => ({
-            pressed: button.pressed,
-            touched: button.touched,
-            value: button.value,
-          })),
-          axes: Array.from(inputSource.gamepad.axes),
-        };
-      }
-
-      devices.push(device);
+    if (devices.length === 0) {
+      return null;
     }
 
     const fetch_latency_ms = performance.now() - fetchStart;
