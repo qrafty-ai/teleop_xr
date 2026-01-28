@@ -28,6 +28,8 @@ import { Robot } from "./robot.js";
 
 import { RobotSystem } from "./robot.js";
 
+import { VideoClient } from "./video";
+
 const assets: AssetManifest = {
   chimeSound: {
     url: "./audio/chime.mp3",
@@ -134,4 +136,19 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   logoBanner.rotateY(Math.PI);
 
   world.registerSystem(PanelSystem).registerSystem(RobotSystem);
+
+  const statsEl = document.getElementById("camera-stats");
+  new VideoClient(`wss://${location.host}/ws`, (stats) => {
+    if (!statsEl) return;
+    const lines = [
+      `state: ${stats.state}`,
+      ...stats.streams.map(
+        (s) =>
+          `${s.id} ${s.width}x${s.height} ${s.fps.toFixed(1)}fps ${
+            s.bitrateKbps
+          }kbps lost:${s.packetsLost} jitter:${s.jitter}`,
+      ),
+    ];
+    statsEl.textContent = lines.join("\n");
+  });
 });

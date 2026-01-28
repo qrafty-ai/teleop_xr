@@ -17,6 +17,9 @@ dependencies = [
   "pytest",
   "requests",
   "websocket-client",
+  "aiortc",
+  "opencv-python",
+  "av",
 ]
 
 [project.urls]
