@@ -351,14 +351,13 @@ class Teleop:
                     return
 
     def __setup_routes(self):
-        # Mount static files directory
-        assets_dir = os.path.join(THIS_DIR, "assets")
-        self.__app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        static_dir, index_path, mount_path, mount_name = _resolve_frontend_paths(
+            THIS_DIR
+        )
 
         @self.__app.get("/")
         async def index():
-            self.__logger.debug("Serving the index.html file")
-            return FileResponse(os.path.join(THIS_DIR, "index.html"))
+            return FileResponse(index_path)
 
         @self.__app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
@@ -385,6 +384,8 @@ class Teleop:
             except WebSocketDisconnect:
                 self.__manager.disconnect(websocket)
                 self.__logger.info("Client disconnected")
+
+        self.__app.mount(mount_path, StaticFiles(directory=static_dir), name=mount_name)
 
     def run(self) -> None:
         """
