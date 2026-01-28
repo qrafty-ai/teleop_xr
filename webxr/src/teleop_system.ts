@@ -1,4 +1,15 @@
-import { createSystem, PanelUI, PanelDocument, eq, UIKitDocument, UIKit } from "@iwsdk/core";
+import {
+  createSystem,
+  PanelDocument,
+  PanelUI,
+  eq,
+  UIKitDocument,
+} from "@iwsdk/core";
+
+type DevicePose = {
+  position: { x: number; y: number; z: number };
+  orientation: { x: number; y: number; z: number; w: number };
+};
 
 export class TeleopSystem extends createSystem({
   teleopPanel: {
@@ -14,22 +25,25 @@ export class TeleopSystem extends createSystem({
   private lastFpsTime = 0;
   private currentFps = 0;
   private lastSendTime = 0;
-  private timeOrigin = Date.now() - performance.now();
+  private timeOrigin = 0;
+  private lastSession: XRSession | null = null;
+  private inputMode = "auto";
 
   init() {
     this.connectWS();
 
     this.queries.teleopPanel.subscribe("qualify", (entity) => {
       const document = PanelDocument.data.document[entity.index] as UIKitDocument;
-      if (document) {
-        this.statusText = document.getElementById("status-text");
-        this.fpsText = document.getElementById("fps-text");
-        this.latencyText = document.getElementById("latency-text");
-
-        // Sync initial state
-        const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
-        this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
+      if (!document) {
+        return;
       }
+
+      this.statusText = document.getElementById("status-text");
+      this.fpsText = document.getElementById("fps-text");
+      this.latencyText = document.getElementById("latency-text");
+
+      const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
+      this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
     });
   }
 
@@ -45,92 +59,122 @@ export class TeleopSystem extends createSystem({
 
     this.ws.onclose = () => {
       this.updateStatus("Disconnected", false);
-      setTimeout(() => this.connectWS(), 1000); // Reconnect
+      setTimeout(() => this.connectWS(), 3000);
     };
 
-    this.ws.onerror = (e) => {
-      console.error("WS Error", e);
+    this.ws.onerror = (error) => {
+      console.error("WS Error", error);
     };
 
-    this.ws.onmessage = (msg) => {
-      // Handle config/latency logic if needed
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "config" && message.data?.input_mode) {
+          this.inputMode = message.data.input_mode;
+        }
+      } catch (error) {
+        console.warn("Failed to parse WS message", error);
+      }
     };
   }
 
   updateStatus(text: string, connected: boolean) {
-    if (this.statusText) {
-      this.statusText.setProperties({
-        text: text,
-        className: connected ? "status-value connected" : "status-value"
-      });
+    if (!this.statusText) {
+      return;
     }
+
+    this.statusText.setProperties({
+      text,
+      className: connected ? "status-value connected" : "status-value",
+    });
   }
 
-  execute(delta: number, time: number) {
-    // 1. Calculate FPS (always, even outside XR)
-    this.frameCount++;
+  update(delta: number, time: number) {
+    const renderer = (this.world as any).app?.renderer;
+    const frame = this.xrFrame ?? renderer?.xr?.getFrame?.();
+    if (!frame) {
+      return;
+    }
+
+    if (this.lastFpsTime === 0) {
+      this.lastFpsTime = time;
+    }
+
+    this.frameCount += 1;
     if (time - this.lastFpsTime >= 1.0) {
-      this.currentFps = Math.round(this.frameCount / (time - this.lastFpsTime));
+      this.currentFps = Math.round(
+        this.frameCount / (time - this.lastFpsTime),
+      );
       this.frameCount = 0;
       this.lastFpsTime = time;
-      // Update FPS in UI even when not in XR session
-      if (this.fpsText) {
-        this.fpsText.setProperties({ text: `${this.currentFps}` });
-      }
     }
 
-    // 2. Send XR State (Rate limit: 10ms)
-    if (time - this.lastSendTime > 0.01) {
-      this.lastSendTime = time;
-      const state = this.gatherXRState(time);
-      if (state && state.devices.length > 0) {
-        // 3. Update local stats with XR data
-        const head = state.devices.find((d: any) => d.role === "head");
-        this.updateLocalStats(head?.pose, this.currentFps, state.fetch_latency_ms);
+    if (time - this.lastSendTime <= 0.01) {
+      return;
+    }
+    this.lastSendTime = time;
 
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify({
-            type: "xr_state",
-            data: state,
-          }));
-        }
-      }
+    const session = (this.world as any).session ?? renderer?.xr?.getSession?.();
+    const referenceSpace = renderer?.xr?.getReferenceSpace?.();
+    if (!session || !referenceSpace) {
+      return;
+    }
+
+    if (this.lastSession !== session) {
+      this.lastSession = session;
+      this.timeOrigin = Date.now() - performance.now();
+    }
+
+    const state = this.gatherXRState(frame, referenceSpace, session);
+    if (!state || state.devices.length === 0) {
+      return;
+    }
+
+    const head = state.devices.find((device) => device.role === "head");
+    this.updateLocalStats(head?.pose ?? null, this.currentFps, state.fetch_latency_ms);
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(
+        JSON.stringify({
+          type: "xr_state",
+          data: state,
+        }),
+      );
     }
   }
 
-  updateLocalStats(pose: any, fps: number, latency: number) {
+  updateLocalStats(pose: DevicePose | null, fps: number, latency: number) {
     if (this.fpsText) {
       this.fpsText.setProperties({ text: `${fps}` });
     }
+
     if (this.latencyText) {
-      this.latencyText.setProperties({ text: `${latency.toFixed(1)}ms` });
+      const latencyValue = Number.isFinite(latency) ? latency : 0;
+      this.latencyText.setProperties({ text: `${latencyValue.toFixed(1)}ms` });
     }
   }
 
-  gatherXRState(time: number) {
+  gatherXRState(
+    frame: XRFrame,
+    referenceSpace: XRReferenceSpace,
+    session: XRSession,
+  ) {
     const fetchStart = performance.now();
-    const renderer = (this.world as any).app?.renderer;
-    if (!renderer || !renderer.xr) {
-      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
-    }
-    
-    const session = renderer.xr.getSession();
-    if (!session) {
-      // Not in XR session yet - return empty state
-      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
-    }
+    const timestamp_unix_ms = Math.round(
+      this.timeOrigin + frame.predictedDisplayTime,
+    );
 
-    const frame = renderer.xr.getFrame();
-    const referenceSpace = renderer.xr.getReferenceSpace();
-    if (!frame || !referenceSpace) {
-      return { timestamp_unix_ms: 0, devices: [], fetch_latency_ms: 0 };
-    }
+    const devices: Array<{
+      role: string;
+      handedness: string;
+      pose?: DevicePose;
+      gripPose?: DevicePose;
+      gamepad?: {
+        buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+        axes: number[];
+      };
+    }> = [];
 
-    const timestamp_unix_ms = Math.round(this.timeOrigin + frame.predictedDisplayTime);
-
-    const devices: any[] = [];
-
-    // Head pose
     const viewerPose = frame.getViewerPose(referenceSpace);
     if (viewerPose) {
       const pos = viewerPose.transform.position;
@@ -145,16 +189,27 @@ export class TeleopSystem extends createSystem({
       });
     }
 
-    // Controllers
     for (const inputSource of session.inputSources) {
-      if (inputSource.hand) continue; // Skip hand tracking
+      if (inputSource.hand) {
+        continue;
+      }
 
       const pose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
-      if (!pose) continue;
+      if (!pose) {
+        continue;
+      }
 
       const pos = pose.transform.position;
       const ori = pose.transform.orientation;
-      const device: any = {
+      const device: {
+        role: string;
+        handedness: string;
+        gripPose: DevicePose;
+        gamepad?: {
+          buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+          axes: number[];
+        };
+      } = {
         role: "controller",
         handedness: inputSource.handedness,
         gripPose: {
@@ -163,17 +218,17 @@ export class TeleopSystem extends createSystem({
         },
       };
 
-      // Full gamepad input
       if (inputSource.gamepad) {
         device.gamepad = {
-          buttons: Array.from(inputSource.gamepad.buttons).map((b: any) => ({
-            pressed: b.pressed,
-            touched: b.touched,
-            value: b.value,
+          buttons: Array.from(inputSource.gamepad.buttons).map((button) => ({
+            pressed: button.pressed,
+            touched: button.touched,
+            value: button.value,
           })),
           axes: Array.from(inputSource.gamepad.axes),
         };
       }
+
       devices.push(device);
     }
 
@@ -182,6 +237,7 @@ export class TeleopSystem extends createSystem({
     return {
       timestamp_unix_ms,
       devices,
+      fps: this.currentFps,
       fetch_latency_ms,
     };
   }
