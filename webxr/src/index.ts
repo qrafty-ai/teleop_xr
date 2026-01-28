@@ -30,6 +30,8 @@ import { Robot } from "./robot.js";
 
 import { RobotSystem } from "./robot.js";
 
+import { VideoClient } from "./video";
+
 const assets: AssetManifest = {
   chimeSound: {
     url: "./audio/chime.mp3",

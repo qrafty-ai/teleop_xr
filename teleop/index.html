@@ -83,6 +83,25 @@
             background-color: #f44336;
             color: white;
         }
+
+        #camera-stats-panel {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #f2f2f2;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        #camera-stats-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 
@@ -100,6 +119,11 @@
 
     <div class="app" id="app">
         <teleop-ui id="teleop-ui"></teleop-ui>
+    </div>
+
+    <div id="camera-stats-panel">
+        <div id="camera-stats-title">Camera Stream Stats</div>
+        <pre id="camera-stats">awaiting stream...</pre>
     </div>
 
     <script>
@@ -145,6 +169,8 @@
                 connectionStatus.className = 'connection-status connected';
                 serverStats.connection = 'Connected';
                 teleopUI.updateServerDiagnostics(serverStats);
+                // Request video stream after connecting
+                requestVideoStream();
             };
 
             socket.onclose = () => {
@@ -170,12 +196,84 @@
                 if (message.type === 'config' && message.data && message.data.input_mode) {
                     inputMode = message.data.input_mode;
                 }
+                // Handle WebRTC video signaling
+                if (message.type === 'video_offer') {
+                    handleVideoOffer(message.data);
+                }
+                if (message.type === 'video_ice' && videoPc) {
+                    videoPc.addIceCandidate(message.data).catch(e => console.error('ICE error:', e));
+                }
                 console.log('Received message:', message);
             };
         }
 
         // Connect on page load
         connectWebSocket();
+
+        // WebRTC Video Client
+        let videoPc = null;
+        let videoStatsTimer = null;
+        const cameraStatsEl = document.getElementById('camera-stats');
+
+        async function handleVideoOffer(offer) {
+            videoPc = new RTCPeerConnection();
+            
+            videoPc.onicecandidate = (e) => {
+                if (e.candidate && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'video_ice', data: e.candidate }));
+                }
+            };
+
+            videoPc.ontrack = (e) => {
+                console.log('Received video track:', e.track.kind);
+            };
+
+            await videoPc.setRemoteDescription(offer);
+            const answer = await videoPc.createAnswer();
+            await videoPc.setLocalDescription(answer);
+            socket.send(JSON.stringify({ type: 'video_answer', data: videoPc.localDescription }));
+            
+            startVideoStats();
+        }
+
+        function startVideoStats() {
+            if (!videoPc || videoStatsTimer) return;
+            videoStatsTimer = setInterval(async () => {
+                if (!videoPc) return;
+                const report = await videoPc.getStats();
+                const streams = [];
+                report.forEach((stat) => {
+                    if (stat.type === 'inbound-rtp' && stat.kind === 'video') {
+                        const bitrateKbps = stat.bytesReceived && stat.timestamp 
+                            ? Math.round((stat.bytesReceived * 8) / 1000) : 0;
+                        streams.push({
+                            id: stat.trackIdentifier || stat.ssrc?.toString() || 'video',
+                            fps: stat.framesPerSecond || 0,
+                            bitrateKbps,
+                            width: stat.frameWidth || 0,
+                            height: stat.frameHeight || 0,
+                            packetsLost: stat.packetsLost || 0,
+                            jitter: stat.jitter || 0,
+                        });
+                    }
+                });
+                if (cameraStatsEl) {
+                    const lines = [
+                        `state: ${videoPc.connectionState}`,
+                        ...streams.map(s =>
+                            `${s.id} ${s.width}x${s.height} ${s.fps.toFixed(1)}fps ${s.bitrateKbps}kbps lost:${s.packetsLost} jitter:${s.jitter}`
+                        ),
+                    ];
+                    cameraStatsEl.textContent = lines.join('\n');
+                }
+            }, 1000);
+        }
+
+        function requestVideoStream() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'video_request' }));
+            }
+        }
 
         // Message handling
         let message = '';

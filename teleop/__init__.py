@@ -11,6 +11,13 @@ import transforms3d as t3d
 import numpy as np
 import json
 
+from teleop.video_stream import (
+    VideoStreamConfig,
+    VideoStreamManager,
+    parse_video_config,
+    route_video_message,
+)
+
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -197,6 +204,9 @@ class Teleop:
         self.__app = FastAPI()
         self.__manager = ConnectionManager()
 
+        self.__video_streams: list[VideoStreamConfig] = []
+        self.__video_sessions: dict[WebSocket, VideoStreamManager] = {}
+
         # Configure logging
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
         self.__setup_routes()
@@ -229,6 +239,31 @@ class Teleop:
     def __notify_subscribers(self, pose, message):
         for callback in self.__callbacks:
             callback(pose, message)
+
+    def set_video_streams(self, payload: dict) -> None:
+        self.__video_streams = parse_video_config(payload)
+
+    def clear_video_streams(self) -> None:
+        self.__video_streams = []
+
+    async def _start_video_session(self, websocket: WebSocket) -> None:
+        manager = VideoStreamManager(self.__video_streams)
+        self.__video_sessions[websocket] = manager
+        offer = await manager.create_offer()
+        await self.__manager.send_personal_message(
+            json.dumps(
+                {"type": "video_offer", "data": {"sdp": offer.sdp, "type": offer.type}}
+            ),
+            websocket,
+        )
+
+    async def _handle_video_message(self, websocket: WebSocket, message: dict) -> None:
+        if message.get("type") == "video_request":
+            await self._start_video_session(websocket)
+            return
+        session = self.__video_sessions.get(websocket)
+        if session:
+            await route_video_message(session, message)
 
     def apply(self, position, orientation, move=True, scale=1.0, info=None):
         if info is None:
@@ -371,6 +406,19 @@ class Teleop:
                 )
             )
 
+            if self.__video_streams:
+                await self.__manager.send_personal_message(
+                    json.dumps(
+                        {
+                            "type": "video_config",
+                            "data": {
+                                "streams": [s.__dict__ for s in self.__video_streams]
+                            },
+                        }
+                    ),
+                    websocket,
+                )
+
             try:
                 while True:
                     data = await websocket.receive_text()
@@ -378,10 +426,19 @@ class Teleop:
 
                     if message.get("type") == "xr_state":
                         self.__handle_xr_state(message["data"])
+                    elif message.get("type") in {
+                        "video_request",
+                        "video_answer",
+                        "video_ice",
+                    }:
+                        await self._handle_video_message(websocket, message)
                     elif message.get("type") == "log":
                         self.__logger.info(f"Received log message: {message['data']}")
 
             except WebSocketDisconnect:
+                session = self.__video_sessions.pop(websocket, None)
+                if session:
+                    await session.close()
                 self.__manager.disconnect(websocket)
                 self.__logger.info("Client disconnected")
 
