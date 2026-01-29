@@ -1,0 +1,1101 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="WebXR teleoperation solution for robots.">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Quest3 XR State Streaming Implementation Plan - TeleopXR</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#quest3-xr-state-streaming-implementation-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="TeleopXR" class="md-header__button md-logo" aria-label="TeleopXR" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TeleopXR
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quest3 XR State Streaming Implementation Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Qrafty-AI/teleop" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../generic/" class="md-tabs__link">
+          
+  
+  
+  Interfaces
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="TeleopXR" class="md-nav__button md-logo" aria-label="TeleopXR" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TeleopXR
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Qrafty-AI/teleop" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generic Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ros2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ROS2 Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#task-1-update-websocket-tests-for-xr_state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1: Update WebSocket tests for xr_state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-2-replace-server-pose-handling-with-xr_state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2: Replace server pose handling with xr_state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-3-update-webxr-client-to-send-xr_state-local-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3: Update WebXR client to send xr_state (local reference)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-4-ros2-xr-state-publishers-poses-tf-joy-hand-joints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 4: ROS2 XR state publishers (poses, TF, Joy, hand joints)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-5-update-teleop-entrypoints-to-new-callback-signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 5: Update teleop entrypoints to new callback signature
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-6-update-readme-with-schema-ros2-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 6: Update README with schema + ROS2 topics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ros2-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROS2 Topics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ROS2 Topics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-7-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 7: Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="quest3-xr-state-streaming-implementation-plan">Quest3 XR State Streaming Implementation Plan</h1>
+<blockquote>
+<p><strong>For Claude:</strong> REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.</p>
+</blockquote>
+<p><strong>Goal:</strong> Replace the existing WebXR <code>pose</code> pipeline with a full <code>xr_state</code> stream (local reference space) that includes all device poses and button states, plus ROS2 publishers that map this data directly to standard ROS2 topics. Add a server-side <code>input_mode</code> option (hand/controller/auto) and remove backward-compatibility.</p>
+<p><strong>Architecture:</strong> WebXR client emits a single <code>xr_state</code> message per XR frame containing <code>devices[]</code> (head, controllers, hands). The server only accepts <code>xr_state</code>, sends a config message with <code>input_mode</code>, optionally filters devices server-side, and forwards the raw state to subscribers. ROS2 nodes convert WebXR coordinates to ROS FLU, compute relative poses (per device origin), publish PoseStamped/TF for head/controllers/hands, Joy for button states (pressed/value/touched), and PoseArray/TF for hand joints.</p>
+<p><strong>Tech Stack:</strong> WebXR (JS), FastAPI/WebSocket, Python, rclpy, geometry_msgs, sensor_msgs, tf2_ros, transforms3d.</p>
+<hr />
+<h3 id="task-1-update-websocket-tests-for-xr_state">Task 1: Update WebSocket tests for <code>xr_state</code></h3>
+<p><strong>Files:</strong>
+- Modify: <code>tests/test_pose_compounding.py</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>Replace the pose payload helper and update the callback signature to expect a single <code>xr_state</code> dict. Capture the server <code>config</code> message in the WS on_message handler.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_xr_state</span><span class="p">():</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="s2">&quot;timestamp_unix_ms&quot;</span><span class="p">:</span> <span class="mi">1700000000000</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="s2">&quot;reference_space&quot;</span><span class="p">:</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="s2">&quot;input_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;controller&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="s2">&quot;devices&quot;</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="p">{</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;head&quot;</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                <span class="s2">&quot;pose&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                    <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                    <span class="s2">&quot;orientation&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;w&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                <span class="p">},</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                <span class="s2">&quot;emulated&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>            <span class="p">},</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>            <span class="p">{</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;controller&quot;</span><span class="p">,</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                <span class="s2">&quot;handedness&quot;</span><span class="p">:</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                <span class="s2">&quot;targetRayPose&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                    <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                    <span class="s2">&quot;orientation&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;w&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                <span class="p">},</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                <span class="s2">&quot;gripPose&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                    <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                    <span class="s2">&quot;orientation&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;w&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>                <span class="p">},</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                <span class="s2">&quot;gamepad&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                    <span class="s2">&quot;buttons&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;pressed&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;touched&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}],</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>                    <span class="s2">&quot;axes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">],</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>                <span class="p">},</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>            <span class="p">},</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        <span class="p">],</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="p">}</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="k">def</span><span class="w"> </span><span class="nf">callback</span><span class="p">(</span><span class="n">xr_state</span><span class="p">):</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="bp">cls</span><span class="o">.</span><span class="n">__last_message</span> <span class="o">=</span> <span class="n">xr_state</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="bp">cls</span><span class="o">.</span><span class="n">__callback_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;config&quot;</span><span class="p">:</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="bp">cls</span><span class="o">.</span><span class="n">__last_config</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Update <code>_send_message</code> to send <code>type: "xr_state"</code>, and update tests:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_send_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;xr_state&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">}</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">__ws</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_config_message_on_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ws_connected</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;WebSocket client not connected&quot;</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__last_config</span><span class="p">)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;input_mode&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_config</span><span class="p">)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="n">get_xr_state</span><span class="p">()</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_send_message</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_callback</span><span class="p">())</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__last_message</span><span class="p">)</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__last_message</span><span class="p">[</span><span class="s2">&quot;reference_space&quot;</span><span class="p">],</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>Run: <code>uv run pytest tests/test_pose_compounding.py::TestPoseCompounding::test_response -v</code></p>
+<p>Expected: FAIL because server still expects <code>type == "pose"</code> and callback signature is different.</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Proceed to Task 2 to update server to accept <code>xr_state</code> and send config.</p>
+<p><strong>Step 4: Run test to verify it passes</strong></p>
+<p>Run: <code>uv run pytest tests/test_pose_compounding.py::TestPoseCompounding::test_response -v</code></p>
+<p>Expected: PASS</p>
+<p><strong>Step 5: Commit</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/test_pose_compounding.py
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: update websocket tests for xr_state&quot;</span>
+</span></code></pre></div>
+<hr />
+<h3 id="task-2-replace-server-pose-handling-with-xr_state">Task 2: Replace server <code>pose</code> handling with <code>xr_state</code></h3>
+<p><strong>Files:</strong>
+- Modify: <code>teleop/__init__.py</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>Covered by Task 1.</p>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>Covered by Task 1.</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Update Teleop to accept <code>input_mode</code>, send config on connect, filter devices, and call callbacks with a single <code>xr_state</code> dict.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_filter_devices</span><span class="p">(</span><span class="n">xr_state</span><span class="p">,</span> <span class="n">input_mode</span><span class="p">):</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">if</span> <span class="n">input_mode</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="k">return</span> <span class="n">xr_state</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">keep_roles</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;head&quot;</span><span class="p">}</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="k">if</span> <span class="n">input_mode</span> <span class="o">==</span> <span class="s2">&quot;hand&quot;</span><span class="p">:</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="n">keep_roles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;hand&quot;</span><span class="p">)</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">if</span> <span class="n">input_mode</span> <span class="o">==</span> <span class="s2">&quot;controller&quot;</span><span class="p">:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">keep_roles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;controller&quot;</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">devices</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">xr_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;devices&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">keep_roles</span><span class="p">]</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">xr_state</span><span class="p">,</span> <span class="s2">&quot;devices&quot;</span><span class="p">:</span> <span class="n">devices</span><span class="p">}</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="k">class</span><span class="w"> </span><span class="nc">Teleop</span><span class="p">:</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">4443</span><span class="p">,</span> <span class="n">input_mode</span><span class="o">=</span><span class="s2">&quot;controller&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">__input_mode</span> <span class="o">=</span> <span class="n">input_mode</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">__callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">__manager</span> <span class="o">=</span> <span class="n">ConnectionManager</span><span class="p">()</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">__callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">__update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xr_state</span><span class="p">):</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xr_state</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            <span class="k">return</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        <span class="k">if</span> <span class="s2">&quot;devices&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">xr_state</span><span class="p">:</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>            <span class="k">return</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>        <span class="n">xr_state</span> <span class="o">=</span> <span class="n">_filter_devices</span><span class="p">(</span><span class="n">xr_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__input_mode</span><span class="p">)</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__callbacks</span><span class="p">:</span>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>            <span class="n">cb</span><span class="p">(</span><span class="n">xr_state</span><span class="p">)</span>
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="nd">@app</span><span class="o">.</span><span class="n">websocket</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">)</span>
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">websocket_endpoint</span><span class="p">(</span><span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">):</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    <span class="k">await</span> <span class="n">manager</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    <span class="k">await</span> <span class="n">manager</span><span class="o">.</span><span class="n">send_personal_message</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;input_mode&quot;</span><span class="p">:</span> <span class="n">teleop</span><span class="o">.</span><span class="n">input_mode</span><span class="p">}},</span> <span class="n">websocket</span><span class="p">)</span>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>            <span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_json</span><span class="p">()</span>
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>            <span class="k">if</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;xr_state&quot;</span><span class="p">:</span>
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>                <span class="n">teleop</span><span class="o">.</span><span class="n">_Teleop__update</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">))</span>
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>            <span class="k">elif</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;log&quot;</span><span class="p">:</span>
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">))</span>
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>    <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>        <span class="n">manager</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Step 4: Run test to verify it passes</strong></p>
+<p>Run: <code>uv run pytest tests/test_pose_compounding.py::TestPoseCompounding::test_response -v</code></p>
+<p>Expected: PASS</p>
+<p><strong>Step 5: Commit</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>add<span class="w"> </span>teleop/__init__.py
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: accept xr_state and send config&quot;</span>
+</span></code></pre></div>
+<hr />
+<h3 id="task-3-update-webxr-client-to-send-xr_state-local-reference">Task 3: Update WebXR client to send <code>xr_state</code> (local reference)</h3>
+<p><strong>Files:</strong>
+- Modify: <code>teleop/index.html</code>
+- Modify: <code>teleop/assets/teleop-ui.js</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>Manual-only change (no JS test harness). Add a temporary console assertion after the first frame:</p>
+<div class="language-javascript highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">xrState</span><span class="p">.</span><span class="nx">devices</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;xr_state contains no devices&quot;</span><span class="p">);</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>Load the page and enter XR — the new structure isn’t sent yet, so the log should appear.</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Replace the <code>pose</code> payload with <code>xr_state</code>, set <code>local</code> reference space, and implement device collection.</p>
+<div class="language-javascript highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">XR_HAND_JOINTS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="s2">&quot;wrist&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="s2">&quot;index-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="s2">&quot;middle-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="s2">&quot;ring-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="s2">&quot;pinky-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">];</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="kd">let</span><span class="w"> </span><span class="nx">inputMode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span><span class="p">;</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="kd">const</span><span class="w"> </span><span class="nx">timeOriginMs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">performance</span><span class="p">.</span><span class="nx">now</span><span class="p">();</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="kd">function</span><span class="w"> </span><span class="nx">poseToJson</span><span class="p">(</span><span class="nx">pose</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">pose</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">transform</span><span class="p">;</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="nx">position</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">z</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="nx">orientation</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">w</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">w</span><span class="p">,</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">z</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">    </span><span class="nx">emulated</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">emulatedPosition</span><span class="p">,</span>
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="nx">linearVelocity</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">linearVelocity</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-20"><a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">      </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">linearVelocity</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">linearVelocity</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">linearVelocity</span><span class="p">.</span><span class="nx">z</span>
+</span><span id="__span-6-21"><a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+</span><span id="__span-6-22"><a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w">    </span><span class="nx">angularVelocity</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">angularVelocity</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-23"><a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="w">      </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">angularVelocity</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">angularVelocity</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">pose</span><span class="p">.</span><span class="nx">angularVelocity</span><span class="p">.</span><span class="nx">z</span>
+</span><span id="__span-6-24"><a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+</span><span id="__span-6-25"><a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="w">  </span><span class="p">};</span>
+</span><span id="__span-6-26"><a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a><span class="p">}</span>
+</span><span id="__span-6-27"><a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>
+</span><span id="__span-6-28"><a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="kd">function</span><span class="w"> </span><span class="nx">buildXrState</span><span class="p">(</span><span class="nx">frame</span><span class="p">,</span><span class="w"> </span><span class="nx">refSpace</span><span class="p">,</span><span class="w"> </span><span class="nx">session</span><span class="p">,</span><span class="w"> </span><span class="nx">fps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-29"><a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">devices</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[];</span>
+</span><span id="__span-6-30"><a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">viewerPose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">frame</span><span class="p">.</span><span class="nx">getViewerPose</span><span class="p">(</span><span class="nx">refSpace</span><span class="p">);</span>
+</span><span id="__span-6-31"><a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">viewerPose</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-32"><a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a><span class="w">    </span><span class="nx">devices</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span>
+</span><span id="__span-6-33"><a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a><span class="w">      </span><span class="nx">role</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;head&quot;</span><span class="p">,</span>
+</span><span id="__span-6-34"><a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a><span class="w">      </span><span class="nx">pose</span><span class="o">:</span><span class="w"> </span><span class="nx">poseToJson</span><span class="p">(</span><span class="nx">viewerPose</span><span class="p">),</span>
+</span><span id="__span-6-35"><a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a><span class="w">      </span><span class="nx">emulated</span><span class="o">:</span><span class="w"> </span><span class="nx">viewerPose</span><span class="p">.</span><span class="nx">emulatedPosition</span><span class="p">,</span>
+</span><span id="__span-6-36"><a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a><span class="w">    </span><span class="p">});</span>
+</span><span id="__span-6-37"><a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-6-38"><a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>
+</span><span id="__span-6-39"><a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a><span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">inputSource</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">session</span><span class="p">.</span><span class="nx">inputSources</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-40"><a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">handedness</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">handedness</span><span class="p">;</span>
+</span><span id="__span-6-41"><a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">hand</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">inputMode</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;controller&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-42"><a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a><span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">joints</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+</span><span id="__span-6-43"><a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a><span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">jointName</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">XR_HAND_JOINTS</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-44"><a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a><span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">jointSpace</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">hand</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">jointName</span><span class="p">);</span>
+</span><span id="__span-6-45"><a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">jointSpace</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+</span><span id="__span-6-46"><a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a><span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">jointPose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">frame</span><span class="p">.</span><span class="nx">getJointPose</span><span class="p">(</span><span class="nx">jointSpace</span><span class="p">,</span><span class="w"> </span><span class="nx">refSpace</span><span class="p">);</span>
+</span><span id="__span-6-47"><a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">jointPose</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+</span><span id="__span-6-48"><a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a><span class="w">        </span><span class="nx">joints</span><span class="p">[</span><span class="nx">jointName</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-49"><a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a><span class="w">          </span><span class="nx">position</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">z</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-6-50"><a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a><span class="w">          </span><span class="nx">orientation</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">w</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">w</span><span class="p">,</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">transform</span><span class="p">.</span><span class="nx">orientation</span><span class="p">.</span><span class="nx">z</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-6-51"><a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a><span class="w">          </span><span class="nx">radius</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">radius</span><span class="p">,</span>
+</span><span id="__span-6-52"><a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a><span class="w">          </span><span class="nx">emulated</span><span class="o">:</span><span class="w"> </span><span class="nx">jointPose</span><span class="p">.</span><span class="nx">emulatedPosition</span><span class="p">,</span>
+</span><span id="__span-6-53"><a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a><span class="w">        </span><span class="p">};</span>
+</span><span id="__span-6-54"><a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a><span class="w">      </span><span class="p">}</span>
+</span><span id="__span-6-55"><a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a><span class="w">      </span><span class="nx">devices</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="w"> </span><span class="nx">role</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;hand&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">handedness</span><span class="p">,</span><span class="w"> </span><span class="nx">joints</span><span class="w"> </span><span class="p">});</span>
+</span><span id="__span-6-56"><a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a><span class="w">      </span><span class="k">continue</span><span class="p">;</span>
+</span><span id="__span-6-57"><a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-6-58"><a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>
+</span><span id="__span-6-59"><a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">hand</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">inputMode</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s2">&quot;hand&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-60"><a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a><span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">targetRayPose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">poseToJson</span><span class="p">(</span><span class="nx">frame</span><span class="p">.</span><span class="nx">getPose</span><span class="p">(</span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">targetRaySpace</span><span class="p">,</span><span class="w"> </span><span class="nx">refSpace</span><span class="p">));</span>
+</span><span id="__span-6-61"><a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a><span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">gripPose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">gripSpace</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">poseToJson</span><span class="p">(</span><span class="nx">frame</span><span class="p">.</span><span class="nx">getPose</span><span class="p">(</span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">gripSpace</span><span class="p">,</span><span class="w"> </span><span class="nx">refSpace</span><span class="p">))</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span><span id="__span-6-62"><a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a><span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">gamepad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">gamepad</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-63"><a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a><span class="w">        </span><span class="nx">buttons</span><span class="o">:</span><span class="w"> </span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">gamepad</span><span class="p">.</span><span class="nx">buttons</span><span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">b</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">({</span><span class="w"> </span><span class="nx">pressed</span><span class="o">:</span><span class="w"> </span><span class="nx">b</span><span class="p">.</span><span class="nx">pressed</span><span class="p">,</span><span class="w"> </span><span class="nx">touched</span><span class="o">:</span><span class="w"> </span><span class="nx">b</span><span class="p">.</span><span class="nx">touched</span><span class="p">,</span><span class="w"> </span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="nx">b</span><span class="p">.</span><span class="nx">value</span><span class="w"> </span><span class="p">})),</span>
+</span><span id="__span-6-64"><a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a><span class="w">        </span><span class="nx">axes</span><span class="o">:</span><span class="w"> </span><span class="nb">Array</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="nx">inputSource</span><span class="p">.</span><span class="nx">gamepad</span><span class="p">.</span><span class="nx">axes</span><span class="p">),</span>
+</span><span id="__span-6-65"><a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a><span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+</span><span id="__span-6-66"><a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a><span class="w">      </span><span class="nx">devices</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="w"> </span><span class="nx">role</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;controller&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">handedness</span><span class="p">,</span><span class="w"> </span><span class="nx">targetRayPose</span><span class="p">,</span><span class="w"> </span><span class="nx">gripPose</span><span class="p">,</span><span class="w"> </span><span class="nx">gamepad</span><span class="w"> </span><span class="p">});</span>
+</span><span id="__span-6-67"><a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-6-68"><a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-6-69"><a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a>
+</span><span id="__span-6-70"><a id="__codelineno-6-70" name="__codelineno-6-70" href="#__codelineno-6-70"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-71"><a id="__codelineno-6-71" name="__codelineno-6-71" href="#__codelineno-6-71"></a><span class="w">    </span><span class="nx">timestamp_unix_ms</span><span class="o">:</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">round</span><span class="p">(</span><span class="nx">timeOriginMs</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">frame</span><span class="p">.</span><span class="nx">predictedDisplayTime</span><span class="p">),</span>
+</span><span id="__span-6-72"><a id="__codelineno-6-72" name="__codelineno-6-72" href="#__codelineno-6-72"></a><span class="w">    </span><span class="nx">reference_space</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;local&quot;</span><span class="p">,</span>
+</span><span id="__span-6-73"><a id="__codelineno-6-73" name="__codelineno-6-73" href="#__codelineno-6-73"></a><span class="w">    </span><span class="nx">input_mode</span><span class="o">:</span><span class="w"> </span><span class="nx">inputMode</span><span class="p">,</span>
+</span><span id="__span-6-74"><a id="__codelineno-6-74" name="__codelineno-6-74" href="#__codelineno-6-74"></a><span class="w">    </span><span class="nx">devices</span><span class="p">,</span>
+</span><span id="__span-6-75"><a id="__codelineno-6-75" name="__codelineno-6-75" href="#__codelineno-6-75"></a><span class="w">    </span><span class="nx">device</span><span class="o">:</span><span class="w"> </span><span class="nx">deviceType</span><span class="p">,</span>
+</span><span id="__span-6-76"><a id="__codelineno-6-76" name="__codelineno-6-76" href="#__codelineno-6-76"></a><span class="w">    </span><span class="nx">fps</span><span class="p">,</span>
+</span><span id="__span-6-77"><a id="__codelineno-6-77" name="__codelineno-6-77" href="#__codelineno-6-77"></a><span class="w">  </span><span class="p">};</span>
+</span><span id="__span-6-78"><a id="__codelineno-6-78" name="__codelineno-6-78" href="#__codelineno-6-78"></a><span class="p">}</span>
+</span><span id="__span-6-79"><a id="__codelineno-6-79" name="__codelineno-6-79" href="#__codelineno-6-79"></a>
+</span><span id="__span-6-80"><a id="__codelineno-6-80" name="__codelineno-6-80" href="#__codelineno-6-80"></a><span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-81"><a id="__codelineno-6-81" name="__codelineno-6-81" href="#__codelineno-6-81"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+</span><span id="__span-6-82"><a id="__codelineno-6-82" name="__codelineno-6-82" href="#__codelineno-6-82"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">msg</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;config&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-83"><a id="__codelineno-6-83" name="__codelineno-6-83" href="#__codelineno-6-83"></a><span class="w">    </span><span class="nx">inputMode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">msg</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">input_mode</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span><span class="p">;</span>
+</span><span id="__span-6-84"><a id="__codelineno-6-84" name="__codelineno-6-84" href="#__codelineno-6-84"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-6-85"><a id="__codelineno-6-85" name="__codelineno-6-85" href="#__codelineno-6-85"></a><span class="p">};</span>
+</span><span id="__span-6-86"><a id="__codelineno-6-86" name="__codelineno-6-86" href="#__codelineno-6-86"></a>
+</span><span id="__span-6-87"><a id="__codelineno-6-87" name="__codelineno-6-87" href="#__codelineno-6-87"></a><span class="kd">const</span><span class="w"> </span><span class="nx">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">navigator</span><span class="p">.</span><span class="nx">xr</span><span class="p">.</span><span class="nx">requestSession</span><span class="p">(</span><span class="s2">&quot;immersive-vr&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-88"><a id="__codelineno-6-88" name="__codelineno-6-88" href="#__codelineno-6-88"></a><span class="w">  </span><span class="nx">optionalFeatures</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;hand-tracking&quot;</span><span class="p">],</span>
+</span><span id="__span-6-89"><a id="__codelineno-6-89" name="__codelineno-6-89" href="#__codelineno-6-89"></a><span class="p">});</span>
+</span><span id="__span-6-90"><a id="__codelineno-6-90" name="__codelineno-6-90" href="#__codelineno-6-90"></a><span class="kd">const</span><span class="w"> </span><span class="nx">xrReferenceSpace</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">session</span><span class="p">.</span><span class="nx">requestReferenceSpace</span><span class="p">(</span><span class="s2">&quot;local&quot;</span><span class="p">);</span>
+</span><span id="__span-6-91"><a id="__codelineno-6-91" name="__codelineno-6-91" href="#__codelineno-6-91"></a>
+</span><span id="__span-6-92"><a id="__codelineno-6-92" name="__codelineno-6-92" href="#__codelineno-6-92"></a><span class="kd">const</span><span class="w"> </span><span class="nx">xrState</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">buildXrState</span><span class="p">(</span><span class="nx">frame</span><span class="p">,</span><span class="w"> </span><span class="nx">xrReferenceSpace</span><span class="p">,</span><span class="w"> </span><span class="nx">session</span><span class="p">,</span><span class="w"> </span><span class="nx">fps</span><span class="p">);</span>
+</span><span id="__span-6-93"><a id="__codelineno-6-93" name="__codelineno-6-93" href="#__codelineno-6-93"></a><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;xr_state&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="nx">xrState</span><span class="w"> </span><span class="p">}));</span>
+</span><span id="__span-6-94"><a id="__codelineno-6-94" name="__codelineno-6-94" href="#__codelineno-6-94"></a><span class="nx">teleopUI</span><span class="p">.</span><span class="nx">updateLocalStats</span><span class="p">({</span><span class="w"> </span><span class="nx">position</span><span class="o">:</span><span class="w"> </span><span class="nx">xrState</span><span class="p">.</span><span class="nx">devices</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">pose</span><span class="o">?</span><span class="p">.</span><span class="nx">position</span><span class="p">,</span><span class="w"> </span><span class="nx">orientation</span><span class="o">:</span><span class="w"> </span><span class="nx">xrState</span><span class="p">.</span><span class="nx">devices</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">pose</span><span class="o">?</span><span class="p">.</span><span class="nx">orientation</span><span class="p">,</span><span class="w"> </span><span class="nx">fps</span><span class="w"> </span><span class="p">});</span>
+</span></code></pre></div>
+<p>If <code>teleop-ui.js</code> expects a full <code>state</code>, keep it minimal:</p>
+<div class="language-javascript highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nx">updateLocalStats</span><span class="p">({</span><span class="w"> </span><span class="nx">position</span><span class="p">,</span><span class="w"> </span><span class="nx">orientation</span><span class="p">,</span><span class="w"> </span><span class="nx">fps</span><span class="w"> </span><span class="p">})</span>
+</span></code></pre></div>
+<p><strong>Step 4: Run test to verify it passes</strong></p>
+<p>Enter XR session and confirm the console shows <code>xr_state</code> messages with devices populated.</p>
+<p><strong>Step 5: Commit</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>git<span class="w"> </span>add<span class="w"> </span>teleop/index.html<span class="w"> </span>teleop/assets/teleop-ui.js
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: send xr_state from WebXR client&quot;</span>
+</span></code></pre></div>
+<hr />
+<h3 id="task-4-ros2-xr-state-publishers-poses-tf-joy-hand-joints">Task 4: ROS2 XR state publishers (poses, TF, Joy, hand joints)</h3>
+<p><strong>Files:</strong>
+- Modify: <code>teleop/ros2/__main__.py</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>Add a small unit test in <code>tests/test_pose_compounding.py</code> to validate <code>xr_state</code> filtering (server already covered). This task is mostly integration/manual verification.</p>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>Covered by Task 1.</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Add a ROS2 node that handles <code>xr_state</code> directly and publishes per-device topics.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">XR_HAND_JOINTS</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="s2">&quot;wrist&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;thumb-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="s2">&quot;index-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;index-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="s2">&quot;middle-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;middle-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="s2">&quot;ring-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;ring-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="s2">&quot;pinky-finger-metacarpal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-proximal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-intermediate&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-phalanx-distal&quot;</span><span class="p">,</span><span class="s2">&quot;pinky-finger-tip&quot;</span><span class="p">,</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="p">]</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">pose_dict_to_matrix</span><span class="p">(</span><span class="n">pose</span><span class="p">):</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="n">pos</span> <span class="o">=</span> <span class="n">pose</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">quat</span> <span class="o">=</span> <span class="n">pose</span><span class="p">[</span><span class="s2">&quot;orientation&quot;</span><span class="p">]</span>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">mat</span> <span class="o">=</span> <span class="n">t3d</span><span class="o">.</span><span class="n">affines</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span>
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        <span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]],</span>
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        <span class="n">t3d</span><span class="o">.</span><span class="n">quaternions</span><span class="o">.</span><span class="n">quat2mat</span><span class="p">([</span><span class="n">quat</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]]),</span>
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="p">)</span>
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    <span class="k">return</span> <span class="n">TF_RUB2FLU</span> <span class="o">@</span> <span class="n">mat</span>
+</span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
+</span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="k">def</span><span class="w"> </span><span class="nf">matrix_to_pose_msg</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+</span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    <span class="n">pose</span> <span class="o">=</span> <span class="n">Pose</span><span class="p">()</span>
+</span><span id="__span-9-21"><a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    <span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">mat</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+</span><span id="__span-9-22"><a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    <span class="n">quat</span> <span class="o">=</span> <span class="n">t3d</span><span class="o">.</span><span class="n">quaternions</span><span class="o">.</span><span class="n">mat2quat</span><span class="p">(</span><span class="n">mat</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span>
+</span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="n">pose</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">pose</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">pose</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">pose</span><span class="o">.</span><span class="n">orientation</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">quat</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">quat</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+</span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    <span class="k">return</span> <span class="n">pose</span>
+</span><span id="__span-9-25"><a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
+</span><span id="__span-9-26"><a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="k">def</span><span class="w"> </span><span class="nf">ms_to_time</span><span class="p">(</span><span class="n">ms</span><span class="p">):</span>
+</span><span id="__span-9-27"><a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    <span class="n">sec</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+</span><span id="__span-9-28"><a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    <span class="n">nsec</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">ms</span> <span class="o">-</span> <span class="n">sec</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e6</span><span class="p">)</span>
+</span><span id="__span-9-29"><a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    <span class="k">return</span> <span class="n">Time</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">sec</span><span class="p">,</span> <span class="n">nanoseconds</span><span class="o">=</span><span class="n">nsec</span><span class="p">)</span>
+</span><span id="__span-9-30"><a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>
+</span><span id="__span-9-31"><a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_joy</span><span class="p">(</span><span class="n">gamepad</span><span class="p">):</span>
+</span><span id="__span-9-32"><a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">gamepad</span><span class="p">:</span>
+</span><span id="__span-9-33"><a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+</span><span id="__span-9-34"><a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>    <span class="n">buttons</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pressed&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">gamepad</span><span class="p">[</span><span class="s2">&quot;buttons&quot;</span><span class="p">]]</span>
+</span><span id="__span-9-35"><a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    <span class="n">axes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">gamepad</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">+</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">gamepad</span><span class="p">[</span><span class="s2">&quot;buttons&quot;</span><span class="p">]]</span>
+</span><span id="__span-9-36"><a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>    <span class="n">touched</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;touched&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">gamepad</span><span class="p">[</span><span class="s2">&quot;buttons&quot;</span><span class="p">]]</span>
+</span><span id="__span-9-37"><a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>    <span class="k">return</span> <span class="p">(</span><span class="n">buttons</span><span class="p">,</span> <span class="n">axes</span><span class="p">),</span> <span class="n">touched</span>
+</span></code></pre></div>
+<p>In the callback, use per-device keys and publish topics:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">xr_state_callback</span><span class="p">(</span><span class="n">xr_state</span><span class="p">):</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">stamp</span> <span class="o">=</span> <span class="n">ms_to_time</span><span class="p">(</span><span class="n">xr_state</span><span class="p">[</span><span class="s2">&quot;timestamp_unix_ms&quot;</span><span class="p">])</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">xr_state</span><span class="p">[</span><span class="s2">&quot;devices&quot;</span><span class="p">]:</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="n">role</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="n">handed</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;handedness&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">handed</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;head&quot;</span> <span class="ow">and</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pose&quot;</span><span class="p">):</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">publish_pose</span><span class="p">(</span><span class="s2">&quot;xr/head/pose&quot;</span><span class="p">,</span> <span class="n">device</span><span class="p">[</span><span class="s2">&quot;pose&quot;</span><span class="p">],</span> <span class="n">stamp</span><span class="p">,</span> <span class="s2">&quot;xr_local&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;controller&quot;</span><span class="p">:</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;targetRayPose&quot;</span><span class="p">):</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">publish_pose</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xr/controller_</span><span class="si">{</span><span class="n">handed</span><span class="si">}</span><span class="s2">/target_ray&quot;</span><span class="p">,</span> <span class="n">device</span><span class="p">[</span><span class="s2">&quot;targetRayPose&quot;</span><span class="p">],</span> <span class="n">stamp</span><span class="p">,</span> <span class="s2">&quot;xr_local&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_target&quot;</span><span class="p">)</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gripPose&quot;</span><span class="p">):</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">publish_pose</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xr/controller_</span><span class="si">{</span><span class="n">handed</span><span class="si">}</span><span class="s2">/grip&quot;</span><span class="p">,</span> <span class="n">device</span><span class="p">[</span><span class="s2">&quot;gripPose&quot;</span><span class="p">],</span> <span class="n">stamp</span><span class="p">,</span> <span class="s2">&quot;xr_local&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_grip&quot;</span><span class="p">)</span>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>            <span class="n">joy_payload</span><span class="p">,</span> <span class="n">touched</span> <span class="o">=</span> <span class="n">build_joy</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gamepad&quot;</span><span class="p">))</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>            <span class="k">if</span> <span class="n">joy_payload</span><span class="p">:</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">publish_joy</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xr/controller_</span><span class="si">{</span><span class="n">handed</span><span class="si">}</span><span class="s2">/joy&quot;</span><span class="p">,</span> <span class="n">joy_payload</span><span class="p">,</span> <span class="n">stamp</span><span class="p">)</span>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>            <span class="k">if</span> <span class="n">touched</span><span class="p">:</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">publish_joy</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xr/controller_</span><span class="si">{</span><span class="n">handed</span><span class="si">}</span><span class="s2">/joy_touched&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">touched</span><span class="p">,</span> <span class="p">[]),</span> <span class="n">stamp</span><span class="p">)</span>
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;hand&quot;</span><span class="p">:</span>
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">publish_hand</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">stamp</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Add CLI args:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--input-mode&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;controller&quot;</span><span class="p">,</span> <span class="s2">&quot;hand&quot;</span><span class="p">,</span> <span class="s2">&quot;auto&quot;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;controller&quot;</span><span class="p">)</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--publish-hand-tf&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--frame-id&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;xr_local&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Step 4: Run test to verify it passes</strong></p>
+<p>Run: <code>uv run pytest tests/test_pose_compounding.py -v</code></p>
+<p>Expected: PASS</p>
+<p><strong>Step 5: Commit</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>git<span class="w"> </span>add<span class="w"> </span>teleop/ros2/__main__.py
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: publish xr_state to ROS2 topics&quot;</span>
+</span></code></pre></div>
+<hr />
+<h3 id="task-5-update-teleop-entrypoints-to-new-callback-signature">Task 5: Update teleop entrypoints to new callback signature</h3>
+<p><strong>Files:</strong>
+- Modify: <code>teleop/ros2_ik/__main__.py</code>
+- Modify: <code>teleop/xarm/__main__.py</code>
+- Modify: <code>teleop/basic/__main__.py</code>
+- Modify: <code>examples/webots/controllers/inverse_kinematics/inverse_kinematics.py</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>Manual check only (these are not covered by pytest).</p>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>Attempt to run each entrypoint (expect callback signature errors).</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Add a shared helper in each file to pick a primary controller and extract a pose:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">pick_primary_controller</span><span class="p">(</span><span class="n">xr_state</span><span class="p">,</span> <span class="n">handedness</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">):</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">xr_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;devices&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;controller&quot;</span> <span class="ow">and</span> <span class="n">device</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;handedness&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">handedness</span><span class="p">:</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>            <span class="k">return</span> <span class="n">device</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">controller_trigger_pressed</span><span class="p">(</span><span class="n">controller</span><span class="p">):</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">buttons</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gamepad&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;buttons&quot;</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">buttons</span> <span class="ow">and</span> <span class="n">buttons</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pressed&quot;</span><span class="p">))</span>
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">controller_gripper_value</span><span class="p">(</span><span class="n">controller</span><span class="p">):</span>
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">buttons</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gamepad&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;buttons&quot;</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">buttons</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">buttons</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span></code></pre></div>
+<p>Update callbacks to accept a single <code>xr_state</code> and use controller grip pose for target:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">teleop_pose_callback</span><span class="p">(</span><span class="n">xr_state</span><span class="p">):</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="n">controller</span> <span class="o">=</span> <span class="n">pick_primary_controller</span><span class="p">(</span><span class="n">xr_state</span><span class="p">)</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">controller</span><span class="p">:</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>        <span class="k">return</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">controller_trigger_pressed</span><span class="p">(</span><span class="n">controller</span><span class="p">):</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="k">return</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">pose_dict</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gripPose&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">controller</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;targetRayPose&quot;</span><span class="p">)</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">pose_dict</span><span class="p">:</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        <span class="k">return</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="n">pose_mat</span> <span class="o">=</span> <span class="n">pose_dict_to_matrix</span><span class="p">(</span><span class="n">pose_dict</span><span class="p">)</span>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    <span class="c1"># existing IK/servo logic using pose_mat</span>
+</span></code></pre></div>
+<p>In <code>teleop/basic/__main__.py</code>, print <code>xr_state</code> directly.</p>
+<p><strong>Step 4: Run test to verify it passes</strong></p>
+<p>Run each entrypoint and send a sample <code>xr_state</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>-m<span class="w"> </span>teleop.basic
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>python<span class="w"> </span>-m<span class="w"> </span>teleop.ros2_ik
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>python<span class="w"> </span>-m<span class="w"> </span>teleop.xarm
+</span></code></pre></div>
+<p>Expected: no callback signature errors; controller trigger gates updates.</p>
+<p><strong>Step 5: Commit</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>git<span class="w"> </span>add<span class="w"> </span>teleop/ros2_ik/__main__.py<span class="w"> </span>teleop/xarm/__main__.py<span class="w"> </span>teleop/basic/__main__.py<span class="w"> </span>examples/webots/controllers/inverse_kinematics/inverse_kinematics.py
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;refactor: adapt teleop entrypoints to xr_state&quot;</span>
+</span></code></pre></div>
+<hr />
+<h3 id="task-6-update-readme-with-schema-ros2-topics">Task 6: Update README with schema + ROS2 topics</h3>
+<p><strong>Files:</strong>
+- Modify: <code>README.md</code></p>
+<p><strong>Step 1: Write the failing test</strong></p>
+<p>N/A (doc change).</p>
+<p><strong>Step 2: Run test to verify it fails</strong></p>
+<p>N/A.</p>
+<p><strong>Step 3: Write minimal implementation</strong></p>
+<p>Add a new section with schema and topics:</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="gu">## XR State Schema</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Each frame sends:
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>```json
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>{ &quot;type&quot;: &quot;xr_state&quot;, &quot;data&quot;: { &quot;timestamp_unix_ms&quot;: 1700000000000, &quot;reference_space&quot;: &quot;local&quot;, &quot;input_mode&quot;: &quot;controller&quot;, &quot;devices&quot;: [...] } }
+</span></code></pre></div>
+<h2 id="ros2-topics">ROS2 Topics</h2>
+<ul>
+<li><code>xr/head/pose</code> (PoseStamped)</li>
+<li><code>xr/controller_left/target_ray</code>, <code>xr/controller_left/grip</code> (PoseStamped)</li>
+<li><code>xr/controller_left/joy</code>, <code>xr/controller_left/joy_touched</code> (Joy)</li>
+<li><code>xr/hand_left/joints</code> (PoseArray) or TF frames if enabled
+<div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>**Step 4: Run test to verify it passes**
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>N/A.
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>**Step 5: Commit**
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>```bash
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>git add README.md
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>git commit -m &quot;docs: document xr_state schema and ROS2 topics&quot;
+</span></code></pre></div></li>
+</ul>
+<hr />
+<h3 id="task-7-verification">Task 7: Verification</h3>
+<p><strong>Step 1: Run automated tests</strong></p>
+<p>Run: <code>uv run pytest -v</code></p>
+<p>Expected: PASS</p>
+<p><strong>Step 2: Manual XR verification</strong></p>
+<ol>
+<li>Start ROS2 node: <code>python -m teleop.ros2 --input-mode controller</code></li>
+<li>Load the WebXR page on Quest 3 and enter VR.</li>
+<li>Check ROS2 topics update:</li>
+<li><code>ros2 topic hz /xr/controller_right/joy</code></li>
+<li><code>ros2 topic echo /xr/controller_right/grip</code></li>
+</ol>
+<p>Expected: continuous updates and button changes.</p>
+<p><strong>Step 3: Manual hand verification</strong></p>
+<ol>
+<li>Start ROS2 node: <code>python -m teleop.ros2 --input-mode hand --publish-hand-tf</code></li>
+<li>Enable hand tracking and verify <code>xr/hand_left/joints</code> or TF frames update.</li>
+</ol>
+<p><strong>Step 4: Commit</strong></p>
+<p>No code changes; no commit required.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.tabs", "navigation.top", "content.code.copy", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
