@@ -41,6 +41,9 @@ dependencies = [
   "aiortc",
   "opencv-python",
   "av",
+  "rich>=13.0.0",
+  "tyro>=0.8.0",
+  "pydantic>=2.0.0",
 ]
 
 [project.urls]
@@ -55,4 +58,5 @@ utils = ["pin"]
 dev = [
   "pre-commit",
   "mkdocs-material",
+  "mkdocstrings[python]",
 ]

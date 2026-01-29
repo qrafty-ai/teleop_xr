@@ -2,7 +2,7 @@ import os
 import math
 import socket
 import logging
-from typing import Callable, List
+from typing import Callable, List, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -20,6 +20,7 @@ from teleop_xr.video_stream import (
     build_sources,
 )
 from teleop_xr.camera_views import build_video_streams
+from teleop_xr.config import TeleopSettings
 
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -173,28 +174,22 @@ class Teleop:
     Teleop class for controlling a robot remotely using FastAPI and WebSockets.
 
     Args:
-        host (str, optional): The host IP address. Defaults to "0.0.0.0".
-        port (int, optional): The port number. Defaults to 4443.
+        settings (TeleopSettings): Configuration settings for the teleop server.
+        video_sources (Optional[dict[str, VideoSource]]): Dictionary of video sources.
     """
 
     def __init__(
         self,
-        host="0.0.0.0",
-        port=4443,
-        natural_phone_orientation_euler=None,
-        natural_phone_position=None,
-        input_mode="controller",
-        camera_views=None,
-        video_sources=None,
+        settings: TeleopSettings,
+        video_sources: Optional[dict[str, VideoSource]] = None,
     ):
         self.__logger = logging.getLogger("teleop")
         self.__logger.setLevel(logging.INFO)
-        self.__logger.addHandler(logging.StreamHandler())
+        if not self.__logger.handlers:
+            self.__logger.addHandler(logging.StreamHandler())
 
-        self.__host = host
-        self.__port = port
-        self.__input_mode = input_mode
-        self.__camera_views = camera_views
+        self.__settings = settings
+        self.__camera_views = self.__settings.camera_views
 
         self.__relative_pose_init = None
         self.__absolute_pose_init = None
@@ -202,13 +197,10 @@ class Teleop:
         self.__callbacks = []
         self.__pose = np.eye(4)
 
-        if natural_phone_orientation_euler is None:
-            natural_phone_orientation_euler = [0, math.radians(-45), 0]
-        if natural_phone_position is None:
-            natural_phone_position = [0, 0, 0]
+        euler = self.__settings.natural_phone_orientation_euler
         self.__natural_phone_pose = t3d.affines.compose(
-            natural_phone_position,
-            t3d.euler.euler2mat(*natural_phone_orientation_euler),
+            self.__settings.natural_phone_position,
+            t3d.euler.euler2mat(euler[0], euler[1], euler[2]),
             [1, 1, 1],
         )
 
@@ -228,7 +220,7 @@ class Teleop:
 
     @property
     def input_mode(self):
-        return self.__input_mode
+        return self.__settings.input_mode
 
     def set_pose(self, pose: np.ndarray) -> None:
         """
@@ -338,6 +330,7 @@ class Teleop:
             self.__absolute_pose_init = self.__pose
             self.__previous_received_pose = None
 
+        assert self.__absolute_pose_init is not None
         relative_position = received_pose[:3, 3] - self.__relative_pose_init[:3, 3]
         relative_orientation = received_pose[:3, :3] @ np.linalg.inv(
             self.__relative_pose_init[:3, :3]
@@ -360,7 +353,7 @@ class Teleop:
         self.__notify_subscribers(self.__pose, info)
 
     def __handle_xr_state(self, message):
-        input_mode = self.__input_mode
+        input_mode = self.__settings.input_mode
         devices = message.get("devices", [])
 
         # Log fetch latency if present
@@ -433,10 +426,7 @@ class Teleop:
                 json.dumps(
                     {
                         "type": "config",
-                        "data": {
-                            "input_mode": self.__input_mode,
-                            "camera_views": self.__camera_views,
-                        },
+                        "data": self.__settings.model_dump(),
                     }
                 )
             )
@@ -487,9 +477,12 @@ class Teleop:
         """
         Runs the teleop server. This method is blocking.
         """
-        self.__logger.info(f"Server started at {self.__host}:{self.__port}")
+        self.__logger.info(self.__settings.model_dump_json())
         self.__logger.info(
-            f"The phone web app should be available at https://{get_local_ip()}:{self.__port}"
+            f"Server started at {self.__settings.host}:{self.__settings.port}"
+        )
+        self.__logger.info(
+            f"The phone web app should be available at https://{get_local_ip()}:{self.__settings.port}"
         )
 
         ssl_keyfile = os.path.join(THIS_DIR, "key.pem")
@@ -497,8 +490,8 @@ class Teleop:
 
         uvicorn.run(
             self.__app,
-            host=self.__host,
-            port=self.__port,
+            host=self.__settings.host,
+            port=self.__settings.port,
             ssl_keyfile=ssl_keyfile,
             ssl_certfile=ssl_certfile,
             log_level="warning",

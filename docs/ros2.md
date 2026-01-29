@@ -11,7 +11,7 @@ You can run the ROS2 node using the Python module directly:
 source /opt/ros/humble/setup.bash
 
 python -m teleop_xr.ros2 \
-  --camera-stream head=/camera/image_raw \
+  --head-topic /camera/image_raw \
   --input-mode auto
 ```
 
@@ -22,8 +22,10 @@ python -m teleop_xr.ros2 \
 *   `--input-mode`: Input mode (`controller`, `hand`, or `auto`).
 *   `--frame-id`: The frame ID for published poses (default: `xr_local`).
 *   `--publish-hand-tf`: If set, publishes TF transforms for individual hand joints.
-*   `--camera-stream`: Map a WebXR view to a ROS image topic. Format: `key=topic`. Can be used multiple times.
-    *   Example: `--camera-stream head=/camera/color/image_raw --camera-stream gripper=/gripper/camera`
+*   `--head-topic`: ROS topic for head camera view.
+*   `--wrist-left-topic`: ROS topic for left wrist camera view.
+*   `--wrist-right-topic`: ROS topic for right wrist camera view.
+*   `--extra-streams`: Additional streams in `key=topic` format.
 
 ## Published Topics
 
@@ -46,7 +48,7 @@ The node publishes the following topics (namespaced under `xr/`):
 ## Subscribed Topics
 
 ### Video
-*   Any topic specified in `--camera-stream`.
+*   Any topic specified in `--head-topic`, `--wrist-left-topic`, etc.
 *   Supports `sensor_msgs/Image` (raw) and `sensor_msgs/CompressedImage` (compressed).
 *   **Note**: Requires `cv_bridge` for efficient conversion. If `cv_bridge` is missing, it falls back to a basic numpy conversion (supporting `rgb8`, `bgr8`, `mono8`).
 

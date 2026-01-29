@@ -66,6 +66,13 @@ def build_video_streams(camera_views: dict) -> dict:
 
     for view_key in order:
         if view_key in camera_views:
-            streams.append({"id": view_key, "device": camera_views[view_key]["device"]})
+            val = camera_views[view_key]
+            # Handle both Pydantic model and dict
+            if hasattr(val, "device"):
+                device = val.device
+            else:
+                device = val["device"]
+
+            streams.append({"id": view_key, "device": device})
 
     return {"streams": streams}

@@ -1,9 +1,13 @@
-import argparse
 import threading
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field
 import cv2
 import numpy as np
+import tyro
 from teleop_xr import Teleop, TF_RUB2FLU
 from teleop_xr.video_stream import ExternalVideoSource
+from teleop_xr.config import TeleopSettings
+from teleop_xr.common_cli import CommonCLI
 import transforms3d as t3d
 
 try:
@@ -156,54 +160,58 @@ def build_joy(gamepad):
     return (buttons, axes), touched
 
 
+@dataclass
+class Ros2CLI(CommonCLI):
+    # Explicit topics
+    head_topic: Optional[str] = None
+    wrist_left_topic: Optional[str] = None
+    wrist_right_topic: Optional[str] = None
+
+    # Custom streams
+    extra_streams: Dict[str, str] = field(default_factory=dict)
+
+    frame_id: str = "xr_local"
+    publish_hand_tf: bool = False
+
+    # ROS args (passed as remainder, but Tyro can capture list if explicit)
+    # We will use this to pass args to rclpy
+    ros_args: List[str] = field(default_factory=list)
+
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host address")
-    parser.add_argument("--port", type=int, default=4443, help="Port number")
-    parser.add_argument(
-        "--input-mode",
-        choices=["controller", "hand", "auto"],
-        default="controller",
-        help="Input mode for XR state",
-    )
-    parser.add_argument(
-        "--frame-id", default="xr_local", help="Fixed frame ID for XR poses"
-    )
-    parser.add_argument(
-        "--publish-hand-tf", action="store_true", help="Publish TF for hand joints"
-    )
-    parser.add_argument(
-        "--camera-stream",
-        action="append",
-        help="Camera stream mapping (key=topic), e.g., head=xr/head/image",
-        default=[],
-    )
-    parser.add_argument(
-        "--ros-args",
-        nargs=argparse.REMAINDER,
-        help="Arguments to pass to ROS",
-        default=[],
-    )
+    cli = tyro.cli(Ros2CLI)
 
-    args = parser.parse_args()
-
-    rclpy.init(args=["--ros-args"] + args.ros_args)
+    rclpy.init(args=["--ros-args"] + cli.ros_args)
     node = rclpy.create_node("teleop")
 
+    # Merge topics
+    topics = {}
+    if cli.head_topic:
+        topics["head"] = cli.head_topic
+    if cli.wrist_left_topic:
+        topics["wrist_left"] = cli.wrist_left_topic
+    if cli.wrist_right_topic:
+        topics["wrist_right"] = cli.wrist_right_topic
+    topics.update(cli.extra_streams)
+
     video_sources = {}
-    for stream_map in args.camera_stream:
-        if "=" not in stream_map:
-            node.get_logger().error(f"Invalid camera stream mapping: {stream_map}")
-            continue
-        key, topic = stream_map.split("=", 1)
+    for key, topic in topics.items():
         source = ExternalVideoSource()
         ROSImageToVideoSource(node, topic, source)
         video_sources[key] = source
 
+    # Create config dict for camera views
+    camera_views = {k: {"device": topic} for k, topic in topics.items()}
+
+    settings = TeleopSettings(
+        host=cli.host,
+        port=cli.port,
+        input_mode=cli.input_mode,
+        camera_views=camera_views,
+    )
+
     teleop = Teleop(
-        host=args.host,
-        port=args.port,
-        input_mode=args.input_mode,
+        settings=settings,
         video_sources=video_sources,
     )
     broadcaster = TransformBroadcaster(node)
@@ -223,13 +231,13 @@ def main():
             return
         msg = PoseStamped()
         msg.header.stamp = stamp
-        msg.header.frame_id = args.frame_id
+        msg.header.frame_id = cli.frame_id
         msg.pose = matrix_to_pose_msg(mat)
         get_publisher(PoseStamped, topic).publish(msg)
 
         tf = TransformStamped()
         tf.header.stamp = tf_stamp  # Use PC timestamp for TF
-        tf.header.frame_id = args.frame_id
+        tf.header.frame_id = cli.frame_id
         tf.child_frame_id = child_frame_id
         tf.transform.translation.x = msg.pose.position.x
         tf.transform.translation.y = msg.pose.position.y
@@ -241,7 +249,7 @@ def main():
         buttons, axes = joy_data
         msg = Joy()
         msg.header.stamp = stamp
-        msg.header.frame_id = args.frame_id
+        msg.header.frame_id = cli.frame_id
         msg.buttons = buttons
         msg.axes = axes
         get_publisher(Joy, topic).publish(msg)
@@ -254,7 +262,7 @@ def main():
 
         pose_array = PoseArray()
         pose_array.header.stamp = stamp
-        pose_array.header.frame_id = args.frame_id
+        pose_array.header.frame_id = cli.frame_id
 
         for joint_name in XR_HAND_JOINTS:
             joint_pose_dict = joints_dict.get(joint_name)
@@ -264,10 +272,10 @@ def main():
             pose_msg = matrix_to_pose_msg(mat)
             pose_array.poses.append(pose_msg)
 
-            if args.publish_hand_tf:
+            if cli.publish_hand_tf:
                 tf = TransformStamped()
                 tf.header.stamp = stamp
-                tf.header.frame_id = args.frame_id
+                tf.header.frame_id = cli.frame_id
                 tf.child_frame_id = f"xr/hand_{handed}/{joint_name}"
                 tf.transform.translation.x = pose_msg.position.x
                 tf.transform.translation.y = pose_msg.position.y

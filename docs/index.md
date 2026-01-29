@@ -19,20 +19,95 @@
 4.  **🔌 Generic API & ROS2 Interface**
     Flexible architecture designed for easy integration. Use the provided ROS2 interface or the generic Python API to connect with your own robot projects.
 
-## Quick Start
+## 🚀 Quick Start (Demo)
 
-The easiest way to use TeleopXR is via pip:
+Use the built-in demo to verify connectivity and visualize the XR state data in real-time.
 
 ```bash
 pip install teleop-xr
+python -m teleop_xr.demo
 ```
 
-Start the server:
+This will launch a server (default port 4433) and display a **Rich-based live table** in your terminal.
+
+1. Open the displayed URL (`https://<ip>:4433`) in your headset.
+2. Enter VR mode.
+3. You will see the table update with high-frequency data for Head, Controllers, and Hands (Position, Orientation, Buttons).
+
+## 🤖 ROS2 Integration
+
+TeleopXR comes with a fully functional ROS2 node wrapper.
+
+### Running the Node
 
 ```bash
-python -m teleop_xr.basic
+# Source your ROS2 workspace first
+python -m teleop_xr.ros2 --frame-id xr_local
 ```
 
-Then, open the displayed URL (e.g., `https://<your-ip>:4433`) in your headset's browser.
+### Published Topics
 
-> **Note:** Ensure your headset and computer are on the same network.
+The node publishes state data to the following topics:
+
+| Topic | Type | Description |
+| :--- | :--- | :--- |
+| `xr/head/pose` | `PoseStamped` | Headset 6DoF pose |
+| `xr/controller_{L/R}/pose` | `PoseStamped` | Controller grip pose |
+| `xr/controller_{L/R}/joy` | `Joy` | Joystick axes and buttons |
+| `xr/controller_{L/R}/joy_touched` | `Joy` | Touch states (capacitive) |
+| `xr/hand_{L/R}/joints` | `PoseArray` | 25 hand joint poses (if tracking enabled) |
+| `xr/fetch_latency_ms` | `Float64` | Network/Input latency stats |
+
+*Note: All poses are published in the frame specified by `--frame-id` (default: `xr_local`).*
+
+### Video Streaming Configuration
+
+You can map ROS image topics to the VR headset's views using CLI arguments:
+
+```bash
+python -m teleop_xr.ros2 \
+  --head-topic /camera/head/image_raw \
+  --wrist-left-topic /camera/left/image_raw \
+  --wrist-right-topic /camera/right/image_raw
+```
+
+The node automatically handles image transport and compression (requires `cv_bridge`).
+
+## 🐍 Python API (Custom Integration)
+
+For custom Python projects without ROS, use the `Teleop` class directly.
+
+### Basic Usage
+
+```python
+import numpy as np
+from teleop_xr import Teleop, TeleopSettings
+from teleop_xr.messages import XRState
+
+# 1. Configure Settings
+settings = TeleopSettings(
+    host="0.0.0.0",
+    port=4433,
+    input_mode="controller"  # or "hand", "auto"
+)
+
+# 2. Initialize Teleop
+teleop = Teleop(settings=settings)
+
+# 3. Define a Callback
+def on_xr_update(pose: np.ndarray, xr_state_dict: dict):
+    # 'pose' is the calculated end-effector pose (4x4 matrix) based on input mode
+    # 'xr_state_dict' contains the raw device data
+
+    # Optional: Validate with Pydantic for easier access
+    try:
+        state = XRState.model_validate(xr_state_dict)
+        for device in state.devices:
+            print(f"{device.role}: {device.pose.position}")
+    except Exception:
+        pass
+
+# 4. Subscribe and Run
+teleop.subscribe(on_xr_update)
+teleop.run()
+```
