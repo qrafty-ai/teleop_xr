@@ -55,12 +55,12 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
       if (!controllerObject) {
         controllerObject = getControllerObject ? getControllerObject() : ref.controllerObject;
       }
-      
+
       if (!controllerObject) {
         // Controller not available yet (XR session not started or controller not connected)
         continue;
       }
-      
+
       if (!panel?.entity?.object3D) continue;
 
       // Get controller world position

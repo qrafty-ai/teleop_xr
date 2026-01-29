@@ -1,7 +1,4 @@
-import cv2
 import numpy as np
-import pytest
-import threading
 from unittest.mock import MagicMock, patch
 from teleop_xr.video_stream import (
     OpenCVVideoSource,
@@ -13,7 +10,7 @@ from teleop_xr.video_stream import (
 def test_external_video_source():
     source = ExternalVideoSource()
     assert not source.grabbed
-    assert source.new_frame_event.is_set() == False
+    assert not source.new_frame_event.is_set()
 
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     source.put_frame(frame)

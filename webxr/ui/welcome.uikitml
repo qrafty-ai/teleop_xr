@@ -24,7 +24,7 @@
     text-align: left;
     margin-top: 0.3;
   }
-  
+
   #xr-button {
     width: 100%;
     padding: 1.5;

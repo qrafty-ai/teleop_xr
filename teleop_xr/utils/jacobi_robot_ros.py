@@ -274,7 +274,7 @@ def main():
             except rclpy.executors.ExternalShutdownException:
                 node.get_logger().info("Node shutdown, exiting loop")
                 break
-            except Exception as e:
+            except Exception:
                 pass
 
     except Exception as e:

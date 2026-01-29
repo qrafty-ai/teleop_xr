@@ -51,7 +51,7 @@ export class TeleopSystem extends createSystem({
         cameraButton.addEventListener("click", () => {
           // Use GlobalRefs - populated by index.ts at creation time
           // DO NOT access ECS queries during click events (causes freeze)
-          
+
           // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
           const panels = [
             GlobalRefs.cameraPanelRoot,

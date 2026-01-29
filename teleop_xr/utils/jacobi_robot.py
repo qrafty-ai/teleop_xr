@@ -1,7 +1,7 @@
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-from typing import List, Tuple
+from typing import List
 
 
 def se3_to_matrix(se3_obj: pin.SE3) -> np.ndarray:
@@ -440,7 +440,7 @@ class JacobiRobot:
         """Print current robot status including IK diagnostics."""
         ee_pose = self.get_ee_pose()
 
-        print(f"\n--- Robot Status ---")
+        print("\n--- Robot Status ---")
         print(f"Joint positions: {np.round(self.q, 3)}")
         print(f"Joint velocities: {np.round(self.dq, 3)}")
         print(f"End-effector position: {np.round(ee_pose[:3, 3], 3)}")
@@ -566,7 +566,7 @@ class JacobiRobot:
                 )
             self.desired_joint_config = np.array(desired_joint_config)
 
-        print(f"Regularization parameters updated:")
+        print("Regularization parameters updated:")
         print(f"  Joint regularization: {self.joint_regularization}")
         print(f"  Velocity regularization: {self.velocity_regularization}")
         print(f"  Manipulability threshold: {self.manipulability_threshold}")
