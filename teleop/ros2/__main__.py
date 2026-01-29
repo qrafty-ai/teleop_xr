@@ -9,10 +9,17 @@ import transforms3d as t3d
 try:
     import rclpy
     from geometry_msgs.msg import Pose, PoseStamped, PoseArray, TransformStamped
-    from sensor_msgs.msg import Joy, Image
+    from sensor_msgs.msg import Joy, Image, CompressedImage
     from std_msgs.msg import Float64
     from tf2_ros import TransformBroadcaster
     from builtin_interfaces.msg import Time
+
+    try:
+        from cv_bridge import CvBridge
+
+        HAS_CV_BRIDGE = True
+    except ImportError:
+        HAS_CV_BRIDGE = False
 except ImportError:
     raise ImportError(
         "ROS2 is not sourced. Please source ROS2 before running this script."
@@ -87,30 +94,51 @@ class ROSImageToVideoSource:
     def __init__(self, node, topic, source: ExternalVideoSource):
         self.node = node
         self.source = source
-        self.sub = node.create_subscription(Image, topic, self.callback, 10)
+        self.bridge = CvBridge() if HAS_CV_BRIDGE else None
 
-    def callback(self, msg: Image):
-        # Basic ROS image to numpy conversion (OpenCV BGR compatible)
-        # Assume rgb8 or bgr8 for now, but handle basic cases
-        dtype = np.uint8
-        if msg.encoding == "rgb8":
-            frame_rgb = np.frombuffer(msg.data, dtype=dtype).reshape(
-                msg.height, msg.width, 3
+        if topic.endswith("/compressed"):
+            self.sub = node.create_subscription(
+                CompressedImage, topic, self.callback, 10
             )
-            frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-        elif msg.encoding == "bgr8":
-            frame = np.frombuffer(msg.data, dtype=dtype).reshape(
-                msg.height, msg.width, 3
-            )
-        elif msg.encoding == "mono8":
-            frame = np.frombuffer(msg.data, dtype=dtype).reshape(
-                msg.height, msg.width, 1
-            )
-            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         else:
-            self.node.get_logger().warning(
-                f"Unsupported image encoding: {msg.encoding}"
-            )
+            self.sub = node.create_subscription(Image, topic, self.callback, 10)
+
+    def callback(self, msg):
+        if isinstance(msg, CompressedImage):
+            if not HAS_CV_BRIDGE:
+                self.node.get_logger().error(
+                    "cv_bridge not available, cannot decode CompressedImage"
+                )
+                return
+            frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
+        elif isinstance(msg, Image):
+            if HAS_CV_BRIDGE:
+                frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            else:
+                # Basic ROS image to numpy conversion (OpenCV BGR compatible)
+                # Assume rgb8 or bgr8 for now, but handle basic cases
+                dtype = np.uint8
+                if msg.encoding == "rgb8":
+                    frame_rgb = np.frombuffer(msg.data, dtype=dtype).reshape(
+                        msg.height, msg.width, 3
+                    )
+                    frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                elif msg.encoding == "bgr8":
+                    frame = np.frombuffer(msg.data, dtype=dtype).reshape(
+                        msg.height, msg.width, 3
+                    )
+                elif msg.encoding == "mono8":
+                    frame = np.frombuffer(msg.data, dtype=dtype).reshape(
+                        msg.height, msg.width, 1
+                    )
+                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                else:
+                    self.node.get_logger().warning(
+                        f"Unsupported image encoding: {msg.encoding}"
+                    )
+                    return
+        else:
+            self.node.get_logger().error(f"Unknown message type: {type(msg)}")
             return
 
         self.source.put_frame(frame)
