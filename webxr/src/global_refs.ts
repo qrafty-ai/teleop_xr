@@ -3,4 +3,7 @@
 
 export const GlobalRefs = {
   cameraPanelRoot: null as any,
+  teleopPanelRoot: null as any,
+  leftWristPanelRoot: null as any,
+  rightWristPanelRoot: null as any,
 };
