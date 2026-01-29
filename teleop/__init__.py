@@ -16,6 +16,8 @@ from teleop.video_stream import (
     VideoStreamManager,
     parse_video_config,
     route_video_message,
+    VideoSource,
+    build_sources,
 )
 from teleop.camera_views import build_video_streams
 
@@ -178,6 +180,7 @@ class Teleop:
         natural_phone_position=None,
         input_mode="controller",
         camera_views=None,
+        video_sources=None,
     ):
         self.__logger = logging.getLogger("teleop")
         self.__logger.setLevel(logging.INFO)
@@ -208,6 +211,7 @@ class Teleop:
         self.__manager = ConnectionManager()
 
         self.__video_streams: list[VideoStreamConfig] = []
+        self.__video_sources: dict[str, VideoSource] = video_sources or {}
         self.__video_sessions: dict[WebSocket, VideoStreamManager] = {}
 
         if self.__camera_views is not None and not self.__video_streams:
@@ -253,7 +257,11 @@ class Teleop:
         self.__video_streams = []
 
     async def _start_video_session(self, websocket: WebSocket) -> None:
-        manager = VideoStreamManager(self.__video_streams)
+        sources = self.__video_sources
+        if not sources and self.__video_streams:
+            sources = build_sources(self.__video_streams)
+
+        manager = VideoStreamManager(sources)
         self.__video_sessions[websocket] = manager
         offer = await manager.create_offer()
         await self.__manager.send_personal_message(
