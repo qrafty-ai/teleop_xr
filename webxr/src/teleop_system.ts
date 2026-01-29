@@ -55,14 +55,17 @@ export class TeleopSystem extends createSystem({
         cameraButton.addEventListener("click", () => {
           // Use GlobalRefs - populated by index.ts at creation time
           // DO NOT access ECS queries during click events (causes freeze)
-          if (GlobalRefs.cameraPanelRoot) {
-            const newState = !GlobalRefs.cameraPanelRoot.visible;
-            GlobalRefs.cameraPanelRoot.visible = newState;
-            if (GlobalRefs.leftWristPanelRoot)
-              GlobalRefs.leftWristPanelRoot.visible = newState;
-            if (GlobalRefs.rightWristPanelRoot)
-              GlobalRefs.rightWristPanelRoot.visible = newState;
-          }
+          
+          // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
+          let targetVisible = true;
+          if (GlobalRefs.cameraPanelRoot && GlobalRefs.cameraPanelRoot.visible) targetVisible = false;
+          else if (GlobalRefs.leftWristPanelRoot && GlobalRefs.leftWristPanelRoot.visible) targetVisible = false;
+          else if (GlobalRefs.rightWristPanelRoot && GlobalRefs.rightWristPanelRoot.visible) targetVisible = false;
+
+          // Apply targetVisible to all
+          if (GlobalRefs.cameraPanelRoot) GlobalRefs.cameraPanelRoot.visible = targetVisible;
+          if (GlobalRefs.leftWristPanelRoot) GlobalRefs.leftWristPanelRoot.visible = targetVisible;
+          if (GlobalRefs.rightWristPanelRoot) GlobalRefs.rightWristPanelRoot.visible = targetVisible;
         });
       }
 
@@ -233,7 +236,8 @@ export class TeleopSystem extends createSystem({
   gatherInputState(input: any) {
     const leftGamepad = input?.gamepads?.left?.gamepad;
     if (leftGamepad && leftGamepad.buttons) {
-      const menuButton = leftGamepad.buttons[4] || leftGamepad.buttons[5];
+      // Index 7 is the Menu button on Quest. Index 5 is 'Y' (fallback).
+      const menuButton = leftGamepad.buttons[7] || leftGamepad.buttons[5];
 
       if (menuButton) {
         if (menuButton.pressed) {
