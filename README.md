@@ -146,6 +146,10 @@ For developers contributing to TeleopXR or customizing the frontend:
     uv run python -m teleop_xr.demo
     ```
 
+## Acknowledgments
+
+This project is forked from [SpesRobotics/teleop](https://github.com/SpesRobotics/teleop). We are grateful for their foundational work in creating a WebXR-based teleoperation solution.
+
 ## License
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
