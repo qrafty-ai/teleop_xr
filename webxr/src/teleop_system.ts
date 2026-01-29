@@ -35,6 +35,7 @@ export class TeleopSystem extends createSystem({
   private inputMode = "auto";
   private tempPosition = new Vector3();
   private tempQuaternion = new Quaternion();
+  private menuButtonState = false;
 
   init() {
     this.connectWS();
@@ -230,6 +231,25 @@ export class TeleopSystem extends createSystem({
   }
 
   gatherInputState(input: any) {
+    const leftGamepad = input?.gamepads?.left?.gamepad;
+    if (leftGamepad && leftGamepad.buttons) {
+      const menuButton = leftGamepad.buttons[4] || leftGamepad.buttons[5];
+
+      if (menuButton) {
+        if (menuButton.pressed) {
+          if (!this.menuButtonState) {
+            this.menuButtonState = true;
+            if (GlobalRefs.teleopPanelRoot) {
+              GlobalRefs.teleopPanelRoot.visible =
+                !GlobalRefs.teleopPanelRoot.visible;
+            }
+          }
+        } else {
+          this.menuButtonState = false;
+        }
+      }
+    }
+
     const fetchStart = performance.now();
     const timestamp_unix_ms = Date.now();
     const devices: Array<{
