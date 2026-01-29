@@ -35,6 +35,7 @@ export class TeleopSystem extends createSystem({
   private inputMode = "auto";
   private tempPosition = new Vector3();
   private tempQuaternion = new Quaternion();
+  private menuButtonState = false;
 
   init() {
     this.connectWS();
@@ -54,9 +55,20 @@ export class TeleopSystem extends createSystem({
         cameraButton.addEventListener("click", () => {
           // Use GlobalRefs - populated by index.ts at creation time
           // DO NOT access ECS queries during click events (causes freeze)
-          if (GlobalRefs.cameraPanelRoot) {
-            GlobalRefs.cameraPanelRoot.visible = !GlobalRefs.cameraPanelRoot.visible;
-          }
+          
+          // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
+          const panels = [
+            GlobalRefs.cameraPanelRoot,
+            GlobalRefs.leftWristPanelRoot,
+            GlobalRefs.rightWristPanelRoot,
+          ];
+          const anyVisible = panels.some((p) => p && p.visible);
+          const targetVisible = !anyVisible;
+
+          // Apply targetVisible to all existing panels
+          panels.forEach((p) => {
+            if (p) p.visible = targetVisible;
+          });
         });
       }
 
@@ -225,6 +237,26 @@ export class TeleopSystem extends createSystem({
   }
 
   gatherInputState(input: any) {
+    const leftGamepad = input?.gamepads?.left?.gamepad;
+    if (leftGamepad && leftGamepad.buttons && leftGamepad.buttons.length > 0) {
+      // The menu button is the last item of the left gamepad button array
+      const menuButton = leftGamepad.buttons[leftGamepad.buttons.length - 1];
+
+      if (menuButton) {
+        if (menuButton.pressed) {
+          if (!this.menuButtonState) {
+            this.menuButtonState = true;
+            if (GlobalRefs.teleopPanelRoot) {
+              GlobalRefs.teleopPanelRoot.visible =
+                !GlobalRefs.teleopPanelRoot.visible;
+            }
+          }
+        } else {
+          this.menuButtonState = false;
+        }
+      }
+    }
+
     const fetchStart = performance.now();
     const timestamp_unix_ms = Date.now();
     const devices: Array<{
