@@ -1,12 +1,21 @@
 from dataclasses import dataclass
 from typing import Any
 import asyncio
+import threading
+import time
+from dataclasses import dataclass
+from typing import Any
+
 import cv2
-from av import VideoFrame
-from aiortc import RTCPeerConnection, RTCSessionDescription
-from aiortc import RTCConfiguration, RTCIceServer
-from aiortc.sdp import candidate_from_sdp
+from aiortc import (
+    RTCConfiguration,
+    RTCIceServer,
+    RTCPeerConnection,
+    RTCSessionDescription,
+)
 from aiortc.mediastreams import VideoStreamTrack
+from aiortc.sdp import candidate_from_sdp
+from av import VideoFrame
 
 
 @dataclass(frozen=True)
@@ -50,6 +59,62 @@ def parse_video_config(payload: dict[str, Any]) -> list[VideoStreamConfig]:
     return configs
 
 
+class ThreadedVideoCapture:
+    def __init__(self, src: int | str, width: int, height: int, fps: int):
+        self.src = src
+        # Use V4L2 backend for Linux performance
+        self.cap = cv2.VideoCapture(src, cv2.CAP_V4L2)
+        # Minimize buffering
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+
+        # Determine format (MJPG is faster for high res, YUYV/default otherwise)
+        # For now, stick to default or try MJPG if supported
+        # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+        self.grabbed, self.frame = self.cap.read()
+        self.started = False
+        self.read_lock = threading.Lock()
+        self.new_frame_event = threading.Event()
+        self.stop_event = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    def start(self):
+        if self.started:
+            return self
+        self.started = True
+        self.thread = threading.Thread(target=self.update, daemon=True)
+        self.thread.start()
+        return self
+
+    def update(self):
+        while not self.stop_event.is_set():
+            ret, frame = self.cap.read()
+            if ret:
+                with self.read_lock:
+                    self.frame = frame
+                    self.grabbed = True
+                self.new_frame_event.set()
+            else:
+                # If read fails, wait briefly to avoid busy loop
+                time.sleep(0.01)
+
+    def read(self):
+        with self.read_lock:
+            frame = self.frame.copy() if self.grabbed else None
+            grabbed = self.grabbed
+        return grabbed, frame
+
+    def stop(self):
+        self.started = False
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join()
+        self.cap.release()
+
+
 class CameraStreamTrack(VideoStreamTrack):
     kind = "video"
 
@@ -57,21 +122,32 @@ class CameraStreamTrack(VideoStreamTrack):
         super().__init__()
         self.stream_id = config.id
         self._config = config
-        self._capture: cv2.VideoCapture | None = None
+        self._capture: ThreadedVideoCapture | None = None
 
-    def _ensure_capture(self) -> cv2.VideoCapture:
+    def _ensure_capture(self) -> ThreadedVideoCapture:
         if self._capture is None:
-            self._capture = cv2.VideoCapture(self._config.device)
-            self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._config.width)
-            self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._config.height)
-            self._capture.set(cv2.CAP_PROP_FPS, self._config.fps)
+            self._capture = ThreadedVideoCapture(
+                self._config.device,
+                self._config.width,
+                self._config.height,
+                self._config.fps,
+            )
+            self._capture.start()
         return self._capture
 
     async def recv(self):
         pts, time_base = await self.next_timestamp()
         capture = self._ensure_capture()
+
+        # Wait for new frame
+        while not capture.new_frame_event.is_set():
+            await asyncio.sleep(0.001)
+
+        capture.new_frame_event.clear()
         ok, frame = capture.read()
-        if not ok:
+
+        if not ok or frame is None:
+            # If failed to get frame, wait and retry
             await asyncio.sleep(0.01)
             return await self.recv()
 
@@ -80,6 +156,11 @@ class CameraStreamTrack(VideoStreamTrack):
         video_frame.pts = pts
         video_frame.time_base = time_base
         return video_frame
+
+    def stop(self):
+        if self._capture:
+            self._capture.stop()
+            self._capture = None
 
 
 def build_tracks(configs: list[VideoStreamConfig]) -> list[CameraStreamTrack]:
@@ -93,9 +174,11 @@ class VideoStreamManager:
         servers = [RTCIceServer(urls=url) for url in (ice_servers or [])]
         self._pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=servers))
         self._configs = configs
+        self._tracks: list[CameraStreamTrack] = []
 
     async def create_offer(self) -> RTCSessionDescription:
-        for track in build_tracks(self._configs):
+        self._tracks = build_tracks(self._configs)
+        for track in self._tracks:
             self._pc.addTrack(track)
         offer = await self._pc.createOffer()
         await self._pc.setLocalDescription(offer)
@@ -115,6 +198,9 @@ class VideoStreamManager:
 
     async def close(self) -> None:
         await self._pc.close()
+        for track in self._tracks:
+            track.stop()
+        self._tracks = []
 
 
 def route_video_message(manager: VideoStreamManager, message: dict) -> Any:
