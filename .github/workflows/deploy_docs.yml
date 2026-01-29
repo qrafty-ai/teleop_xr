@@ -27,7 +27,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install Python dependencies
-        run: uv pip install mkdocs-material
+        run: uv sync
 
       - name: Build Site (Strict)
         run: uv run mkdocs build --strict
