@@ -57,15 +57,18 @@ export class TeleopSystem extends createSystem({
           // DO NOT access ECS queries during click events (causes freeze)
           
           // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
-          let targetVisible = true;
-          if (GlobalRefs.cameraPanelRoot && GlobalRefs.cameraPanelRoot.visible) targetVisible = false;
-          else if (GlobalRefs.leftWristPanelRoot && GlobalRefs.leftWristPanelRoot.visible) targetVisible = false;
-          else if (GlobalRefs.rightWristPanelRoot && GlobalRefs.rightWristPanelRoot.visible) targetVisible = false;
+          const panels = [
+            GlobalRefs.cameraPanelRoot,
+            GlobalRefs.leftWristPanelRoot,
+            GlobalRefs.rightWristPanelRoot,
+          ];
+          const anyVisible = panels.some((p) => p && p.visible);
+          const targetVisible = !anyVisible;
 
-          // Apply targetVisible to all
-          if (GlobalRefs.cameraPanelRoot) GlobalRefs.cameraPanelRoot.visible = targetVisible;
-          if (GlobalRefs.leftWristPanelRoot) GlobalRefs.leftWristPanelRoot.visible = targetVisible;
-          if (GlobalRefs.rightWristPanelRoot) GlobalRefs.rightWristPanelRoot.visible = targetVisible;
+          // Apply targetVisible to all existing panels
+          panels.forEach((p) => {
+            if (p) p.visible = targetVisible;
+          });
         });
       }
 
@@ -235,9 +238,9 @@ export class TeleopSystem extends createSystem({
 
   gatherInputState(input: any) {
     const leftGamepad = input?.gamepads?.left?.gamepad;
-    if (leftGamepad && leftGamepad.buttons) {
-      // Index 7 is the Menu button on Quest. Index 5 is 'Y' (fallback).
-      const menuButton = leftGamepad.buttons[7] || leftGamepad.buttons[5];
+    if (leftGamepad && leftGamepad.buttons && leftGamepad.buttons.length > 0) {
+      // The menu button is the last item of the left gamepad button array
+      const menuButton = leftGamepad.buttons[leftGamepad.buttons.length - 1];
 
       if (menuButton) {
         if (menuButton.pressed) {
