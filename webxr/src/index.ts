@@ -128,6 +128,9 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     maxWidth: 1.6,
   });
   teleopPanel.setPosition(0, 1.29, -1.9);
+  if (teleopPanel.entity.object3D) {
+    GlobalRefs.teleopPanelRoot = teleopPanel.entity.object3D;
+  }
 
   const cameraPanel = new CameraPanel(world);
   cameraPanel.setPosition(1.2, 1.3, -1.5);
@@ -141,7 +144,13 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
   // Controller-attached camera panels (for wrist cameras)
   const leftControllerPanel = new ControllerCameraPanel(world, "left");
+  if (leftControllerPanel.entity.object3D) {
+    GlobalRefs.leftWristPanelRoot = leftControllerPanel.entity.object3D;
+  }
   const rightControllerPanel = new ControllerCameraPanel(world, "right");
+  if (rightControllerPanel.entity.object3D) {
+    GlobalRefs.rightWristPanelRoot = rightControllerPanel.entity.object3D;
+  }
 
   onCameraViewsChanged((config) => {
     if (cameraPanel.entity.object3D) {
