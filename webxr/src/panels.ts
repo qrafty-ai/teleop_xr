@@ -120,9 +120,12 @@ export class ControllerCameraPanel {
       color: 0x1a1a1a,
       transparent: true,
       opacity: 0.9,
+      depthWrite: false,
       side: DoubleSide
     });
     const bgMesh = new Mesh(bgGeo, bgMat);
+    bgMesh.position.z = -0.002;
+    bgMesh.renderOrder = 0;
     this.entity.object3D.add(bgMesh);
   }
 
@@ -146,6 +149,7 @@ export class ControllerCameraPanel {
     const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
     this.videoMesh = new Mesh(geometry, material);
     this.videoMesh.position.z = 0.001; // Slightly in front of bg
+    this.videoMesh.renderOrder = 1;
     this.entity.object3D.add(this.videoMesh);
   }
 }

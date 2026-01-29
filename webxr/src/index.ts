@@ -38,9 +38,13 @@ import { ControllerCameraPanelSystem } from "./controller_camera_system.js";
 import { GlobalRefs } from "./global_refs.js";
 
 import { initConsoleStream } from "./console_stream.js";
+import { onCameraViewsChanged, isViewEnabled, getCameraViewsConfig } from "./camera_views.js";
+import { resolveTrackView, type CameraViewKey } from "./track_routing.js";
 
 // Initialize console streaming for Quest VR debugging
 initConsoleStream();
+
+const disableHeadCameraPanel = true;
 
 const assets: AssetManifest = {
   chimeSound: {
@@ -129,33 +133,70 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   cameraPanel.setPosition(1.2, 1.3, -1.5);
   // Default to visible and store root reference globally for TeleopSystem
   if (cameraPanel.entity.object3D) {
-    cameraPanel.entity.object3D.visible = true;
-    GlobalRefs.cameraPanelRoot = cameraPanel.entity.object3D;
+    cameraPanel.entity.object3D.visible = !disableHeadCameraPanel;
+    if (!disableHeadCameraPanel) {
+      GlobalRefs.cameraPanelRoot = cameraPanel.entity.object3D;
+    }
   }
 
   // Controller-attached camera panels (for wrist cameras)
   const leftControllerPanel = new ControllerCameraPanel(world, "left");
   const rightControllerPanel = new ControllerCameraPanel(world, "right");
 
+  onCameraViewsChanged((config) => {
+    if (cameraPanel.entity.object3D) {
+      cameraPanel.entity.object3D.visible = disableHeadCameraPanel
+        ? false
+        : isViewEnabled("head");
+    }
+    if (leftControllerPanel.entity.object3D) {
+      leftControllerPanel.entity.object3D.visible = isViewEnabled("wrist_left");
+    }
+    if (rightControllerPanel.entity.object3D) {
+      rightControllerPanel.entity.object3D.visible = isViewEnabled("wrist_right");
+    }
+  });
+
+  const getFallbackOrder = (): CameraViewKey[] => {
+    const config = getCameraViewsConfig();
+    const order: CameraViewKey[] = [];
+
+    if (!disableHeadCameraPanel && config.head) {
+      order.push("head");
+    }
+    if (config.wrist_left) {
+      order.push("wrist_left");
+    }
+    if (config.wrist_right) {
+      order.push("wrist_right");
+    }
+
+    if (order.length === 0) {
+      if (!disableHeadCameraPanel) {
+        order.push("head");
+      }
+      order.push("wrist_left", "wrist_right");
+    }
+
+    return order;
+  };
+
   // Video connection
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const videoWsUrl = `${protocol}//${window.location.host}/ws`;
 
-  // Track assignment: first track -> left, second -> right
-  // (or use trackId if server provides left/right metadata)
+  // Track assignment: use trackId mapping with order-based fallback
   let trackCount = 0;
   const videoClient = new VideoClient(
     videoWsUrl,
     (stats) => {},
     (track, trackId) => {
-      // Main camera panel gets first track
-      cameraPanel.setVideoTrack(track);
-      
-      // Assign to controller panels based on trackId or order
-      if (trackId.includes("left") || trackCount === 0) {
+      const targetView = resolveTrackView(trackId, trackCount, getFallbackOrder());
+      if (targetView === "head" && !disableHeadCameraPanel) {
+        cameraPanel.setVideoTrack(track);
+      } else if (targetView === "wrist_left") {
         leftControllerPanel.setVideoTrack(track);
-      }
-      if (trackId.includes("right") || trackCount === 1) {
+      } else if (targetView === "wrist_right") {
         rightControllerPanel.setVideoTrack(track);
       }
       trackCount++;

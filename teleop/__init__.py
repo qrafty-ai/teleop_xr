@@ -17,6 +17,7 @@ from teleop.video_stream import (
     parse_video_config,
     route_video_message,
 )
+from teleop.camera_views import build_video_streams
 
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -176,6 +177,7 @@ class Teleop:
         natural_phone_orientation_euler=None,
         natural_phone_position=None,
         input_mode="controller",
+        camera_views=None,
     ):
         self.__logger = logging.getLogger("teleop")
         self.__logger.setLevel(logging.INFO)
@@ -184,6 +186,7 @@ class Teleop:
         self.__host = host
         self.__port = port
         self.__input_mode = input_mode
+        self.__camera_views = camera_views
 
         self.__relative_pose_init = None
         self.__absolute_pose_init = None
@@ -206,6 +209,9 @@ class Teleop:
 
         self.__video_streams: list[VideoStreamConfig] = []
         self.__video_sessions: dict[WebSocket, VideoStreamManager] = {}
+
+        if self.__camera_views is not None and not self.__video_streams:
+            self.set_video_streams(build_video_streams(self.__camera_views))
 
         # Configure logging
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
@@ -412,7 +418,13 @@ class Teleop:
             # Send config message on connect
             await websocket.send_text(
                 json.dumps(
-                    {"type": "config", "data": {"input_mode": self.__input_mode}}
+                    {
+                        "type": "config",
+                        "data": {
+                            "input_mode": self.__input_mode,
+                            "camera_views": self.__camera_views,
+                        },
+                    }
                 )
             )
 

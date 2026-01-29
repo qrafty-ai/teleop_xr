@@ -75,8 +75,8 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
       panel.entity.object3D.position.copy(this.tempPosition);
 
       // Billboard: rotate to face head (full 3-axis)
-      this.tempMatrix.lookAt(this.tempPosition, this.tempHeadPosition, this.tempUp);
-      panel.entity.object3D.quaternion.setFromRotationMatrix(this.tempMatrix);
+      // Use Object3D.lookAt to correctly point +Z (front face) at target
+      panel.entity.object3D.lookAt(this.tempHeadPosition);
 
     }
   }

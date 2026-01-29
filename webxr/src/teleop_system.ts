@@ -8,6 +8,7 @@ import {
 import { Quaternion, Vector3 } from "@iwsdk/core";
 import { Robot } from "./robot";
 import { GlobalRefs } from "./global_refs";
+import { setCameraViewsConfig } from "./camera_views";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
@@ -86,8 +87,11 @@ export class TeleopSystem extends createSystem({
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === "config" && message.data?.input_mode) {
-          this.inputMode = message.data.input_mode;
+        if (message.type === "config") {
+          if (message.data?.input_mode) {
+            this.inputMode = message.data.input_mode;
+          }
+          setCameraViewsConfig(message.data?.camera_views ?? null);
         }
       } catch (error) {
         console.warn("Failed to parse WS message", error);

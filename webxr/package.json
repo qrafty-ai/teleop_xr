@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@iwsdk/core": "0.2.2",
@@ -19,7 +20,8 @@
     "@types/three": "^0.178.1",
     "typescript": "^5.5.0",
     "vite": "^7.1.4",
-    "vite-plugin-mkcert": "^1.17.0"
+    "vite-plugin-mkcert": "^1.17.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=20.19.0"
