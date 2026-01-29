@@ -1,0 +1,28 @@
+site_name: TeleopXR
+site_description: WebXR teleoperation solution for robots.
+repo_url: https://github.com/Qrafty-AI/teleop
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Interfaces:
+    - Generic Python API: generic.md
+    - ROS2 Interface: ros2.md

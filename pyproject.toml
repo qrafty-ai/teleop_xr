@@ -54,4 +54,5 @@ utils = ["pin"]
 [dependency-groups]
 dev = [
   "pre-commit",
+  "mkdocs-material",
 ]

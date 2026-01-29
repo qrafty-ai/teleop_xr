@@ -1,0 +1,61 @@
+# ROS2 Interface
+
+TeleopXR includes a full-featured ROS2 interface that publishes XR state as ROS topics and subscribes to image topics for video streaming.
+
+## Running the Node
+
+You can run the ROS2 node using the Python module directly:
+
+```bash
+# Source your ROS2 installation first
+source /opt/ros/humble/setup.bash
+
+python -m teleop_xr.ros2 \
+  --camera-stream head=/camera/image_raw \
+  --input-mode auto
+```
+
+## Command Line Arguments
+
+*   `--host`: Host address (default: `0.0.0.0`)
+*   `--port`: Port number (default: `4443`)
+*   `--input-mode`: Input mode (`controller`, `hand`, or `auto`).
+*   `--frame-id`: The frame ID for published poses (default: `xr_local`).
+*   `--publish-hand-tf`: If set, publishes TF transforms for individual hand joints.
+*   `--camera-stream`: Map a WebXR view to a ROS image topic. Format: `key=topic`. Can be used multiple times.
+    *   Example: `--camera-stream head=/camera/color/image_raw --camera-stream gripper=/gripper/camera`
+
+## Published Topics
+
+The node publishes the following topics (namespaced under `xr/`):
+
+### Poses & Tracking
+*   `xr/head/pose` (`geometry_msgs/PoseStamped`): 6DoF pose of the headset.
+*   `xr/controller_{left|right}/pose` (`geometry_msgs/PoseStamped`): Grip pose of the controllers.
+*   `xr/hand_{left|right}/joints` (`geometry_msgs/PoseArray`): Array of poses for all 25 hand joints.
+
+### Inputs
+*   `xr/controller_{left|right}/joy` (`sensor_msgs/Joy`): Controller button and axis states.
+    *   **Buttons**: Standard WebXR gamepad button mapping (Trigger, Grip, A/B/X/Y, Thumbstick Click).
+    *   **Axes**: Joystick X/Y axes + Analog values for Trigger/Grip.
+*   `xr/controller_{left|right}/joy_touched` (`sensor_msgs/Joy`): Touch/capacitive states for buttons.
+
+### Diagnostics
+*   `xr/fetch_latency_ms` (`std_msgs/Float64`): Latency of fetching XR state on the headset.
+
+## Subscribed Topics
+
+### Video
+*   Any topic specified in `--camera-stream`.
+*   Supports `sensor_msgs/Image` (raw) and `sensor_msgs/CompressedImage` (compressed).
+*   **Note**: Requires `cv_bridge` for efficient conversion. If `cv_bridge` is missing, it falls back to a basic numpy conversion (supporting `rgb8`, `bgr8`, `mono8`).
+
+## TF Transforms
+
+The node broadcasts TF transforms for:
+*   `xr/head`
+*   `xr/controller_left/pose`
+*   `xr/controller_right/pose`
+*   `xr/hand_{side}/{joint_name}` (Only if `--publish-hand-tf` is enabled)
+
+All transforms are relative to the frame specified by `--frame-id` (default: `xr_local`).
