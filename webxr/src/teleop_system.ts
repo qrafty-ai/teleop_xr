@@ -55,7 +55,12 @@ export class TeleopSystem extends createSystem({
           // Use GlobalRefs - populated by index.ts at creation time
           // DO NOT access ECS queries during click events (causes freeze)
           if (GlobalRefs.cameraPanelRoot) {
-            GlobalRefs.cameraPanelRoot.visible = !GlobalRefs.cameraPanelRoot.visible;
+            const newState = !GlobalRefs.cameraPanelRoot.visible;
+            GlobalRefs.cameraPanelRoot.visible = newState;
+            if (GlobalRefs.leftWristPanelRoot)
+              GlobalRefs.leftWristPanelRoot.visible = newState;
+            if (GlobalRefs.rightWristPanelRoot)
+              GlobalRefs.rightWristPanelRoot.visible = newState;
           }
         });
       }
