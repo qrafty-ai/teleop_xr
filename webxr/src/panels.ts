@@ -23,10 +23,10 @@ export class DraggablePanel {
     // Handle Visuals - Styling aligned with uikit panel
     const handleWidth = width * 0.5;
     const handleGeo = new BoxGeometry(handleWidth, handleHeight, 0.05);
-    const handleMat = new MeshBasicMaterial({ 
+    const handleMat = new MeshBasicMaterial({
       color: 0xe4e4e7, // Light grey
-      transparent: true, 
-      opacity: 0.5 
+      transparent: true,
+      opacity: 0.5
     });
     const handleMesh = new Mesh(handleGeo, handleMat);
     this.entity.object3D.add(handleMesh);
@@ -88,12 +88,12 @@ export class CameraPanel extends DraggablePanel {
 
     const texture = new VideoTexture(this.videoElement);
     // Aspect ratio 1.5 roughly
-    const geometry = new PlaneGeometry(0.6, 0.4); 
+    const geometry = new PlaneGeometry(0.6, 0.4);
     const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
     this.videoMesh = new Mesh(geometry, material);
-    
+
     // Position it slightly in front of the panel to avoid z-fighting
-    this.videoMesh.position.z = 0.02; 
+    this.videoMesh.position.z = 0.02;
     // Adjust y to be centered or below title
     this.videoMesh.position.y = -0.1;
 
@@ -110,13 +110,13 @@ export class ControllerCameraPanel {
 
   constructor(world: World, handedness: "left" | "right") {
     this.handedness = handedness;
-    
+
     // Create a simple transform entity (no grabbable, no panel UI)
     this.entity = world.createTransformEntity();
-    
+
     // Create a background plane for the video
     const bgGeo = new PlaneGeometry(0.2, 0.15);
-    const bgMat = new MeshBasicMaterial({ 
+    const bgMat = new MeshBasicMaterial({
       color: 0x1a1a1a,
       transparent: true,
       opacity: 0.9,

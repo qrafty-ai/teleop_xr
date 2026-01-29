@@ -32,7 +32,7 @@
 gatherXRState(time: number, frame: XRFrame) {
   const session = this.world.app.renderer.xr.getSession();
   if (!session) return null;
-  
+
   // Logic from teleop/index.html...
   // ...
 }
@@ -59,4 +59,3 @@ gatherXRState(time: number, frame: XRFrame) {
 
 **Step 2: Push**
 Commit and push to update PR.
-

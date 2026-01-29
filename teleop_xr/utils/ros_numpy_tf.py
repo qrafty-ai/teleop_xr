@@ -22,13 +22,11 @@ def ros2numpy(pose):
         ]
     elif isinstance(pose, geometry_msgs.msg.Transform):
         xyz = [pose.translation.x, pose.translation.y, pose.translation.z]
-        q = [pose.rotation.w, pose.rotation.x,
-             pose.rotation.y, pose.rotation.z]
+        q = [pose.rotation.w, pose.rotation.x, pose.rotation.y, pose.rotation.z]
     else:
         raise ValueError("Unknown type")
 
-    transform = t3d.affines.compose(
-        xyz, t3d.quaternions.quat2mat(q), [1, 1, 1])
+    transform = t3d.affines.compose(xyz, t3d.quaternions.quat2mat(q), [1, 1, 1])
     return transform
 
 

@@ -1,0 +1,24 @@
+ci:
+  skip: [ty]
+
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+-   repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+    -   id: clang-format
+        args: ["--style=file"]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.11.10
+  hooks:
+    # Run the linter.
+    - id: ruff
+      args: [ "--unsafe-fixes", "--fix" ]
+    # Run the formatter.
+    - id: ruff-format

@@ -176,7 +176,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     // Register with callbacks that resolve raySpaces dynamically
     const getLeftRaySpace = () => world.player?.raySpaces?.left;
     const getRightRaySpace = () => world.player?.raySpaces?.right;
-    
+
     // The system expects controllerObject - we'll modify the system to handle getters
     // For now, pass a reference that will be resolved each frame
     (controllerCameraSystem as any).registerPanelWithGetter(leftControllerPanel, getLeftRaySpace);

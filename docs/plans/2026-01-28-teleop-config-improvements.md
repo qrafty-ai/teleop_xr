@@ -4,7 +4,7 @@
 
 **Goal:** Improve teleop configuration by adding a menu button toggle for the config panel and ensuring the camera toggle button closes all camera views (including wrist cameras).
 
-**Architecture:** 
+**Architecture:**
 - Update `GlobalRefs` to store references to all relevant panels (Teleop, Wrist Left/Right).
 - Populate these references in `index.ts` upon instantiation.
 - Modify `TeleopSystem` to handle the camera button click (toggling all refs) and monitor the left controller's menu button (toggling the teleop panel).
@@ -95,12 +95,12 @@ In `init()` (around line 52), update the click listener to toggle all camera pan
           // If head camera is visible, close everything.
           // If head camera is hidden, open everything (or just head? Requirement: "toggle camera now closes all")
           // Interpretation: Switch state. If we are turning ON, turn ON. If OFF, turn OFF all.
-          
+
           // Let's use cameraPanelRoot as the master state
           if (GlobalRefs.cameraPanelRoot) {
              const newState = !GlobalRefs.cameraPanelRoot.visible;
              GlobalRefs.cameraPanelRoot.visible = newState;
-             
+
              if (GlobalRefs.leftWristPanelRoot) GlobalRefs.leftWristPanelRoot.visible = newState;
              if (GlobalRefs.rightWristPanelRoot) GlobalRefs.rightWristPanelRoot.visible = newState;
           }
@@ -142,8 +142,8 @@ In `gatherInputState` (around line 251 where `leftDevice` is built), check for b
         // We'll try index 4 and 5 (Menu/X/Y)
         // WebXR standard mapping: 4 is X, 5 is Y. System menu is usually reserved.
         // But often 'X' is used for menu in apps.
-        const menuButton = leftGamepad.buttons[4] || leftGamepad.buttons[5]; 
-        
+        const menuButton = leftGamepad.buttons[4] || leftGamepad.buttons[5];
+
         if (menuButton) {
             if (menuButton.pressed) {
                 if (!this.menuButtonState) {

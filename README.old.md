@@ -6,7 +6,7 @@ Transform your phone into a robot arm teleoperation device in three simple steps
 2. Open the provided URL on your phone.
 3. Tap `Start`, then enter XR and move your controllers/hands to stream poses and inputs.
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > Your phone has to support the [WebXR API](https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API). Unfortunately, the iPhone doesn't support the WebXR API.
 
 The web application leverages the WebXR API, which combines your phone’s sensors to detect its orientation and position in 3D space. The server receives this data and sends it to the robot arm controller.
@@ -152,7 +152,7 @@ Explore the examples to learn how to use the package in various scenarios:
 
 The package includes several utility classes to simplify robot arm integration:
 
-> [!NOTE]  
+> [!NOTE]
 > To use the utility classes, install the package with the additional dependencies:
 > ```bash
 > pip install teleop[utils]
@@ -164,7 +164,7 @@ A Pinocchio-based servoing and kinematics for robotic manipulators.
 
 **Key Features:**
 - Forward/inverse kinematics using Pinocchio
-- Pose-based servo control with velocity/acceleration limits  
+- Pose-based servo control with velocity/acceleration limits
 - Real-time 3D visualization
 - Joint-level control and monitoring
 
