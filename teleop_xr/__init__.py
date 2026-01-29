@@ -24,6 +24,11 @@ from teleop_xr.camera_views import build_video_streams
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "unknown"
+
 
 def _resolve_frontend_paths(package_dir: str) -> tuple[str, str, str, str]:
     dist_dir = os.path.join(package_dir, "dist")
