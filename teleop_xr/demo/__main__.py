@@ -22,6 +22,8 @@ class DemoCLI(CommonCLI):
     wrist_right_device: Union[int, str, None] = None
     # Extra cameras: --camera my-view /dev/video4
     camera: Dict[str, Union[int, str]] = field(default_factory=dict)
+    # Disable TUI for cleaner logging debugging
+    no_tui: bool = False
 
 
 def generate_table(xr_state: Optional[XRState] = None) -> Table:
@@ -121,6 +123,15 @@ def main():
 
     teleop = Teleop(settings=settings)
     teleop.set_pose(np.eye(4))
+
+    if cli.no_tui:
+        print("TUI Disabled. Running in headless mode (logs only).")
+        # Just run teleop without Rich Live context
+        try:
+            teleop.run()
+        except KeyboardInterrupt:
+            pass
+        return
 
     console = Console()
 
