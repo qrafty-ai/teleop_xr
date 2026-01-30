@@ -111,3 +111,7 @@ def on_xr_update(pose: np.ndarray, xr_state_dict: dict):
 teleop.subscribe(on_xr_update)
 teleop.run()
 ```
+
+## Acknowledgments
+
+This project is forked from [SpesRobotics/teleop](https://github.com/SpesRobotics/teleop). We are grateful for their foundational work in creating a WebXR-based teleoperation solution.

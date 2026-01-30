@@ -3,14 +3,14 @@ from typing import List, Optional, Literal, Dict
 from pydantic import BaseModel
 
 
-class XRButton(BaseModel):
+class XRButtonState(BaseModel):
     pressed: bool
     touched: bool
     value: float
 
 
 class XRGamepad(BaseModel):
-    buttons: List[XRButton]
+    buttons: List[XRButtonState]
     axes: List[float]
 
 
@@ -49,3 +49,11 @@ class XRState(BaseModel):
 class XRStateMessage(BaseModel):
     type: Literal["xr_state"] = "xr_state"
     data: XRState
+
+
+class XRButtonEvent(BaseModel):
+    type: str
+    button: str
+    controller: str
+    timestamp_ms: float
+    hold_duration_ms: Optional[float] = None

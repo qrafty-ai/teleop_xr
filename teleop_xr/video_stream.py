@@ -31,8 +31,8 @@ class VideoStreamConfig:
 
 def parse_video_config(payload: dict[str, Any]) -> list[VideoStreamConfig]:
     streams = payload.get("streams", [])
-    if not isinstance(streams, list) or not streams:
-        raise ValueError("streams must be a non-empty list")
+    if not isinstance(streams, list):
+        raise ValueError("streams must be a list")
     ids: set[str] = set()
     configs: list[VideoStreamConfig] = []
     for stream in streams:

@@ -1,6 +1,7 @@
 import threading
+import json
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 import cv2
 import numpy as np
 import tyro
@@ -8,13 +9,14 @@ from teleop_xr import Teleop, TF_RUB2FLU
 from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
+from teleop_xr.events import EventProcessor, EventSettings
 import transforms3d as t3d
 
 try:
     import rclpy
     from geometry_msgs.msg import Pose, PoseStamped, PoseArray, TransformStamped
     from sensor_msgs.msg import Joy, Image, CompressedImage
-    from std_msgs.msg import Float64
+    from std_msgs.msg import Float64, String
     from tf2_ros import TransformBroadcaster
     from builtin_interfaces.msg import Time
 
@@ -284,6 +286,23 @@ def main():
                 broadcaster.sendTransform(tf)
 
         get_publisher(PoseArray, f"xr/hand_{handed}/joints").publish(pose_array)
+
+    event_processor = EventProcessor(EventSettings())
+
+    def publish_button_event(event):
+        try:
+            msg = String()
+            msg.data = json.dumps(asdict(event))
+            get_publisher(String, f"xr/events/{event.type.value}").publish(msg)
+        except Exception as exc:
+            node.get_logger().warning(f"publish_button_event error: {exc}")
+
+    event_processor.on_button_down(callback=publish_button_event)
+    event_processor.on_button_up(callback=publish_button_event)
+    event_processor.on_double_press(callback=publish_button_event)
+    event_processor.on_long_press(callback=publish_button_event)
+
+    teleop.subscribe(event_processor.process)
 
     def teleop_xr_state_callback(_pose, xr_state):
         try:
