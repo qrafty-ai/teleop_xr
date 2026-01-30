@@ -110,6 +110,8 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     const reserved = ["wrist_left", "wrist_right"];
     const floatingKeys = allKeys.filter((k) => !reserved.includes(k)).sort();
 
+    console.log("[Video] Updating camera panels. Config keys:", allKeys, "Floating:", floatingKeys);
+
     floatingKeys.forEach((key, index) => {
       let panel = cameraPanels.get(key);
       if (!panel) {
@@ -183,19 +185,31 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     (track, trackId) => {
       const targetView = resolveTrackView(trackId, trackCount, getFallbackOrder());
 
+      // Log routing decisions for debugging
+      console.log(`[Video] New track received. ID: ${trackId}, Index: ${trackCount}, Resolved Target: ${targetView}`);
+
       if (!targetView) {
         trackCount++;
         return;
       }
 
       if (targetView === "wrist_left") {
+        console.log(`[Video] Assigning to Left Wrist`);
         leftControllerPanel.setVideoTrack(track);
       } else if (targetView === "wrist_right") {
+        console.log(`[Video] Assigning to Right Wrist`);
         rightControllerPanel.setVideoTrack(track);
       } else {
         const panel = cameraPanels.get(targetView);
-        if (panel && !disableHeadCameraPanel) {
-          panel.setVideoTrack(track);
+        if (panel) {
+          console.log(`[Video] Assigning to Floating Panel: ${targetView}`);
+          if (!disableHeadCameraPanel) {
+            panel.setVideoTrack(track);
+          } else {
+            console.log(`[Video] Head/Floating panels disabled by config`);
+          }
+        } else {
+           console.warn(`[Video] Target view '${targetView}' not found in cameraPanels map`, Array.from(cameraPanels.keys()));
         }
       }
       trackCount++;
