@@ -58,6 +58,15 @@ export class DraggablePanel {
   setPosition(x: number, y: number, z: number) {
     this.entity.object3D.position.set(x, y, z);
   }
+
+  dispose() {
+    if (this.panelEntity && typeof this.panelEntity.destroy === "function") {
+      this.panelEntity.destroy();
+    }
+    if (this.entity && typeof this.entity.destroy === "function") {
+      this.entity.destroy();
+    }
+  }
 }
 
 export class CameraPanel extends DraggablePanel {
@@ -69,6 +78,30 @@ export class CameraPanel extends DraggablePanel {
       maxHeight: 0.6,
       maxWidth: 0.8,
     });
+  }
+
+  dispose() {
+    if (this.videoElement) {
+      this.videoElement.pause();
+      this.videoElement.srcObject = null;
+      this.videoElement.remove();
+      this.videoElement = null;
+    }
+
+    if (this.videoMesh) {
+      this.videoMesh.geometry.dispose();
+      if (Array.isArray(this.videoMesh.material)) {
+        this.videoMesh.material.forEach((m) => m.dispose());
+      } else {
+        (this.videoMesh.material as any).dispose();
+      }
+      if (this.panelEntity && this.panelEntity.object3D) {
+        this.panelEntity.object3D.remove(this.videoMesh);
+      }
+      this.videoMesh = null;
+    }
+
+    super.dispose();
   }
 
   setVideoTrack(track: MediaStreamTrack) {

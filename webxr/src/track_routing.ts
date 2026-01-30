@@ -1,4 +1,4 @@
-export type CameraViewKey = "head" | "wrist_left" | "wrist_right";
+export type CameraViewKey = string;
 
 const defaultOrder: CameraViewKey[] = ["head", "wrist_left", "wrist_right"];
 
@@ -7,11 +7,12 @@ export function resolveTrackView(
   trackCount: number,
   order: readonly CameraViewKey[] = defaultOrder,
 ): CameraViewKey | null {
-  if (trackId === "head" || trackId === "wrist_left" || trackId === "wrist_right") {
+  const fallbackOrder = order.length > 0 ? order : defaultOrder;
+
+  if (trackId && fallbackOrder.includes(trackId)) {
     return trackId;
   }
 
-  const fallbackOrder = order.length > 0 ? order : defaultOrder;
   if (typeof trackId === "string" && /^[0-9]+$/.test(trackId)) {
     const index = Number(trackId);
     if (Number.isInteger(index) && index >= 0 && index < fallbackOrder.length) {

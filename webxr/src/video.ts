@@ -21,9 +21,11 @@ export class VideoClient {
       this.pc = new RTCPeerConnection();
       this.pc.ontrack = (event) => {
         if (this.onTrack && event.track.kind === "video") {
-          // Use transceiver mid or track id as identifier
-          const trackId = event.transceiver?.mid || event.track.id;
-          this.onTrack(event.track, trackId);
+          // Use track id (if explicit) or transceiver mid as identifier
+          const trackId = event.track.id || event.transceiver?.mid;
+          if (trackId) {
+            this.onTrack(event.track, trackId);
+          }
         }
       };
       this.pc.onicecandidate = (e) => {

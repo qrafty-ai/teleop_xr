@@ -2,11 +2,7 @@ export type CameraView = {
   device: string;
 };
 
-export type CameraViewsConfig = {
-  head?: CameraView;
-  wrist_left?: CameraView;
-  wrist_right?: CameraView;
-};
+export type CameraViewsConfig = Record<string, CameraView>;
 
 let currentConfig: CameraViewsConfig = {};
 const handlers: ((config: CameraViewsConfig) => void)[] = [];
@@ -20,7 +16,7 @@ export function getCameraViewsConfig(): CameraViewsConfig {
   return currentConfig;
 }
 
-export function isViewEnabled(key: keyof CameraViewsConfig): boolean {
+export function isViewEnabled(key: string): boolean {
   return !!currentConfig[key];
 }
 

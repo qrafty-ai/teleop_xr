@@ -2,7 +2,7 @@
 // This avoids ECS query access during UI events which causes freezes
 
 export const GlobalRefs = {
-  cameraPanelRoot: null as any,
+  cameraPanels: new Map<string, any>(),
   teleopPanelRoot: null as any,
   leftWristPanelRoot: null as any,
   rightWristPanelRoot: null as any,
