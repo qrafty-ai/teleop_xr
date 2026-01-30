@@ -1,7 +1,7 @@
 import numpy as np
 import tyro
-from dataclasses import dataclass
-from typing import Union, Optional
+from dataclasses import dataclass, field
+from typing import Union, Optional, Dict
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -20,8 +20,8 @@ class DemoCLI(CommonCLI):
     head_device: Union[int, str, None] = None
     wrist_left_device: Union[int, str, None] = None
     wrist_right_device: Union[int, str, None] = None
-    # Extra cameras: --camera.my-view /dev/video4
-    camera: Optional[dict[str, Union[int, str]]] = None
+    # Extra cameras: --camera my-view /dev/video4
+    camera: Dict[str, Union[int, str]] = field(default_factory=dict)
 
 
 def generate_table(xr_state: Optional[XRState] = None) -> Table:
@@ -101,6 +101,7 @@ def main():
         cli.head_device is None
         and cli.wrist_left_device is None
         and cli.wrist_right_device is None
+        and not cli.camera
     ):
         cli.head_device = 0  # Default to index 0
 

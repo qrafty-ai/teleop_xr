@@ -120,7 +120,9 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
         if (panel.entity.object3D) {
           GlobalRefs.cameraPanels.set(key, panel.entity.object3D);
-          panel.entity.object3D.visible = !disableHeadCameraPanel;
+          // Only disable initial visibility if this is the HEAD panel and disableHeadCameraPanel is true
+          const shouldHide = key === "head" && disableHeadCameraPanel;
+          panel.entity.object3D.visible = !shouldHide;
         }
       }
 
@@ -203,10 +205,11 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
         const panel = cameraPanels.get(targetView);
         if (panel) {
           console.log(`[Video] Assigning to Floating Panel: ${targetView}`);
-          if (!disableHeadCameraPanel) {
+          // Allow video assignment for all panels unless it's HEAD and explicitly disabled
+          if (targetView !== "head" || !disableHeadCameraPanel) {
             panel.setVideoTrack(track);
           } else {
-            console.log(`[Video] Head/Floating panels disabled by config`);
+            console.log(`[Video] Head panel disabled by config`);
           }
         } else {
            console.warn(`[Video] Target view '${targetView}' not found in cameraPanels map`, Array.from(cameraPanels.keys()));
