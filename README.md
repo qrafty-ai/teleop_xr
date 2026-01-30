@@ -111,6 +111,43 @@ teleop.subscribe(on_xr_update)
 teleop.run()
 ```
 
+### Event System
+
+TeleopXR includes an event system for handling complex button interactions like double-presses and long-presses.
+
+```python
+from teleop_xr import Teleop, TeleopSettings
+from teleop_xr.events import EventProcessor, EventSettings, XRButton
+
+# 1. Initialize Processor
+event_processor = EventProcessor(EventSettings(
+    double_press_threshold_ms=300,
+    long_press_threshold_ms=500
+))
+
+# 2. Register Callbacks
+def on_trigger_down(event):
+    print(f"Trigger pressed on {event.controller} hand!")
+
+def on_primary_double_press(event):
+    print("Primary button double-pressed!")
+
+# You can filter by button and/or controller
+event_processor.on_button_down(button=XRButton.TRIGGER, callback=on_trigger_down)
+event_processor.on_double_press(button=XRButton.BUTTON_PRIMARY, callback=on_primary_double_press)
+
+# 3. Subscribe to Teleop
+teleop = Teleop(TeleopSettings())
+teleop.subscribe(event_processor.process)
+teleop.run()
+```
+
+#### Available Event Types
+*   `BUTTON_DOWN`: Fired when a button is first pressed.
+*   `BUTTON_UP`: Fired when a button is released.
+*   `DOUBLE_PRESS`: Fired on the second press of a double-click interaction.
+*   `LONG_PRESS`: Fired once the button has been held for the configured threshold.
+
 ## Development
 
 For developers contributing to TeleopXR or customizing the frontend:
