@@ -74,7 +74,7 @@ export class CameraPanel extends DraggablePanel {
   private videoElement: HTMLVideoElement | null = null;
 
   constructor(world: World) {
-    super(world, "./ui/camera.uikitml", {
+    super(world, "./ui/camera.json", {
       maxHeight: 0.6,
       maxWidth: 0.8,
     });
