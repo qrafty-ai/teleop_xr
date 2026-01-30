@@ -157,7 +157,7 @@ class CameraStreamTrack(VideoStreamTrack):
 
     def __init__(self, source: VideoSource, stream_id: str):
         super().__init__()
-        self.id = stream_id
+        self._id = stream_id
         self.source = source
         self.stream_id = stream_id
 
