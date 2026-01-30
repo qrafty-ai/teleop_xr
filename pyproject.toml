@@ -25,7 +25,7 @@ path = "hatch_build.py"
 [project]
 name = "teleop_xr"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 description = "Turns your phone into a robot arm teleoperation device by leveraging the WebXR API"
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
