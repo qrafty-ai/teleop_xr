@@ -21,17 +21,35 @@
 
 ## 🚀 Quick Start (Demo)
 
-Use the built-in demo to verify connectivity and visualize the XR state data in real-time.
+Use the built-in demo to verify connectivity and visualize the XR state data and button events in real-time.
 
 ```bash
 pip install teleop-xr
 python -m teleop_xr.demo
 ```
 
-This will launch a server (default port 4433) and display a **Rich-based live table** in your terminal.
-1. Open the displayed URL (https://<ip>:4433) in your headset.
+This will launch a server (default port 4443) and display a **Rich-based TUI** in your terminal with:
+- **XR Device State**: Live table showing position, orientation, and inputs for Head, Controllers, and Hands.
+- **Event Log**: Real-time display of button gestures (press, release, double-press, long-press).
+
+### Usage
+
+1. Open the displayed URL (https://<ip>:4443) in your headset.
 2. Enter VR mode.
-3. You will see the table update with high-frequency data for Head, Controllers, and Hands (Position, Orientation, Buttons).
+3. See the state table update with high-frequency data and the event log capture button interactions.
+
+### CLI Options
+
+```bash
+# Customize event detection thresholds
+python -m teleop_xr.demo --double-press-ms 250 --long-press-ms 800
+
+# Disable event detection for a simpler view
+python -m teleop_xr.demo --no-enable-events
+
+# Configure video streaming from cameras
+python -m teleop_xr.demo --head-device 0 --wrist-left-device 1
+```
 
 ## 🤖 ROS2 Integration
 
