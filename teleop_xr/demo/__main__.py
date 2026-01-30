@@ -20,7 +20,7 @@ class DemoCLI(CommonCLI):
     head_device: Union[int, str, None] = None
     wrist_left_device: Union[int, str, None] = None
     wrist_right_device: Union[int, str, None] = None
-    # Extra cameras: --camera my-view /dev/video4
+    # Extra cameras: --camera key1 dev1 key2 dev2 (e.g., --camera left /dev/video4 right /dev/video6)
     camera: Dict[str, Union[int, str]] = field(default_factory=dict)
     # Disable TUI for cleaner logging debugging
     no_tui: bool = False
