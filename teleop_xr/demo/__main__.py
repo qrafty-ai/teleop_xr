@@ -7,7 +7,7 @@ for detecting button gestures (press, release, double-press, long-press).
 import numpy as np
 import tyro
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Union, Optional
 
 from rich.console import Console, Group
@@ -288,9 +288,6 @@ def main():
         processor.on_double_press(callback=log_event)
         processor.on_long_press(callback=log_event)
 
-    # State container for current XR state
-    current_state: dict = {"xr_state": None}
-
     console = Console()
 
     initial_layout = generate_layout(None, event_log, cli.enable_events)
@@ -305,7 +302,6 @@ def main():
 
                 # Validate the incoming dict against the Pydantic model
                 xr_state = XRState.model_validate(xr_state_dict)
-                current_state["xr_state"] = xr_state
 
                 # Update the display
                 live.update(
@@ -317,15 +313,21 @@ def main():
 
         teleop.subscribe(callback)
 
+        # Build startup information message
+        startup_lines = [
+            "[bold]TeleopXR Demo[/bold]\n",
+            f"• Server: https://{cli.host}:{cli.port}",
+            f"• Event detection: {'[green]enabled[/green]' if cli.enable_events else '[yellow]disabled[/yellow]'}",
+        ]
+        if cli.enable_events:
+            startup_lines.append(f"• Double-press threshold: {cli.double_press_ms}ms")
+            startup_lines.append(f"• Long-press threshold: {cli.long_press_ms}ms")
+        startup_lines.append("\n[dim]Press Ctrl+C to exit[/dim]")
+
         # Print startup information
         console.print(
             Panel(
-                "[bold]TeleopXR Demo[/bold]\n\n"
-                f"• Server: https://{cli.host}:{cli.port}\n"
-                f"• Event detection: {'[green]enabled[/green]' if cli.enable_events else '[yellow]disabled[/yellow]'}\n"
-                f"• Double-press threshold: {cli.double_press_ms}ms\n"
-                f"• Long-press threshold: {cli.long_press_ms}ms\n\n"
-                "[dim]Press Ctrl+C to exit[/dim]",
+                "\n".join(startup_lines),
                 title="[bold cyan]Starting...[/bold cyan]",
                 box=box.DOUBLE,
             )
