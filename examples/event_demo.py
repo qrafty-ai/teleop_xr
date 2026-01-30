@@ -4,7 +4,7 @@ Example showing how to use the TeleopXR event system to handle button interactio
 
 import sys
 from teleop_xr import Teleop, TeleopSettings
-from teleop_xr.events import EventProcessor, EventSettings, XRButton, ButtonEvent
+from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
 
 
 def main():
@@ -30,21 +30,19 @@ def main():
             f"[EVENT] {event.controller.value} {event.button.value} UP (held {event.hold_duration_ms:.0f}ms)"
         )
 
-    def on_trigger_double_press(event: ButtonEvent):
-        print(f"*** DOUBLE PRESS: {event.controller.value} TRIGGER ***")
+    def on_generic_double_press(event: ButtonEvent):
+        print(f"*** DOUBLE PRESS: {event.controller.value} {event.button.value} ***")
 
-    def on_primary_long_press(event: ButtonEvent):
-        print(f"*** LONG PRESS: {event.controller.value} PRIMARY BUTTON ***")
+    def on_generic_long_press(event: ButtonEvent):
+        print(f"*** LONG PRESS: {event.controller.value} {event.button.value} ***")
 
     # Catch-all callbacks for any button down/up
     processor.on_button_down(callback=on_any_button_down)
     processor.on_button_up(callback=on_any_button_up)
 
-    # Specific callbacks with filters
-    processor.on_double_press(button=XRButton.TRIGGER, callback=on_trigger_double_press)
-    processor.on_long_press(
-        button=XRButton.BUTTON_PRIMARY, callback=on_primary_long_press
-    )
+    # Generic callbacks for double/long press detection on ALL buttons
+    processor.on_double_press(callback=on_generic_double_press)
+    processor.on_long_press(callback=on_generic_long_press)
 
     # 4. Subscribe and Run
     print("Event system demo starting...")

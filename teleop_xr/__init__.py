@@ -456,6 +456,11 @@ class Teleop:
                         log_data = message.get("data", {})
                         level = log_data.get("level", "log")
                         msg = log_data.get("message", "")
+
+                        # Suppress spammy WS errors from WebXR
+                        if "WS Error" in msg and "isTrusted" in msg:
+                            continue
+
                         self.__logger.info(f"[WebXR:{level}] {msg}")
                     elif message.get("type") in {
                         "video_request",
