@@ -156,7 +156,9 @@ def generate_state_table(xr_state: Optional[XRState] = None) -> Table:
 def generate_event_panel(event_log: deque) -> Panel:
     """Generate a rich panel showing recent button events."""
     if not event_log:
-        content = Text("No events yet. Press buttons in VR!", justify="left", style="dim")
+        content = Text(
+            "No events yet. Press buttons in VR!", justify="left", style="dim"
+        )
     else:
         lines = []
         for event in reversed(event_log):
@@ -304,9 +306,7 @@ def main():
                 xr_state = XRState.model_validate(xr_state_dict)
 
                 # Update the display
-                live.update(
-                    generate_layout(xr_state, event_log, cli.enable_events)
-                )
+                live.update(generate_layout(xr_state, event_log, cli.enable_events))
             except Exception:
                 # In case of validation error or other issues, just ignore to keep UI running
                 pass
