@@ -26,14 +26,18 @@ def parse_device_spec(value: str | int) -> int | str:
     raise ValueError(f"Invalid device spec: {value}")
 
 
-def build_camera_views_config(head=None, wrist_left=None, wrist_right=None) -> dict:
+def build_camera_views_config(
+    head=None, wrist_left=None, wrist_right=None, extra_streams: dict = None
+) -> dict:
     """
     Inputs are optional device specs (int/str/None)
-    Returns dict with keys for provided values only: 'head', 'wrist_left', 'wrist_right'
+    Returns dict with keys for provided values only: 'head', 'wrist_left', 'wrist_right', and any extras
     Each entry is { "device": <normalized> }
     If the same device is mapped to multiple views, allow it but emit a logging.warning
     """
     inputs = {"head": head, "wrist_left": wrist_left, "wrist_right": wrist_right}
+    if extra_streams:
+        inputs.update(extra_streams)
 
     config = {}
     device_to_views = {}
@@ -59,11 +63,12 @@ def build_camera_views_config(head=None, wrist_left=None, wrist_right=None) -> d
 def build_video_streams(camera_views: dict) -> dict:
     """
     Returns { "streams": [{"id": <view_key>, "device": <device>}, ...] }
-    Preserve stable order: head, wrist_left, wrist_right if present
+    Preserve stable order: head, wrist_left, wrist_right if present, then others alphabetically
     """
     order = ["head", "wrist_left", "wrist_right"]
     streams = []
 
+    # First, add ordered known keys
     for view_key in order:
         if view_key in camera_views:
             val = camera_views[view_key]
@@ -74,5 +79,16 @@ def build_video_streams(camera_views: dict) -> dict:
                 device = val["device"]
 
             streams.append({"id": view_key, "device": device})
+
+    # Then add any other keys alphabetically
+    extra_keys = sorted([k for k in camera_views.keys() if k not in order])
+    for view_key in extra_keys:
+        val = camera_views[view_key]
+        if hasattr(val, "device"):
+            device = val.device
+        else:
+            device = val["device"]
+
+        streams.append({"id": view_key, "device": device})
 
     return {"streams": streams}

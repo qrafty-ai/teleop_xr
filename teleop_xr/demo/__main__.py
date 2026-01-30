@@ -20,6 +20,8 @@ class DemoCLI(CommonCLI):
     head_device: Union[int, str, None] = None
     wrist_left_device: Union[int, str, None] = None
     wrist_right_device: Union[int, str, None] = None
+    # Extra cameras: --camera.my-view /dev/video4
+    camera: Optional[dict[str, Union[int, str]]] = None
 
 
 def generate_table(xr_state: Optional[XRState] = None) -> Table:
@@ -106,6 +108,7 @@ def main():
         head=cli.head_device,
         wrist_left=cli.wrist_left_device,
         wrist_right=cli.wrist_right_device,
+        extra_streams=cli.camera,
     )
 
     settings = TeleopSettings(
