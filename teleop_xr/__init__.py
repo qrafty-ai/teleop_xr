@@ -32,14 +32,17 @@ except ImportError:
 
 
 def _resolve_frontend_paths(package_dir: str) -> tuple[str, str, str, str]:
+    repo_root = os.path.abspath(os.path.join(package_dir, os.pardir))
+    webxr_dist = os.path.join(repo_root, "webxr", "dist")
+    webxr_index = os.path.join(webxr_dist, "index.html")
+
+    # Prefer webxr/dist when running in development (webxr/ exists with dist/)
+    if os.path.exists(webxr_index):
+        return webxr_dist, webxr_index, "/", "webxr"
+
+    # Fall back to package dist for installed package
     dist_dir = os.path.join(package_dir, "dist")
     dist_index = os.path.join(dist_dir, "index.html")
-
-    if not os.path.exists(dist_index):
-        # Fallback for development (repo root)
-        repo_root = os.path.abspath(os.path.join(package_dir, os.pardir))
-        dist_dir = os.path.join(repo_root, "webxr", "dist")
-        dist_index = os.path.join(dist_dir, "index.html")
 
     return dist_dir, dist_index, "/", "webxr"
 
