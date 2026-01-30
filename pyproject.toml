@@ -53,6 +53,12 @@ Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 
 [project.optional-dependencies]
 utils = ["pin"]
+ik = [
+    "mujoco",
+    "mink",
+    "urdf2mjcf",
+    "robot_descriptions",
+]
 
 [dependency-groups]
 dev = [
