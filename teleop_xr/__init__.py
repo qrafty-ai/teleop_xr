@@ -2,7 +2,7 @@ import os
 import math
 import socket
 import logging
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Dict, Union, Any
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -191,11 +191,21 @@ class Teleop:
         self.__settings = settings
         self.__camera_views = self.__settings.camera_views
 
-        self.__relative_pose_init = None
-        self.__absolute_pose_init = None
-        self.__previous_received_pose = None
+        self.__multi_eef_mode = getattr(self.__settings, "multi_eef_mode", False)
+        self.__relative_pose_init: Dict[str, Optional[np.ndarray]] = {}
+        self.__absolute_pose_init: Dict[str, Optional[np.ndarray]] = {}
+        self.__previous_received_pose: Dict[str, Optional[np.ndarray]] = {}
+
+        if self.__multi_eef_mode:
+            self.__pose: Union[np.ndarray, Dict[str, np.ndarray]] = {
+                "head": np.eye(4),
+                "left_hand": np.eye(4),
+                "right_hand": np.eye(4),
+            }
+        else:
+            self.__pose: Union[np.ndarray, Dict[str, np.ndarray]] = np.eye(4)
+
         self.__callbacks = []
-        self.__pose = np.eye(4)
 
         euler = self.__settings.natural_phone_orientation_euler
         self.__natural_phone_pose = t3d.affines.compose(
@@ -229,16 +239,19 @@ class Teleop:
         Parameters:
         - pose (np.ndarray): A 4x4 transformation matrix representing the pose.
         """
-        self.__pose = pose
+        if isinstance(self.__pose, dict):
+            self.__pose["right_hand"] = pose
+        else:
+            self.__pose = pose
 
-    def subscribe(self, callback: Callable[[np.ndarray, dict], None]) -> None:
+    def subscribe(self, callback: Callable[[Any, Dict[Any, Any]], None]) -> None:
         """
         Subscribe to receive updates from the teleop module.
 
         Parameters:
-            callback (Callable[[np.ndarray, dict], None]): A callback function that will be called when pose updates are received.
+            callback (Callable[[Any, dict], None]): A callback function that will be called when pose updates are received.
                 The callback function should take two arguments:
-                    - np.ndarray: A 4x4 transformation matrix representing the end-effector target pose.
+                    - np.ndarray or Dict[str, np.ndarray]: Transformation(s) representing the target pose(s).
                     - dict: A dictionary containing additional information.
         """
         self.__callbacks.append(callback)
@@ -247,7 +260,7 @@ class Teleop:
         for callback in self.__callbacks:
             callback(pose, message)
 
-    def set_video_streams(self, payload: dict) -> None:
+    def set_video_streams(self, payload: Dict[Any, Any]) -> None:
         self.__video_streams = parse_video_config(payload)
 
     def clear_video_streams(self) -> None:
@@ -268,7 +281,9 @@ class Teleop:
             websocket,
         )
 
-    async def _handle_video_message(self, websocket: WebSocket, message: dict) -> None:
+    async def _handle_video_message(
+        self, websocket: WebSocket, message: Dict[Any, Any]
+    ) -> None:
         msg_type = message.get("type")
         self.__logger.info(f"Received video message: {msg_type}")
 
@@ -286,20 +301,27 @@ class Teleop:
                 f"No active video session for websocket, ignoring {msg_type}"
             )
 
-    def apply(self, position, orientation, move=True, scale=1.0, info=None):
-        if info is None:
-            info = {}
-
+    def __process_pose(
+        self, position, orientation, target_key="default", move=True, scale=1.0
+    ):
         position_arr = np.array([position["x"], position["y"], position["z"]])
         quat = np.array(
             [orientation["w"], orientation["x"], orientation["y"], orientation["z"]]
         )
 
+        rel_init = self.__relative_pose_init.get(target_key)
+        abs_init = self.__absolute_pose_init.get(target_key)
+        prev_recv = self.__previous_received_pose.get(target_key)
+
+        if isinstance(self.__pose, dict):
+            base_pose = self.__pose.get(target_key, np.eye(4))
+        else:
+            base_pose = self.__pose
+
         if not move:
-            self.__relative_pose_init = None
-            self.__absolute_pose_init = None
-            self.__notify_subscribers(self.__pose, info)
-            return
+            self.__relative_pose_init[target_key] = None
+            self.__absolute_pose_init[target_key] = None
+            return base_pose
 
         received_pose_rub = t3d.affines.compose(
             position_arr, t3d.quaternions.quat2mat(quat), [1, 1, 1]
@@ -310,47 +332,88 @@ class Teleop:
         )
         received_pose = received_pose @ self.__natural_phone_pose
 
-        # Pose jump protection
-        if self.__previous_received_pose is not None:
+        if prev_recv is not None:
             if not are_close(
                 received_pose,
-                self.__previous_received_pose,
+                prev_recv,
                 lin_tol=0.05,
                 ang_tol=math.radians(35),
             ):
-                self.__logger.warning("Pose jump detected, resetting the pose")
-                self.__relative_pose_init = None
-                self.__previous_received_pose = received_pose
-                return
-        self.__previous_received_pose = received_pose
+                self.__logger.warning(
+                    f"Pose jump detected for {target_key}, resetting the pose"
+                )
+                self.__relative_pose_init[target_key] = None
+                self.__previous_received_pose[target_key] = received_pose
+                return base_pose
 
-        # Accumulate the pose and publish
-        if self.__relative_pose_init is None:
-            self.__relative_pose_init = received_pose
-            self.__absolute_pose_init = self.__pose
-            self.__previous_received_pose = None
+        self.__previous_received_pose[target_key] = received_pose
 
-        assert self.__absolute_pose_init is not None
-        relative_position = received_pose[:3, 3] - self.__relative_pose_init[:3, 3]
-        relative_orientation = received_pose[:3, :3] @ np.linalg.inv(
-            self.__relative_pose_init[:3, :3]
-        )
+        if rel_init is None:
+            rel_init = received_pose
+            abs_init = base_pose
+            self.__relative_pose_init[target_key] = rel_init
+            self.__absolute_pose_init[target_key] = abs_init
+            self.__previous_received_pose[target_key] = None
+
+        assert abs_init is not None
+        relative_position = received_pose[:3, 3] - rel_init[:3, 3]
+        relative_orientation = received_pose[:3, :3] @ np.linalg.inv(rel_init[:3, :3])
 
         if scale > 1.0:
             relative_position *= scale
 
-        self.__pose = np.eye(4)
-        self.__pose[:3, 3] = self.__absolute_pose_init[:3, 3] + relative_position
-        self.__pose[:3, :3] = relative_orientation @ self.__absolute_pose_init[:3, :3]
+        new_pose = np.eye(4)
+        new_pose[:3, 3] = abs_init[:3, 3] + relative_position
+        new_pose[:3, :3] = relative_orientation @ abs_init[:3, :3]
 
-        # Apply scale
         if scale < 1.0:
-            self.__pose = interpolate_transforms(
-                self.__absolute_pose_init, self.__pose, scale
-            )
+            new_pose = interpolate_transforms(abs_init, new_pose, scale)
 
-        # Notify the subscribers
-        self.__notify_subscribers(self.__pose, info)
+        return new_pose
+
+    def apply(
+        self,
+        position=None,
+        orientation=None,
+        move=True,
+        scale=1.0,
+        info=None,
+        targets=None,
+    ):
+        if info is None:
+            info = {}
+
+        if not self.__multi_eef_mode:
+            if position is not None and orientation is not None:
+                self.__pose = self.__process_pose(
+                    position, orientation, target_key="default", move=move, scale=scale
+                )
+            self.__notify_subscribers(self.__pose, info)
+        else:
+            if targets:
+                for target_key, data in targets.items():
+                    if target_key not in ["head", "left_hand", "right_hand"]:
+                        continue
+                    if isinstance(self.__pose, dict):
+                        self.__pose[target_key] = self.__process_pose(
+                            data["position"],
+                            data["orientation"],
+                            target_key=target_key,
+                            move=move,
+                            scale=scale,
+                        )
+            elif position is not None and orientation is not None:
+                # Fallback for single pose call in multi-mode, update right_hand by default
+                if isinstance(self.__pose, dict):
+                    self.__pose["right_hand"] = self.__process_pose(
+                        position,
+                        orientation,
+                        target_key="right_hand",
+                        move=move,
+                        scale=scale,
+                    )
+
+            self.__notify_subscribers(self.__pose, info)
 
     def __handle_xr_state(self, message):
         input_mode = self.__settings.input_mode
@@ -360,6 +423,26 @@ class Teleop:
         fetch_latency = message.get("fetch_latency_ms")
         if fetch_latency is not None:
             self.__logger.debug(f"XR input fetch latency: {fetch_latency:.2f}ms")
+
+        if self.__multi_eef_mode:
+            targets = {}
+            for d in devices:
+                role = d.get("role")
+                if role == "head":
+                    pose_data = d.get("pose")
+                    if pose_data:
+                        targets["head"] = pose_data
+                elif role == "controller" or role == "hand":
+                    handedness = d.get("handedness")
+                    target_key = "left_hand" if handedness == "left" else "right_hand"
+
+                    # Prefer gripPose for controllers, pose for hands
+                    pose_data = d.get("gripPose") or d.get("pose")
+                    if pose_data:
+                        targets[target_key] = pose_data
+
+            self.apply(move=True, scale=1.0, info=message, targets=targets)
+            return
 
         filtered_devices = []
         for d in devices:
