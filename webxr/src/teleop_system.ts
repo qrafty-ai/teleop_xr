@@ -8,6 +8,8 @@ import {
 import { Quaternion, Vector3 } from "@iwsdk/core";
 import { GlobalRefs } from "./global_refs";
 import { setCameraViewsConfig } from "./camera_views";
+import { getCameraEnabled, setCameraEnabled } from "./camera_config";
+import { CameraViewKey } from "./track_routing";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
@@ -68,6 +70,30 @@ export class TeleopSystem extends createSystem({
           });
         });
       }
+
+      const toggles = [
+        { id: "toggle-head", key: "head" },
+        { id: "toggle-wrist_left", key: "wrist_left" },
+        { id: "toggle-wrist_right", key: "wrist_right" },
+      ] as const;
+
+      toggles.forEach(({ id, key }) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          const enabled = getCameraEnabled(key as CameraViewKey);
+          btn.setProperties({
+            className: enabled ? "toggle-btn active" : "toggle-btn",
+          });
+
+          btn.addEventListener("click", () => {
+            const newState = !getCameraEnabled(key as CameraViewKey);
+            setCameraEnabled(key as CameraViewKey, newState);
+            btn.setProperties({
+              className: newState ? "toggle-btn active" : "toggle-btn",
+            });
+          });
+        }
+      });
 
       const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
       this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);

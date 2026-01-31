@@ -36,6 +36,7 @@ import { GlobalRefs } from "./global_refs.js";
 import { initConsoleStream } from "./console_stream.js";
 import { onCameraViewsChanged, isViewEnabled, getCameraViewsConfig } from "./camera_views.js";
 import { resolveTrackView, type CameraViewKey } from "./track_routing.js";
+import { onCameraConfigChanged, getCameraEnabled } from "./camera_config.js";
 
 // Initialize console streaming for Quest VR debugging
 initConsoleStream();
@@ -100,10 +101,10 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
   onCameraViewsChanged((config) => {
     if (leftControllerPanel.entity.object3D) {
-      leftControllerPanel.entity.object3D.visible = isViewEnabled("wrist_left");
+      leftControllerPanel.entity.object3D.visible = isViewEnabled("wrist_left") && getCameraEnabled("wrist_left");
     }
     if (rightControllerPanel.entity.object3D) {
-      rightControllerPanel.entity.object3D.visible = isViewEnabled("wrist_right");
+      rightControllerPanel.entity.object3D.visible = isViewEnabled("wrist_right") && getCameraEnabled("wrist_right");
     }
 
     const allKeys = Object.keys(config);
@@ -116,12 +117,13 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
       let panel = cameraPanels.get(key);
       if (!panel) {
         panel = new CameraPanel(world);
+        panel.setLabel(key.toUpperCase());
         cameraPanels.set(key, panel);
 
         if (panel.entity.object3D) {
           GlobalRefs.cameraPanels.set(key, panel.entity.object3D);
           // Only disable initial visibility if this is the HEAD panel and disableHeadCameraPanel is true
-          const shouldHide = key === "head" && disableHeadCameraPanel;
+          const shouldHide = (key === "head" && disableHeadCameraPanel) || !getCameraEnabled(key as CameraViewKey);
           panel.entity.object3D.visible = !shouldHide;
         }
       }
@@ -135,6 +137,22 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
         panel.dispose();
         cameraPanels.delete(key);
         GlobalRefs.cameraPanels.delete(key);
+      } else if (panel.entity.object3D) {
+        panel.entity.object3D.visible = isViewEnabled(key) && getCameraEnabled(key as CameraViewKey);
+      }
+    }
+  });
+
+  onCameraConfigChanged((config) => {
+    if (leftControllerPanel.entity.object3D) {
+      leftControllerPanel.entity.object3D.visible = isViewEnabled("wrist_left") && getCameraEnabled("wrist_left");
+    }
+    if (rightControllerPanel.entity.object3D) {
+      rightControllerPanel.entity.object3D.visible = isViewEnabled("wrist_right") && getCameraEnabled("wrist_right");
+    }
+    for (const [key, panel] of cameraPanels.entries()) {
+      if (panel.entity.object3D) {
+        panel.entity.object3D.visible = isViewEnabled(key) && getCameraEnabled(key as CameraViewKey);
       }
     }
   });
