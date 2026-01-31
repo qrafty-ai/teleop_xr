@@ -2,11 +2,12 @@ import os
 import math
 import socket
 import logging
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Dict
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 import transforms3d as t3d
 import numpy as np
 import json
@@ -21,6 +22,7 @@ from teleop_xr.video_stream import (
 )
 from teleop_xr.camera_views import build_video_streams
 from teleop_xr.config import TeleopSettings
+from teleop_xr.robot_vis import RobotVisModule
 
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -208,11 +210,21 @@ class Teleop:
         )
 
         self.__app = FastAPI()
+        self.__app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         self.__manager = ConnectionManager()
 
         self.__video_streams: list[VideoStreamConfig] = []
         self.__video_sources: dict[str, VideoSource] = video_sources or {}
         self.__video_sessions: dict[WebSocket, VideoStreamManager] = {}
+
+        self.robot_vis: Optional[RobotVisModule] = None
+        if self.__settings.robot_vis:
+            self.robot_vis = RobotVisModule(self.__app, self.__settings.robot_vis)
 
         if self.__camera_views is not None and not self.__video_streams:
             self.set_video_streams(build_video_streams(self.__camera_views))
@@ -410,6 +422,10 @@ class Teleop:
                     )
                     return
 
+    async def publish_joint_state(self, joints: Dict[str, float]):
+        if self.robot_vis:
+            await self.robot_vis.broadcast_state(self.__manager, joints)
+
     def __setup_routes(self):
         static_dir, index_path, mount_path, mount_name = _resolve_frontend_paths(
             THIS_DIR
@@ -433,6 +449,16 @@ class Teleop:
                     }
                 )
             )
+
+            if self.robot_vis:
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "robot_config",
+                            "data": self.robot_vis.get_frontend_config(),
+                        }
+                    )
+                )
 
             if self.__video_streams:
                 await self.__manager.send_personal_message(
