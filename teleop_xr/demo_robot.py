@@ -15,7 +15,7 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(current_dir, os.pardir))
 
-    urdf_path = os.path.join(repo_root, "tests", "fixtures", "v10_full.urdf")
+    urdf_path = os.path.join(repo_root, "tests", "fixtures", "minimal_robot.urdf")
     mesh_path = os.path.join(repo_root, "tests", "fixtures")
 
     if not os.path.exists(urdf_path):
@@ -35,14 +35,7 @@ def main():
         while True:
             t = time.time()
             joints = {
-                "openarm_left_joint1": 0.5 * math.sin(t),
-                "openarm_left_joint2": 0.3 * math.sin(t + 0.5),
-                "openarm_left_joint3": 0.4 * math.sin(t + 1.0),
-                "openarm_left_joint5": 0.5 * math.sin(t + 1.5),
-                "openarm_right_joint1": 0.5 * math.sin(t + math.pi),
-                "openarm_right_joint2": 0.3 * math.sin(t + 0.5 + math.pi),
-                "openarm_right_joint3": 0.4 * math.sin(t + 1.0 + math.pi),
-                "openarm_right_joint5": 0.5 * math.sin(t + 1.5 + math.pi),
+                "joint1": 0.5 * math.sin(t),
             }
             try:
                 await teleop.publish_joint_state(joints)
