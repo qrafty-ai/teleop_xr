@@ -19,18 +19,14 @@ class RobotVisModule:
         self._setup_routes()
 
     def _setup_routes(self):
-        @self.app.get("/robot.urdf")
-        async def get_robot_urdf():
-            if not os.path.exists(self.config.urdf_path):
-                raise HTTPException(status_code=404, detail="URDF file not found")
-            return FileResponse(self.config.urdf_path)
-
-        @self.app.get("/assets/{file_path:path}")
+        @self.app.get("/robot_assets/{file_path:path}")
         async def get_asset(file_path: str):
             self.logger.info(f"Asset request: {file_path}")
             full_path = ""
 
-            if "package://" in file_path:
+            if file_path == "robot.urdf":
+                full_path = self.config.urdf_path
+            elif "package://" in file_path:
                 clean_path = file_path.split("package://")[-1]
                 if self.config.mesh_path:
                     full_path = os.path.join(self.config.mesh_path, clean_path)
@@ -63,7 +59,7 @@ class RobotVisModule:
             return FileResponse(full_path, media_type=media_type)
 
     def get_frontend_config(self) -> Dict[str, Any]:
-        return {"urdf_url": "/robot.urdf"}
+        return {"urdf_url": "/robot_assets/robot.urdf"}
 
     async def broadcast_state(self, connection_manager: Any, joints: Dict[str, float]):
         """
