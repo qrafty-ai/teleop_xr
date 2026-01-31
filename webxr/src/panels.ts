@@ -31,19 +31,8 @@ export class DraggablePanel {
     const handleMesh = new Mesh(handleGeo, handleMat);
     this.entity.object3D.add(handleMesh);
 
-    const originalPos = handleMesh.position.clone();
-    const originalColor = handleMat.color.clone();
-
-    this.entity.on("pointerenter", () => {
-      // Move closer (Z-axis). Positive Z is towards user/camera in this setup.
-      handleMesh.position.z = originalPos.z + 0.02;
-      handleMat.color.copy(originalColor).multiplyScalar(0.7);
-    });
-
-    this.entity.on("pointerleave", () => {
-      handleMesh.position.copy(originalPos);
-      handleMat.color.copy(originalColor);
-    });
+    // TODO: Add hover effect once we determine the correct IWSDK event pattern
+    // The entity.on("pointerenter"/"pointerleave") pattern doesn't work
 
     // 2. Create Panel (Child) - Interactable but NOT Grabbable
     this.panelEntity = world.createTransformEntity()
@@ -95,9 +84,9 @@ export class CameraPanel extends DraggablePanel {
   }
 
   setLabel(text: string) {
-    const component = this.panelEntity.getComponent(PanelDocument);
-    if (component && component.document) {
-      const el = component.document.getElementById('camera-label');
+    const document = PanelDocument.data.document[this.panelEntity.index];
+    if (document) {
+      const el = document.getElementById('camera-label');
       if (el) {
         el.setProperties({ text });
       }

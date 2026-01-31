@@ -71,29 +71,15 @@ export class TeleopSystem extends createSystem({
         });
       }
 
-      const toggles = [
-        { id: "toggle-head", key: "head" },
-        { id: "toggle-wrist_left", key: "wrist_left" },
-        { id: "toggle-wrist_right", key: "wrist_right" },
-      ] as const;
-
-      toggles.forEach(({ id, key }) => {
-        const btn = document.getElementById(id);
-        if (btn) {
-          const enabled = getCameraEnabled(key as CameraViewKey);
-          btn.setProperties({
-            className: enabled ? "toggle-btn active" : "toggle-btn",
-          });
-
-          btn.addEventListener("click", () => {
-            const newState = !getCameraEnabled(key as CameraViewKey);
-            setCameraEnabled(key as CameraViewKey, newState);
-            btn.setProperties({
-              className: newState ? "toggle-btn active" : "toggle-btn",
-            });
-          });
-        }
-      });
+      const cameraSettingsBtn = document.getElementById("camera-settings-btn");
+      if (cameraSettingsBtn) {
+        cameraSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.cameraSettingsPanel;
+          if (panel && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
 
       const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
       this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
@@ -139,10 +125,14 @@ export class TeleopSystem extends createSystem({
       return;
     }
 
-    this.statusText.setProperties({
-      text,
-      className: connected ? "status-value connected" : "status-value",
-    });
+    this.statusText.setProperties({ text });
+    if (this.statusText.classList) {
+      if (connected) {
+        this.statusText.classList.add("connected");
+      } else {
+        this.statusText.classList.remove("connected");
+      }
+    }
   }
 
   poseFromObject(object: any): DevicePose | null {
