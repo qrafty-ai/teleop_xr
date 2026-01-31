@@ -27,7 +27,7 @@ import { TeleopSystem } from "./teleop_system.js";
 
 import { VideoClient } from "./video.js";
 
-import { DraggablePanel, CameraPanel, ControllerCameraPanel, CameraPanelSystem } from "./panels.js";
+import { DraggablePanel, CameraPanel, ControllerCameraPanel, CameraPanelSystem, PanelHoverSystem } from "./panels.js";
 
 import { ControllerCameraPanelSystem } from "./controller_camera_system.js";
 import { CameraSettingsSystem } from "./camera_settings_system.js";
@@ -283,6 +283,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   world.registerSystem(ControllerCameraPanelSystem);
   world.registerSystem(CameraSettingsSystem);
   world.registerSystem(CameraPanelSystem);
+  world.registerSystem(PanelHoverSystem);
 
   // Register controller panels with their raySpaces once XR session starts
   // The system will handle waiting for raySpaces to be available

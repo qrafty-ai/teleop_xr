@@ -1,8 +1,20 @@
-import { World, PanelUI, PanelDocument, Interactable, DistanceGrabbable, MovementMode, Visibility, createComponent, Types, eq, createSystem, UIKitDocument } from "@iwsdk/core";
+import { World, PanelUI, PanelDocument, Interactable, DistanceGrabbable, MovementMode, Visibility, createComponent, Types, eq, createSystem, UIKitDocument, Hovered } from "@iwsdk/core";
 import { Mesh, PlaneGeometry, MeshBasicMaterial, VideoTexture, DoubleSide, BoxGeometry, Object3D, Vector3, Quaternion } from "three";
 
 export const CameraPanelInfo = createComponent("CameraPanelInfo", {
   label: { type: Types.String, default: "" },
+});
+
+export const PanelHandle = createComponent("PanelHandle", {
+  originalPosZ: { type: Types.Float32, default: 0 },
+  originalScaleX: { type: Types.Float32, default: 1 },
+  originalScaleY: { type: Types.Float32, default: 1 },
+  originalScaleZ: { type: Types.Float32, default: 1 },
+  originalColorR: { type: Types.Float32, default: 1 },
+  originalColorG: { type: Types.Float32, default: 1 },
+  originalColorB: { type: Types.Float32, default: 1 },
+  visualState: { type: Types.Boolean, default: false },
+  cooldown: { type: Types.Float32, default: 0 },
 });
 
 export class DraggablePanel {
@@ -35,8 +47,15 @@ export class DraggablePanel {
     const handleMesh = new Mesh(handleGeo, handleMat);
     this.entity.object3D.add(handleMesh);
 
-    // TODO: Add hover effect once we determine the correct IWSDK event pattern
-    // The entity.on("pointerenter"/"pointerleave") pattern doesn't work
+    this.entity.addComponent(PanelHandle, {
+      originalPosZ: handleMesh.position.z,
+      originalScaleX: handleMesh.scale.x,
+      originalScaleY: handleMesh.scale.y,
+      originalScaleZ: handleMesh.scale.z,
+      originalColorR: handleMat.color.r,
+      originalColorG: handleMat.color.g,
+      originalColorB: handleMat.color.b,
+    });
 
     // 2. Create Panel (Child) - Interactable but NOT Grabbable
     this.panelEntity = world.createTransformEntity()
@@ -44,7 +63,6 @@ export class DraggablePanel {
         config: configPath,
         ...options
       })
-      .addComponent(Interactable)
       // Stop grab event bubbling by consuming it with a locked DistanceGrabbable
       .addComponent(DistanceGrabbable, {
         movementMode: MovementMode.MoveFromTarget,
@@ -249,6 +267,58 @@ export class CameraPanelSystem extends createSystem({
           console.log(`[CameraPanelSystem] Setting label for entity ${entity.index} to: ${label}`);
           el.setProperties({ text: label });
         }
+      }
+    });
+  }
+}
+
+export class PanelHoverSystem extends createSystem({
+  handles: {
+    required: [PanelHandle, Interactable],
+  },
+}) {
+  update(delta: number) {
+    this.queries.handles.entities.forEach((entity) => {
+      const isCurrentlyHovered = entity.hasComponent(Hovered);
+      let visualState = PanelHandle.data.visualState[entity.index];
+      let cd = PanelHandle.data.cooldown[entity.index];
+
+      if (isCurrentlyHovered) {
+        visualState = true;
+        cd = 0.1; // Cooldown of 0.1s to prevent flicker
+      } else if (cd > 0) {
+        cd -= delta;
+        if (cd <= 0) {
+          visualState = false;
+          cd = 0;
+        }
+      } else {
+        visualState = false;
+      }
+
+      PanelHandle.data.visualState[entity.index] = visualState;
+      PanelHandle.data.cooldown[entity.index] = cd;
+
+      const mesh = entity.object3D.children.find((c: any) => c.isMesh) as Mesh;
+      if (!mesh) return;
+
+      const mat = mesh.material as MeshBasicMaterial;
+      const origZ = PanelHandle.data.originalPosZ[entity.index];
+      const origSX = PanelHandle.data.originalScaleX[entity.index];
+      const origSY = PanelHandle.data.originalScaleY[entity.index];
+      const origSZ = PanelHandle.data.originalScaleZ[entity.index];
+      const origR = PanelHandle.data.originalColorR[entity.index];
+      const origG = PanelHandle.data.originalColorG[entity.index];
+      const origB = PanelHandle.data.originalColorB[entity.index];
+
+      if (visualState) {
+        mesh.position.z = origZ + 0.04;
+        mesh.scale.set(origSX * 1.2, origSY * 1.2, origSZ * 1.2);
+        mat.color.setRGB(origR * 0.4, origG * 0.4, origB * 0.4);
+      } else {
+        mesh.position.z = origZ;
+        mesh.scale.set(origSX, origSY, origSZ);
+        mat.color.setRGB(origR, origG, origB);
       }
     });
   }
