@@ -54,26 +54,35 @@ export class TeleopSystem extends createSystem({
           // Use GlobalRefs - populated by index.ts at creation time
           // DO NOT access ECS queries during click events (causes freeze)
 
-          // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
-          const panels = [
-            ...Array.from(GlobalRefs.cameraPanels.values()),
-            GlobalRefs.leftWristPanel,
-            GlobalRefs.rightWristPanel,
-          ].filter((p) => !!p);
+          // Determine target state based on currently visible AND enabled panels
+          const floatingPanels = Array.from(GlobalRefs.cameraPanels.entries()).map(([key, panel]) => ({ key, panel }));
+          const wristPanels = [
+            { key: "wrist_left", panel: GlobalRefs.leftWristPanel },
+            { key: "wrist_right", panel: GlobalRefs.rightWristPanel },
+          ];
 
-          const anyVisible = panels.some((p) => p.entity && p.entity.object3D && p.entity.object3D.visible);
-          const targetVisible = !anyVisible;
+          const allPanelRefs = [...floatingPanels, ...wristPanels].filter(p => !!p.panel);
 
-          // Apply targetVisible to all existing panels
-          panels.forEach((p) => {
-            if (p.entity && p.entity.object3D) {
-              if (targetVisible) {
+          // Find if any enabled panel is currently visible
+          const anyEnabledVisible = allPanelRefs.some(({ key, panel }) => {
+            const enabled = getCameraEnabled(key as CameraViewKey);
+            return enabled && panel.entity && panel.entity.object3D && panel.entity.object3D.visible;
+          });
+
+          const targetVisible = !anyEnabledVisible;
+
+          // Apply targetVisible ONLY to enabled panels. Disabled panels stay hidden.
+          allPanelRefs.forEach(({ key, panel }) => {
+            if (panel.entity && panel.entity.object3D) {
+              const enabled = getCameraEnabled(key as CameraViewKey);
+              if (targetVisible && enabled) {
                 // Only show if it has an active video track
-                if (typeof p.hasVideoTrack === "function" && p.hasVideoTrack()) {
-                  p.entity.object3D.visible = true;
+                if (typeof panel.hasVideoTrack === "function" && panel.hasVideoTrack()) {
+                  panel.entity.object3D.visible = true;
                 }
               } else {
-                p.entity.object3D.visible = false;
+                // Always hide if target is hidden OR if panel is disabled
+                panel.entity.object3D.visible = false;
               }
             }
           });
