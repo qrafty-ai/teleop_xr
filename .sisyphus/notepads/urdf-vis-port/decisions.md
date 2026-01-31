@@ -21,3 +21,7 @@
 - **ECS Integration**:
     - The system is registered in `webxr/src/index.ts`.
     - `TeleopSystem` was updated to dispatch `robot_config` and `robot_state` messages to the `RobotModelSystem`.
+## Renaming Robot Asset Route
+- Date: 2026-01-31
+- Decision: Renamed the robot asset route from `/assets/` to `/robot_assets/` in both the backend (`teleop_xr/robot_vis.py`) and the frontend (`webxr/src/robot_system.ts`).
+- Rationale: Avoid collision with Vite's static asset directory while maintaining functionality for loading robot meshes and URDFs.
