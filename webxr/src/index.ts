@@ -27,7 +27,7 @@ import { TeleopSystem } from "./teleop_system.js";
 
 import { VideoClient } from "./video.js";
 
-import { DraggablePanel, CameraPanel, ControllerCameraPanel } from "./panels.js";
+import { DraggablePanel, CameraPanel, ControllerCameraPanel, CameraPanelSystem } from "./panels.js";
 
 import { ControllerCameraPanelSystem } from "./controller_camera_system.js";
 import { CameraSettingsSystem } from "./camera_settings_system.js";
@@ -83,6 +83,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     maxWidth: 1.6,
   });
   teleopPanel.setPosition(0, 1.29, -1.9);
+  teleopPanel.faceUser();
   if (teleopPanel.entity.object3D) {
     GlobalRefs.teleopPanelRoot = teleopPanel.entity.object3D;
   }
@@ -92,6 +93,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     maxWidth: 1.2,
   });
   cameraSettingsPanel.setPosition(0.8, 1.29, -1.7);
+  cameraSettingsPanel.faceUser();
   if (cameraSettingsPanel.entity.object3D) {
     GlobalRefs.cameraSettingsPanel = cameraSettingsPanel;
     cameraSettingsPanel.entity.object3D.visible = false;
@@ -196,19 +198,21 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
         if (!panel) {
           console.log(`[Video] Creating new CameraPanel for key: ${key}`);
           panel = new CameraPanel(world);
-          panel.setLabel(key.toUpperCase());
           cameraPanels.set(key, panel);
 
-    GlobalRefs.cameraPanels.set(key, panel);
-    const shouldHide = (key === "head" && disableHeadCameraPanel) || !getCameraEnabled(key as CameraViewKey);
-    if (panel.entity && panel.entity.object3D) {
-      panel.entity.object3D.visible = !shouldHide;
-    }
+          GlobalRefs.cameraPanels.set(key, panel);
+          const shouldHide = (key === "head" && disableHeadCameraPanel) || !getCameraEnabled(key as CameraViewKey);
+          if (panel.entity && panel.entity.object3D) {
+            panel.entity.object3D.visible = !shouldHide;
+          }
         }
+
+        panel.setLabel(`CAMERA: ${key.toUpperCase()}`);
 
         const x = 1.2 + index * 0.9;
         if (panel && typeof panel.setPosition === "function") {
           panel.setPosition(x, 1.3, -1.5);
+          panel.faceUser();
         } else {
           console.error(`[Video] panel.setPosition is missing for key: ${key}`);
         }
@@ -278,6 +282,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   world.registerSystem(TeleopSystem);
   world.registerSystem(ControllerCameraPanelSystem);
   world.registerSystem(CameraSettingsSystem);
+  world.registerSystem(CameraPanelSystem);
 
   // Register controller panels with their raySpaces once XR session starts
   // The system will handle waiting for raySpaces to be available

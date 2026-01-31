@@ -1,5 +1,9 @@
-import { World, PanelUI, PanelDocument, Interactable, DistanceGrabbable, MovementMode, Visibility } from "@iwsdk/core";
+import { World, PanelUI, PanelDocument, Interactable, DistanceGrabbable, MovementMode, Visibility, createComponent, Types, eq, createSystem, UIKitDocument } from "@iwsdk/core";
 import { Mesh, PlaneGeometry, MeshBasicMaterial, VideoTexture, DoubleSide, BoxGeometry, Object3D, Vector3, Quaternion } from "three";
+
+export const CameraPanelInfo = createComponent("CameraPanelInfo", {
+  label: { type: Types.String, default: "" },
+});
 
 export class DraggablePanel {
   public entity: any;
@@ -62,6 +66,15 @@ export class DraggablePanel {
     this.entity.object3D.position.set(x, y, z);
   }
 
+  faceUser() {
+    if (this.entity.object3D) {
+      const head = this.world.camera;
+      if (head) {
+        this.entity.object3D.lookAt(head.position);
+      }
+    }
+  }
+
   dispose() {
     if (this.panelEntity && typeof this.panelEntity.destroy === "function") {
       this.panelEntity.destroy();
@@ -89,12 +102,10 @@ export class CameraPanel extends DraggablePanel {
   }
 
   setLabel(text: string) {
-    const document = PanelDocument.data.document[this.panelEntity.index];
-    if (document) {
-      const el = document.getElementById('camera-label');
-      if (el) {
-        el.setProperties({ text });
-      }
+    if (this.panelEntity.hasComponent(CameraPanelInfo)) {
+      this.panelEntity.setValue(CameraPanelInfo, "label", text);
+    } else {
+      this.panelEntity.addComponent(CameraPanelInfo, { label: text });
     }
   }
 
@@ -146,9 +157,9 @@ export class CameraPanel extends DraggablePanel {
     this.videoMesh = new Mesh(geometry, material);
 
     // Position it slightly in front of the panel to avoid z-fighting
-    this.videoMesh.position.z = 0.02;
-    // Adjust y to be centered or below title
-    this.videoMesh.position.y = -0.1;
+    this.videoMesh.position.z = 0.01;
+    // Adjust y to be centered below the header
+    this.videoMesh.position.y = -0.05;
 
     // Attach to panelEntity, not the handle/root
     this.panelEntity.object3D.add(this.videoMesh);
@@ -219,5 +230,26 @@ export class ControllerCameraPanel {
     this.videoMesh.position.z = 0.001; // Slightly in front of bg
     this.videoMesh.renderOrder = 1;
     this.entity.object3D.add(this.videoMesh);
+  }
+}
+
+export class CameraPanelSystem extends createSystem({
+  cameraPanels: {
+    required: [PanelUI, PanelDocument, CameraPanelInfo],
+    where: [eq(PanelUI, "config", "./ui/camera.json")],
+  },
+}) {
+  init() {
+    this.queries.cameraPanels.subscribe("qualify", (entity) => {
+      const document = PanelDocument.data.document[entity.index] as UIKitDocument;
+      const label = CameraPanelInfo.data.label[entity.index];
+      if (document && label) {
+        const el = document.getElementById("camera-label");
+        if (el) {
+          console.log(`[CameraPanelSystem] Setting label for entity ${entity.index} to: ${label}`);
+          el.setProperties({ text: label });
+        }
+      }
+    });
   }
 }

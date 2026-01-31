@@ -1,6 +1,7 @@
 <style>
   .panel-container {
     width: 60;
+    height: 55;
     display: flex;
     flex-direction: column;
     background-color: #09090b;
@@ -14,17 +15,17 @@
     width: 100%;
     padding-top: 2;
     padding-bottom: 2;
-    padding-left: 2;
-    padding-right: 2;
-    background: linear-gradient(180deg, #18181b 0%, rgba(9,9,11,0) 100%);
+    background-color: #18181b;
     display: flex;
     justify-content: center;
-    margin-bottom: 2;
+    border-top-left-radius: 3;
+    border-top-right-radius: 3;
   }
   .heading {
     font-size: 4;
     font-weight: medium;
     color: #fafafa;
+    text-align: center;
   }
 </style>
 <div class="panel-container">

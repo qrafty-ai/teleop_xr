@@ -91,7 +91,6 @@
 <div class="panel-container">
   <span class="heading">Camera Streams</span>
   <span class="sub-heading">Toggle visibility of camera panels</span>
-  <span style="color: red; font-size: 2;">DEBUG: This should be visible</span>
   <div id="toggle-container" class="toggle-container">
     <div id="row-0" class="toggle-row hidden">
       <span id="label-0" class="toggle-label">Camera 0</span>
