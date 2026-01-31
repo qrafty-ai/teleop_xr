@@ -24,6 +24,7 @@ import { EnvironmentType, LocomotionEnvironment } from "@iwsdk/core";
 import { PanelSystem } from "./panel.js";
 
 import { TeleopSystem } from "./teleop_system.js";
+import { RobotModelSystem } from "./robot_system.js";
 
 import { VideoClient } from "./video.js";
 
@@ -280,6 +281,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
   world.registerSystem(PanelSystem);
   world.registerSystem(TeleopSystem);
+  world.registerSystem(RobotModelSystem);
   world.registerSystem(ControllerCameraPanelSystem);
   world.registerSystem(CameraSettingsSystem);
   world.registerSystem(CameraPanelSystem);

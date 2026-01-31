@@ -10,6 +10,7 @@ import { GlobalRefs } from "./global_refs";
 import { setCameraViewsConfig } from "./camera_views";
 import { getCameraEnabled, setCameraEnabled } from "./camera_config";
 import { CameraViewKey } from "./track_routing";
+import { RobotModelSystem } from "./robot_system";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
@@ -131,6 +132,16 @@ export class TeleopSystem extends createSystem({
             this.inputMode = message.data.input_mode;
           }
           setCameraViewsConfig(message.data?.camera_views ?? null);
+        } else if (message.type === "robot_config") {
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotConfig(message.data);
+          }
+        } else if (message.type === "robot_state") {
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotState(message.data);
+          }
         }
       } catch (error) {
         console.warn("Failed to parse WS message", error);
