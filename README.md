@@ -129,6 +129,42 @@ teleop.subscribe(on_xr_update)
 teleop.run()
 ```
 
+## 🦾 Inverse Kinematics (IK) System
+
+TeleopXR features a built-in Inverse Kinematics system powered by [Mink](https://github.com/kevinzakka/mink) and MuJoCo. It allows for precise real-time mapping of XR poses to robot joint configurations.
+
+### Running the IK Simulator
+
+Visualize the IK solver in action (defaults to Unitree G1 robot):
+
+```bash
+uv run python -m teleop_xr.ik_sim
+```
+
+To use a different model:
+
+```bash
+uv run python -m teleop_xr.ik_sim --model /path/to/robot.xml
+```
+
+### ROS2 IK Node
+
+Run the IK solver as a ROS2 node:
+
+```bash
+uv run python -m teleop_xr.ros2_ik --model /path/to/robot.xml
+```
+
+### ROS2 IK Node
+
+Run the IK solver as a ROS2 node:
+
+```bash
+# Example with a local MJCF model
+uv run python -m teleop_xr.ros2_ik --model-path /path/to/your/robot.xml
+```
+
+For more details on configuring frame mappings and weights, see [docs/ik.md](docs/ik.md).
 ### Event System
 
 TeleopXR includes an event system for handling complex button interactions like double-presses and long-presses.

@@ -26,3 +26,4 @@ class TeleopSettings(BaseModel):
     natural_phone_position: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0])
     camera_views: Dict[str, ViewConfig] = Field(default_factory=dict)
     video_config: Optional[Dict[str, Any]] = None
+    multi_eef_mode: bool = False
