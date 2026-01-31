@@ -4,6 +4,7 @@
 export const GlobalRefs = {
   cameraPanels: new Map<string, any>(),
   teleopPanelRoot: null as any,
+  cameraSettingsPanel: null as any,
   leftWristPanelRoot: null as any,
   rightWristPanelRoot: null as any,
 };
