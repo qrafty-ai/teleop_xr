@@ -157,8 +157,13 @@ class CameraStreamTrack(VideoStreamTrack):
 
     def __init__(self, source: VideoSource, stream_id: str):
         super().__init__()
+        self._id = stream_id
         self.source = source
         self.stream_id = stream_id
+        # Explicitly set the track ID for the transceiver
+        # This is critical for the frontend to identify the track
+        # The frontend uses track.id or transceiver.mid
+        self.kind = "video"
 
     async def recv(self):
         pts, time_base = await self.next_timestamp()

@@ -7,8 +7,8 @@ for detecting button gestures (press, release, double-press, long-press).
 import numpy as np
 import tyro
 from collections import deque
-from dataclasses import dataclass
-from typing import Union, Optional
+from dataclasses import dataclass, field
+from typing import Union, Optional, Dict
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -46,6 +46,10 @@ class DemoCLI(CommonCLI):
     """Camera device for left wrist view (index or path)."""
     wrist_right_device: Union[int, str, None] = None
     """Camera device for right wrist view (index or path)."""
+    camera: Dict[str, Union[int, str]] = field(default_factory=dict)
+    """Extra cameras: --camera key1 dev1 key2 dev2 (e.g., --camera left /dev/video4 right /dev/video6)"""
+    no_tui: bool = False
+    """Disable TUI for cleaner logging debugging"""
 
     # Event system configuration
     double_press_ms: float = 300
@@ -250,6 +254,7 @@ def main():
         cli.head_device is None
         and cli.wrist_left_device is None
         and cli.wrist_right_device is None
+        and not cli.camera
     ):
         cli.head_device = 0  # Default to index 0
 
@@ -257,6 +262,7 @@ def main():
         head=cli.head_device,
         wrist_left=cli.wrist_left_device,
         wrist_right=cli.wrist_right_device,
+        extra_streams=cli.camera,
     )
 
     settings = TeleopSettings(
@@ -268,6 +274,15 @@ def main():
 
     teleop = Teleop(settings=settings)
     teleop.set_pose(np.eye(4))
+
+    if cli.no_tui:
+        print("TUI Disabled. Running in headless mode (logs only).")
+        # Just run teleop without Rich Live context
+        try:
+            teleop.run()
+        except KeyboardInterrupt:
+            pass
+        return
 
     # Event log (thread-safe deque with max size)
     event_log: deque[ButtonEvent] = deque(maxlen=MAX_EVENT_LOG_SIZE)
