@@ -1,4 +1,4 @@
-import { World, PanelUI, Interactable, DistanceGrabbable, MovementMode, Visibility } from "@iwsdk/core";
+import { World, PanelUI, PanelDocument, Interactable, DistanceGrabbable, MovementMode, Visibility } from "@iwsdk/core";
 import { Mesh, PlaneGeometry, MeshBasicMaterial, VideoTexture, DoubleSide, BoxGeometry, Object3D, Vector3, Quaternion } from "three";
 
 export class DraggablePanel {
@@ -30,6 +30,20 @@ export class DraggablePanel {
     });
     const handleMesh = new Mesh(handleGeo, handleMat);
     this.entity.object3D.add(handleMesh);
+
+    const originalPos = handleMesh.position.clone();
+    const originalColor = handleMat.color.clone();
+
+    this.entity.on("pointerenter", () => {
+      // Move closer (Z-axis). Positive Z is towards user/camera in this setup.
+      handleMesh.position.z = originalPos.z + 0.02;
+      handleMat.color.copy(originalColor).multiplyScalar(0.7);
+    });
+
+    this.entity.on("pointerleave", () => {
+      handleMesh.position.copy(originalPos);
+      handleMat.color.copy(originalColor);
+    });
 
     // 2. Create Panel (Child) - Interactable but NOT Grabbable
     this.panelEntity = world.createTransformEntity()
@@ -78,6 +92,16 @@ export class CameraPanel extends DraggablePanel {
       maxHeight: 0.6,
       maxWidth: 0.8,
     });
+  }
+
+  setLabel(text: string) {
+    const component = this.panelEntity.getComponent(PanelDocument);
+    if (component && component.document) {
+      const el = component.document.getElementById('camera-label');
+      if (el) {
+        el.setProperties({ text });
+      }
+    }
   }
 
   dispose() {

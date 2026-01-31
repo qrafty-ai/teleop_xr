@@ -73,6 +73,34 @@
     text-align: center;
     cursor: pointer;
   }
+
+  .toggle-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 1.0;
+  }
+
+  .toggle-btn {
+    width: 32%;
+    padding: 1.0;
+    background-color: #27272a;
+    color: #fafafa;
+    border-radius: 1.5;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 2.0;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .toggle-btn.active {
+    background-color: #22c55e;
+    color: #ffffff;
+    border-color: #22c55e;
+  }
 </style>
 <div class="panel-container">
   <span class="heading"> Teleop Control </span>
@@ -94,5 +122,13 @@
     </div>
   </div>
   <button id="camera-button" class="button">Toggle Camera</button>
+  <span class="sub-heading" style="margin-top: 1.5;">
+    Camera Streams:
+  </span>
+  <div class="toggle-row">
+    <button id="toggle-head" class="toggle-btn active">HEAD</button>
+    <button id="toggle-wrist_left" class="toggle-btn active">WRIST_L</button>
+    <button id="toggle-wrist_right" class="toggle-btn active">WRIST_R</button>
+  </div>
   <button id="xr-button" class="button">Enter XR</button>
 </div>
