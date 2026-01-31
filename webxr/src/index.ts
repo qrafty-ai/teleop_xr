@@ -101,13 +101,10 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
   // Controller-attached camera panels (for wrist cameras)
   const leftControllerPanel = new ControllerCameraPanel(world, "left");
-  if (leftControllerPanel.entity.object3D) {
-    GlobalRefs.leftWristPanelRoot = leftControllerPanel.entity.object3D;
-  }
+  GlobalRefs.leftWristPanel = leftControllerPanel;
+
   const rightControllerPanel = new ControllerCameraPanel(world, "right");
-  if (rightControllerPanel.entity.object3D) {
-    GlobalRefs.rightWristPanelRoot = rightControllerPanel.entity.object3D;
-  }
+  GlobalRefs.rightWristPanel = rightControllerPanel;
 
   // Pending tracks queue for tracks that arrive before config
   const pendingTracks: Array<{ track: MediaStreamTrack; trackId: string; index: number }> = [];
@@ -202,13 +199,11 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
           panel.setLabel(key.toUpperCase());
           cameraPanels.set(key, panel);
 
-          if (panel.entity && panel.entity.object3D) {
-            GlobalRefs.cameraPanels.set(key, panel.entity.object3D);
-            const shouldHide = (key === "head" && disableHeadCameraPanel) || !getCameraEnabled(key as CameraViewKey);
-            panel.entity.object3D.visible = !shouldHide;
-          } else {
-            console.warn(`[Video] Panel entity or object3D missing for key: ${key}`);
-          }
+    GlobalRefs.cameraPanels.set(key, panel);
+    const shouldHide = (key === "head" && disableHeadCameraPanel) || !getCameraEnabled(key as CameraViewKey);
+    if (panel.entity && panel.entity.object3D) {
+      panel.entity.object3D.visible = !shouldHide;
+    }
         }
 
         const x = 1.2 + index * 0.9;

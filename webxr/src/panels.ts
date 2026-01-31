@@ -75,12 +75,17 @@ export class DraggablePanel {
 export class CameraPanel extends DraggablePanel {
   private videoMesh: Mesh | null = null;
   private videoElement: HTMLVideoElement | null = null;
+  private _hasVideoTrack = false;
 
   constructor(world: World) {
     super(world, "./ui/camera.json", {
       maxHeight: 0.6,
       maxWidth: 0.8,
     });
+  }
+
+  public hasVideoTrack(): boolean {
+    return this._hasVideoTrack;
   }
 
   setLabel(text: string) {
@@ -114,12 +119,14 @@ export class CameraPanel extends DraggablePanel {
       this.videoMesh = null;
     }
 
+    this._hasVideoTrack = false;
     super.dispose();
   }
 
   setVideoTrack(track: MediaStreamTrack) {
     if (this.videoMesh) return; // Already set
 
+    this._hasVideoTrack = true;
     const stream = new MediaStream([track]);
     this.videoElement = document.createElement("video");
     this.videoElement.srcObject = stream;
@@ -153,6 +160,7 @@ export class ControllerCameraPanel {
   public handedness: "left" | "right";
   private videoMesh: Mesh | null = null;
   private videoElement: HTMLVideoElement | null = null;
+  private _hasVideoTrack = false;
 
   constructor(world: World, handedness: "left" | "right") {
     this.handedness = handedness;
@@ -173,10 +181,24 @@ export class ControllerCameraPanel {
     bgMesh.position.z = -0.002;
     bgMesh.renderOrder = 0;
     this.entity.object3D.add(bgMesh);
+
+    // Default to hidden if no track
+    if (this.entity.object3D) {
+      this.entity.object3D.visible = false;
+    }
+  }
+
+  public hasVideoTrack(): boolean {
+    return this._hasVideoTrack;
   }
 
   setVideoTrack(track: MediaStreamTrack) {
     if (this.videoMesh) return; // Already set
+
+    this._hasVideoTrack = true;
+    if (this.entity.object3D) {
+      this.entity.object3D.visible = true;
+    }
 
     const stream = new MediaStream([track]);
     this.videoElement = document.createElement("video");

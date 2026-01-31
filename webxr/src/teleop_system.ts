@@ -57,16 +57,25 @@ export class TeleopSystem extends createSystem({
           // Determine target state: if any camera is visible, target is HIDDEN. If all hidden, target is VISIBLE.
           const panels = [
             ...Array.from(GlobalRefs.cameraPanels.values()),
-            GlobalRefs.leftWristPanelRoot,
-            GlobalRefs.rightWristPanelRoot,
+            GlobalRefs.leftWristPanel,
+            GlobalRefs.rightWristPanel,
           ].filter((p) => !!p);
 
-          const anyVisible = panels.some((p) => p.visible);
+          const anyVisible = panels.some((p) => p.entity && p.entity.object3D && p.entity.object3D.visible);
           const targetVisible = !anyVisible;
 
           // Apply targetVisible to all existing panels
           panels.forEach((p) => {
-            p.visible = targetVisible;
+            if (p.entity && p.entity.object3D) {
+              if (targetVisible) {
+                // Only show if it has an active video track
+                if (typeof p.hasVideoTrack === "function" && p.hasVideoTrack()) {
+                  p.entity.object3D.visible = true;
+                }
+              } else {
+                p.entity.object3D.visible = false;
+              }
+            }
           });
         });
       }
