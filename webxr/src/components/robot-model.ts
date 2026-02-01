@@ -26,7 +26,16 @@ AFRAME.registerComponent("robot-model", {
     window.addEventListener("robot-config", self.onRobotConfig);
     window.addEventListener("robot-state", self.onRobotState);
 
-    console.log("[RobotModelComponent] Initialized");
+    const placeholderEntity = document.createElement("a-box");
+    placeholderEntity.setAttribute("color", "blue");
+    placeholderEntity.setAttribute("width", "0.5");
+    placeholderEntity.setAttribute("height", "0.5");
+    placeholderEntity.setAttribute("depth", "0.5");
+    placeholderEntity.setAttribute("position", "0 0.25 0");
+    this.el.appendChild(placeholderEntity);
+    self.placeholderEntity = placeholderEntity;
+
+    console.log("[RobotModelComponent] Initialized with blue placeholder box");
   },
 
   remove: function () {
@@ -61,7 +70,7 @@ AFRAME.registerComponent("robot-model", {
       console.error("[RobotModelComponent] LoadingManager error for URL:", url);
     };
 
-    self.loader.load(
+      self.loader.load(
       urdfUrl,
       (result: Object3D) => {
         const robot = result;
@@ -69,6 +78,11 @@ AFRAME.registerComponent("robot-model", {
 
         if (self.robotModel) {
           this.el.object3D.remove(self.robotModel);
+        }
+
+        if (self.placeholderEntity && self.placeholderEntity.parentNode) {
+          self.placeholderEntity.parentNode.removeChild(self.placeholderEntity);
+          self.placeholderEntity = null;
         }
 
         // Rotation fix: -90deg on X (Z-up to Y-up)

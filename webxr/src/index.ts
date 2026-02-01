@@ -1,3 +1,4 @@
+import "aframe";
 import { initConsoleStream } from "./console_stream.js";
 
 import "./systems/teleop.js";

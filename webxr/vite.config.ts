@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import mkcert from "vite-plugin-mkcert";
+import path from "path";
 
 export default defineConfig({
   plugins: [
@@ -15,6 +16,11 @@ export default defineConfig({
   esbuild: { target: "esnext" },
   optimizeDeps: {
     esbuildOptions: { target: "esnext" },
+  },
+  resolve: {
+    alias: {
+      three: path.resolve(__dirname, "node_modules/aframe/node_modules/three"),
+    },
   },
   publicDir: "public",
   base: "./",
