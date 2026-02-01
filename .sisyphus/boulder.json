@@ -1,0 +1,11 @@
+{
+  "plan": ".sisyphus/plans/enable-ar-passthrough.md",
+  "started_at": "2026-02-01T00:00:00Z",
+  "current_task": null,
+  "completed_tasks": [
+    "Task 1: Configure webxr/index.html for AR and VR",
+    "Task 2: Verify Configuration & Render"
+  ],
+  "status": "completed",
+  "completed_at": "2026-02-01T02:26:00Z"
+}

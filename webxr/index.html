@@ -10,7 +10,13 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   </head>
   <body style="margin: 0">
-    <a-scene teleop>
+    <div id="overlay"></div>
+    <a-scene
+      teleop
+      xr-mode-ui="XRMode: ar"
+      webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay"
+      background="transparent: true">
+      <a-sky color="#ECECEC" hide-on-enter-ar></a-sky>
       <a-entity id="rig">
         <a-entity id="head" camera look-controls wasd-controls></a-entity>
         <a-entity id="leftHand" tracked-controls="hand: left"></a-entity>
