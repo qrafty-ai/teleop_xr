@@ -7,7 +7,7 @@ import {
 } from "@iwsdk/core";
 import { GlobalRefs } from "./global_refs";
 import { onCameraViewsChanged } from "./camera_views";
-import { getCameraEnabled, setCameraEnabled } from "./camera_config";
+import { getCameraEnabled, setCameraEnabled, getCameraSettings, setCameraSettings, CameraSettings } from "./camera_config";
 import { CameraViewKey } from "./track_routing";
 
 const MAX_ROWS = 6;
@@ -23,6 +23,13 @@ export class CameraSettingsSystem extends createSystem({
   private rows: any[] = [];
   private labels: any[] = [];
   private buttons: any[] = [];
+
+  // New input references
+  private targetInput: any = null;
+  private widthInput: any = null;
+  private heightInput: any = null;
+  private fpsInput: any = null;
+  private deviceIdInput: any = null;
 
   init() {
     this.queries.cameraSettingsPanel.subscribe("qualify", (entity) => {
@@ -43,6 +50,20 @@ export class CameraSettingsSystem extends createSystem({
         });
       }
 
+      // Bind new inputs
+      this.targetInput = document.getElementById("input-target-cam");
+      this.widthInput = document.getElementById("input-width");
+      this.heightInput = document.getElementById("input-height");
+      this.fpsInput = document.getElementById("input-fps");
+      this.deviceIdInput = document.getElementById("input-device-id");
+
+      const updateBtn = document.getElementById("update-btn");
+      if (updateBtn) {
+        updateBtn.addEventListener("click", () => {
+          this.handleUpdateConfig();
+        });
+      }
+
       // Pre-fetch all element references
       for (let i = 0; i < MAX_ROWS; i++) {
         const row = document.getElementById(`row-${i}`);
@@ -58,6 +79,13 @@ export class CameraSettingsSystem extends createSystem({
             this.handleToggleClick(i);
           });
         }
+
+        // Click on label to select camera for editing
+        if (label) {
+          label.addEventListener("click", () => {
+            this.handleSelectCamera(i);
+          });
+        }
       }
 
       onCameraViewsChanged((config) => {
@@ -65,6 +93,49 @@ export class CameraSettingsSystem extends createSystem({
         this.updateRows(config);
       });
     });
+  }
+
+  private handleSelectCamera(rowIndex: number) {
+    let targetKey: string | null = null;
+    for (const [key, idx] of this.keyToRowIndex.entries()) {
+      if (idx === rowIndex) {
+        targetKey = key;
+        break;
+      }
+    }
+
+    if (!targetKey) return;
+
+    console.log("[CameraSettings] Selected camera:", targetKey);
+    const settings = getCameraSettings(targetKey as CameraViewKey);
+
+    if (this.targetInput) this.targetInput.setProperties({ value: targetKey });
+    if (this.widthInput) this.widthInput.setProperties({ value: settings.width.toString() });
+    if (this.heightInput) this.heightInput.setProperties({ value: settings.height.toString() });
+    if (this.fpsInput) this.fpsInput.setProperties({ value: settings.fps.toString() });
+    if (this.deviceIdInput) this.deviceIdInput.setProperties({ value: settings.deviceId });
+  }
+
+  private handleUpdateConfig() {
+    if (!this.targetInput) return;
+
+    const key = this.targetInput.value ?? this.targetInput.properties?.value;
+    if (!key) return;
+
+    const widthStr = this.widthInput?.value ?? this.widthInput?.properties?.value ?? "1280";
+    const heightStr = this.heightInput?.value ?? this.heightInput?.properties?.value ?? "720";
+    const fpsStr = this.fpsInput?.value ?? this.fpsInput?.properties?.value ?? "30";
+    const deviceId = this.deviceIdInput?.value ?? this.deviceIdInput?.properties?.value ?? "";
+
+    const newSettings: Partial<CameraSettings> = {
+      width: parseInt(widthStr, 10),
+      height: parseInt(heightStr, 10),
+      fps: parseInt(fpsStr, 10),
+      deviceId: deviceId
+    };
+
+    console.log("[CameraSettings] Updating config for", key, newSettings);
+    setCameraSettings(key as CameraViewKey, newSettings);
   }
 
   private handleToggleClick(rowIndex: number) {

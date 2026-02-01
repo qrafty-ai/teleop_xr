@@ -7,6 +7,7 @@ export const GlobalRefs = {
   cameraPanels: new Map<string, CameraPanel>(),
   teleopPanelRoot: null as any,
   cameraSettingsPanel: null as any,
+  robotSettingsPanel: null as any,
   leftWristPanel: null as ControllerCameraPanel | null,
   rightWristPanel: null as ControllerCameraPanel | null,
 };

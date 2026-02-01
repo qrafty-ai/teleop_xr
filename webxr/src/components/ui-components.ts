@@ -110,6 +110,27 @@ export const TeleopDashboardComponent = {
     this.latencyText.setAttribute('width', '1.5');
     this.latencyText.setAttribute('color', '#aaa');
     el.appendChild(this.latencyText);
+
+    // 6. Robot Settings Button (Added for verification)
+    const robotBtn = document.createElement('a-text');
+    robotBtn.setAttribute('value', 'Robot Settings');
+    robotBtn.setAttribute('align', 'center');
+    robotBtn.setAttribute('position', '0 -0.35 0.01');
+    robotBtn.setAttribute('width', '2');
+    robotBtn.setAttribute('color', '#00f'); // Blue to match the theme
+    robotBtn.setAttribute('class', 'clickable');
+    robotBtn.id = 'robot-settings-btn';
+    el.appendChild(robotBtn);
+
+    // Toggle logic for verification
+    robotBtn.addEventListener('click', () => {
+      const panel = document.querySelector('#robot-settings-panel');
+      if (panel) {
+        const currentVisible = panel.getAttribute('visible') === 'true';
+        panel.setAttribute('visible', !currentVisible);
+        console.log(`[Dashboard] Toggled Robot Settings panel to ${!currentVisible}`);
+      }
+    });
   },
 
   bindEvents: function(this: any) {

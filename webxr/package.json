@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@iwsdk/core": "^0.2.2",
     "aframe": "^1.6.0",
     "three-stdlib": "^2.36.1",
     "urdf-loader": "^0.12.6"

@@ -1,52 +1,121 @@
-import type { System } from 'aframe';
-import { Vector3, Quaternion, Object3D } from 'three';
+import {
+  createSystem,
+  PanelDocument,
+  PanelUI,
+  eq,
+  UIKitDocument,
+} from "@iwsdk/core";
+import { Quaternion, Vector3 } from "@iwsdk/core";
+import { GlobalRefs } from "../global_refs";
+import { setCameraViewsConfig } from "../camera_views";
+import { getCameraEnabled, setCameraEnabled } from "../camera_config";
+import { CameraViewKey } from "../track_routing";
+import { RobotModelSystem } from "../robot_system";
 
 type DevicePose = {
   position: { x: number; y: number; z: number };
   orientation: { x: number; y: number; z: number; w: number };
 };
 
-interface TeleopSystemDef extends System {
-  ws: WebSocket | null;
-  inputMode: string;
-  frameCount: number;
-  lastFpsTime: number;
-  currentFps: number;
-  lastSendTime: number;
-  menuButtonState: boolean;
-  tempPosition: Vector3;
-  tempQuaternion: Quaternion;
-
-  connectWS(): void;
-  updateStatus(text: string, connected: boolean): void;
-  poseFromObject(object: Object3D): DevicePose | null;
-  buildControllerDevice(
-    handedness: "left" | "right",
-    object3D: Object3D,
-    gamepad: Gamepad | undefined,
-    isHandPrimary: boolean
-  ): any;
-  gatherInputState(time: number): any;
-}
-
-export const TeleopSystemDefinition = {
-  schema: {},
-
-  init: function(this: TeleopSystemDef) {
-    this.ws = null;
-    this.inputMode = 'auto';
-    this.frameCount = 0;
-    this.lastFpsTime = 0;
-    this.currentFps = 0;
-    this.lastSendTime = 0;
-    this.menuButtonState = false;
-    this.tempPosition = new Vector3();
-    this.tempQuaternion = new Quaternion();
-
-    this.connectWS();
+export class TeleopSystem extends createSystem({
+  teleopPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, "config", "./ui/teleop.json")],
   },
+}) {
+  private ws: WebSocket | null = null;
+  private statusText: any = null;
+  private fpsText: any = null;
+  private latencyText: any = null;
+  private frameCount = 0;
+  private lastFpsTime = 0;
+  private currentFps = 0;
+  private lastSendTime = 0;
+  private inputMode = "auto";
+  private tempPosition = new Vector3();
+  private tempQuaternion = new Quaternion();
+  private menuButtonState = false;
 
-  connectWS: function(this: TeleopSystemDef) {
+  init() {
+    this.connectWS();
+
+    this.queries.teleopPanel.subscribe("qualify", (entity) => {
+      const document = PanelDocument.data.document[entity.index] as UIKitDocument;
+      if (!document) {
+        return;
+      }
+
+      this.statusText = document.getElementById("status-text");
+      this.fpsText = document.getElementById("fps-text");
+      this.latencyText = document.getElementById("latency-text");
+
+      const cameraButton = document.getElementById("camera-button");
+      if (cameraButton) {
+        cameraButton.addEventListener("click", () => {
+          // Use GlobalRefs - populated by index.ts at creation time
+          // DO NOT access ECS queries during click events (causes freeze)
+
+          // Determine target state based on currently visible AND enabled panels
+          const floatingPanels = Array.from(GlobalRefs.cameraPanels.entries()).map(([key, panel]) => ({ key, panel }));
+          const wristPanels = [
+            { key: "wrist_left", panel: GlobalRefs.leftWristPanel },
+            { key: "wrist_right", panel: GlobalRefs.rightWristPanel },
+          ];
+
+          const allPanelRefs = [...floatingPanels, ...wristPanels].filter(p => !!p.panel);
+
+          // Find if any enabled panel is currently visible
+          const anyEnabledVisible = allPanelRefs.some(({ key, panel }) => {
+            const enabled = getCameraEnabled(key as CameraViewKey);
+            return enabled && panel.entity && panel.entity.object3D && panel.entity.object3D.visible;
+          });
+
+          const targetVisible = !anyEnabledVisible;
+
+          // Apply targetVisible ONLY to enabled panels. Disabled panels stay hidden.
+          allPanelRefs.forEach(({ key, panel }) => {
+            if (panel.entity && panel.entity.object3D) {
+              const enabled = getCameraEnabled(key as CameraViewKey);
+              if (targetVisible && enabled) {
+                // Only show if it has an active video track
+                if (typeof panel.hasVideoTrack === "function" && panel.hasVideoTrack()) {
+                  panel.entity.object3D.visible = true;
+                }
+              } else {
+                // Always hide if target is hidden OR if panel is disabled
+                panel.entity.object3D.visible = false;
+              }
+            }
+          });
+        });
+      }
+
+      const cameraSettingsBtn = document.getElementById("camera-settings-btn");
+      if (cameraSettingsBtn) {
+        cameraSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.cameraSettingsPanel;
+          if (panel && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
+      const robotSettingsBtn = document.getElementById("robot-settings-btn");
+      if (robotSettingsBtn) {
+        robotSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.robotSettingsPanel;
+          if (panel && panel.entity && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
+      const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
+      this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
+    });
+  }
+
+  connectWS() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
 
@@ -72,24 +141,41 @@ export const TeleopSystemDefinition = {
           if (message.data?.input_mode) {
             this.inputMode = message.data.input_mode;
           }
-          this.el.emit('teleop-config', message.data);
+          setCameraViewsConfig(message.data?.camera_views ?? null);
         } else if (message.type === "robot_config") {
-          this.el.emit('robot-config', message.data);
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotConfig(message.data);
+          }
         } else if (message.type === "robot_state") {
-          this.el.emit('robot-state', message.data);
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotState(message.data);
+          }
         }
       } catch (error) {
         console.warn("Failed to parse WS message", error);
       }
     };
-  },
+  }
 
-  updateStatus: function(this: TeleopSystemDef, text: string, connected: boolean) {
-    this.el.emit('teleop-status', { text, connected });
-  },
+  updateStatus(text: string, connected: boolean) {
+    if (!this.statusText) {
+      return;
+    }
 
-  poseFromObject: function(this: TeleopSystemDef, object: Object3D): DevicePose | null {
-    if (!object) {
+    this.statusText.setProperties({ text });
+    if (this.statusText.classList) {
+      if (connected) {
+        this.statusText.classList.add("connected");
+      } else {
+        this.statusText.classList.remove("connected");
+      }
+    }
+  }
+
+  poseFromObject(object: any): DevicePose | null {
+    if (!object?.getWorldPosition || !object?.getWorldQuaternion) {
       return null;
     }
     object.getWorldPosition(this.tempPosition);
@@ -107,20 +193,19 @@ export const TeleopSystemDefinition = {
         w: this.tempQuaternion.w,
       },
     };
-  },
+  }
 
-  buildControllerDevice: function(
-    this: TeleopSystemDef,
+  buildControllerDevice(
     handedness: "left" | "right",
-    object3D: Object3D,
-    gamepad: Gamepad | undefined,
-    isHandPrimary: boolean
+    raySpace: any,
+    gamepad: any,
+    isHandPrimary: boolean,
   ) {
     if (isHandPrimary) {
       return null;
     }
 
-    const pose = this.poseFromObject(object3D);
+    const pose = this.poseFromObject(raySpace);
     if (!pose) {
       return null;
     }
@@ -139,50 +224,48 @@ export const TeleopSystemDefinition = {
       gripPose: pose,
     };
 
-    if (gamepad) {
+    const rawGamepad = gamepad?.gamepad;
+    if (rawGamepad) {
       device.gamepad = {
-        buttons: Array.from(gamepad.buttons).map((button: any) => ({
+        buttons: Array.from(rawGamepad.buttons).map((button: any) => ({
           pressed: button.pressed,
           touched: button.touched,
           value: button.value,
         })),
-        axes: Array.from(gamepad.axes),
+        axes: Array.from(rawGamepad.axes),
       };
     }
 
     return device;
-  },
+  }
 
-  tick: function(this: TeleopSystemDef, time: number, delta: number) {
-    const timeSec = time / 1000;
-
+  update(delta: number, time: number) {
     if (this.lastFpsTime === 0) {
-      this.lastFpsTime = timeSec;
+      this.lastFpsTime = time;
     }
 
     this.frameCount += 1;
-    if (timeSec - this.lastFpsTime >= 1.0) {
+    if (time - this.lastFpsTime >= 1.0) {
       this.currentFps = Math.round(
-        this.frameCount / (timeSec - this.lastFpsTime),
+        this.frameCount / (time - this.lastFpsTime),
       );
       this.frameCount = 0;
-      this.lastFpsTime = timeSec;
+      this.lastFpsTime = time;
     }
 
-    if (timeSec - this.lastSendTime <= 0.01) {
+    if (time - this.lastSendTime <= 0.01) {
       return;
     }
-    this.lastSendTime = timeSec;
+    this.lastSendTime = time;
+    const input = (this as any).input ?? this.world.input;
 
-    const state = this.gatherInputState(time);
+    const state = this.gatherInputState(input);
     if (!state || state.devices.length === 0) {
       return;
     }
 
-    this.el.emit('teleop-stats', {
-        fps: this.currentFps,
-        latency: state.fetch_latency_ms
-    });
+    const head = state.devices.find((device) => device.role === "head");
+    this.updateLocalStats(head?.pose ?? null, this.currentFps, state.fetch_latency_ms);
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(
@@ -192,62 +275,81 @@ export const TeleopSystemDefinition = {
         }),
       );
     }
-  },
+  }
 
-  gatherInputState: function(this: TeleopSystemDef, timeMs: number) {
-    const fetchStart = performance.now();
-    const timestamp_unix_ms = Date.now();
-    const devices: Array<any> = [];
-
-    const camera = this.el.sceneEl?.camera;
-    if (camera) {
-       const headPose = this.poseFromObject(camera);
-       if (headPose) {
-         devices.push({
-           role: "head",
-           handedness: "none",
-           pose: headPose,
-         });
-       }
+  updateLocalStats(pose: DevicePose | null, fps: number, latency: number) {
+    if (this.fpsText) {
+      this.fpsText.setProperties({ text: `${fps}` });
     }
 
-    const trackedControls = this.el.sceneEl?.querySelectorAll('[tracked-controls]');
+    if (this.latencyText) {
+      const latencyValue = Number.isFinite(latency) ? latency : 0;
+      this.latencyText.setProperties({ text: `${latencyValue.toFixed(1)}ms` });
+    }
+  }
 
-    if (trackedControls) {
-      trackedControls.forEach((el: any) => {
-        const component = el.components['tracked-controls'];
-        if (!component || !component.controller) return;
+  gatherInputState(input: any) {
+    const leftGamepad = input?.gamepads?.left?.gamepad;
+    if (leftGamepad && leftGamepad.buttons && leftGamepad.buttons.length > 0) {
+      // The menu button is the last item of the left gamepad button array
+      const menuButton = leftGamepad.buttons[leftGamepad.buttons.length - 1];
 
-        const gamepad = component.controller as Gamepad;
-        const handedness = gamepad.hand as "left" | "right";
-
-        const isHandPrimary = false;
-
-        if (handedness === 'left' && gamepad.buttons && gamepad.buttons.length > 0) {
-           const menuButton = gamepad.buttons[gamepad.buttons.length - 1];
-           if (menuButton) {
-             if (menuButton.pressed) {
-               if (!this.menuButtonState) {
-                 this.menuButtonState = true;
-                 this.el.emit('teleop-menu-toggle');
-               }
-             } else {
-               this.menuButtonState = false;
-             }
-           }
+      if (menuButton) {
+        if (menuButton.pressed) {
+          if (!this.menuButtonState) {
+            this.menuButtonState = true;
+            if (GlobalRefs.teleopPanelRoot) {
+              GlobalRefs.teleopPanelRoot.visible =
+                !GlobalRefs.teleopPanelRoot.visible;
+            }
+          }
+        } else {
+          this.menuButtonState = false;
         }
+      }
+    }
 
-        const device = this.buildControllerDevice(
-          handedness,
-          el.object3D,
-          gamepad,
-          isHandPrimary
-        );
+    const fetchStart = performance.now();
+    const timestamp_unix_ms = Date.now();
+    const devices: Array<{
+      role: string;
+      handedness: string;
+      pose?: DevicePose;
+      gripPose?: DevicePose;
+      gamepad?: {
+        buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+        axes: number[];
+      };
+    }> = [];
 
-        if (device) {
-          devices.push(device);
-        }
+    const player = (this as any).player ?? this.world.player;
+    const headPose = this.poseFromObject(player?.head);
+    if (headPose) {
+      devices.push({
+        role: "head",
+        handedness: "none",
+        pose: headPose,
       });
+    }
+
+    const leftDevice = this.buildControllerDevice(
+      "left",
+      player?.raySpaces?.left,
+      input?.gamepads?.left,
+      Boolean(input?.isPrimary?.("hand", "left")),
+    );
+    if (leftDevice) {
+      devices.push(leftDevice);
+    }
+
+    const rightDevice = this.buildControllerDevice(
+      "right",
+      player?.raySpaces?.right,
+      input?.gamepads?.right,
+      Boolean(input?.isPrimary?.("hand", "right")),
+    );
+    if (rightDevice) {
+      devices.push(rightDevice);
     }
 
     if (devices.length === 0) {
@@ -263,6 +365,4 @@ export const TeleopSystemDefinition = {
       fetch_latency_ms,
     };
   }
-};
-
-AFRAME.registerSystem('teleop', TeleopSystemDefinition);
+}

@@ -1,5 +1,10 @@
 export type CameraView = {
-  device: string;
+  device?: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+  deviceId?: string;
+  enabled?: boolean;
 };
 
 export type CameraViewsConfig = Record<string, CameraView>;

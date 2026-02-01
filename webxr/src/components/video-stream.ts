@@ -1,5 +1,6 @@
 import { VideoClient, VideoStats } from '../video';
 import { VideoTexture, MeshBasicMaterial, Mesh, PlaneGeometry, DoubleSide } from 'three';
+import { getCameraSettings } from '../camera_config';
 
 // Global AFRAME is declared as 'any' in aframe-types.d.ts
 // We declare it here to satisfy the compiler if needed, but it should be global.
@@ -153,7 +154,11 @@ AFRAME.registerComponent('video-stream', {
             (mesh.material as MeshBasicMaterial).needsUpdate = true;
         }
     } else {
-        const geometry = new PlaneGeometry(1, 0.75);
+        const settings = getCameraSettings(this.data.trackId);
+        const aspect = settings.width / settings.height || 4/3;
+        const width = 1.0;
+        const height = width / aspect;
+        const geometry = new PlaneGeometry(width, height);
         const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
         this.mesh = new Mesh(geometry, material);
         this.el.setObject3D('mesh', this.mesh);

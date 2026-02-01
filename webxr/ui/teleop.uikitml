@@ -96,5 +96,6 @@
   </div>
   <button id="camera-button" class="button">Toggle Cameras</button>
   <button id="camera-settings-btn" class="button">Camera Settings</button>
+  <button id="robot-settings-btn" class="button">Robot Settings</button>
   <button id="xr-button" class="button">Enter XR</button>
 </div>
