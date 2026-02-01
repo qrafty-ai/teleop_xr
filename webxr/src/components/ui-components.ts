@@ -111,24 +111,63 @@ export const TeleopDashboardComponent = {
     this.latencyText.setAttribute('color', '#aaa');
     el.appendChild(this.latencyText);
 
-    // 6. Robot Settings Button (Added for verification)
+    const cameraBtn = document.createElement('a-text');
+    cameraBtn.setAttribute('value', 'Camera Settings');
+    cameraBtn.setAttribute('align', 'center');
+    cameraBtn.setAttribute('position', '0 -0.25 0.01');
+    cameraBtn.setAttribute('width', '2');
+    cameraBtn.setAttribute('color', '#00f');
+    cameraBtn.setAttribute('class', 'clickable');
+    cameraBtn.id = 'camera-settings-btn';
+    el.appendChild(cameraBtn);
+
+    cameraBtn.addEventListener('click', () => {
+      console.log('[Dashboard] Camera Settings clicked');
+      const panel = document.querySelector('#camera-settings-panel');
+      if (panel) {
+        const currentVisible = panel.getAttribute('visible') === 'true';
+        panel.setAttribute('visible', (!currentVisible).toString());
+        console.log(`[Dashboard] Toggled Camera Settings panel to ${!currentVisible}`);
+      }
+    });
+
     const robotBtn = document.createElement('a-text');
     robotBtn.setAttribute('value', 'Robot Settings');
     robotBtn.setAttribute('align', 'center');
-    robotBtn.setAttribute('position', '0 -0.35 0.01');
+    robotBtn.setAttribute('position', '0 -0.40 0.01');
     robotBtn.setAttribute('width', '2');
-    robotBtn.setAttribute('color', '#00f'); // Blue to match the theme
+    robotBtn.setAttribute('color', '#00f');
     robotBtn.setAttribute('class', 'clickable');
     robotBtn.id = 'robot-settings-btn';
     el.appendChild(robotBtn);
 
-    // Toggle logic for verification
     robotBtn.addEventListener('click', () => {
+      console.log('[Dashboard] Robot Settings clicked');
       const panel = document.querySelector('#robot-settings-panel');
       if (panel) {
         const currentVisible = panel.getAttribute('visible') === 'true';
-        panel.setAttribute('visible', !currentVisible);
+        panel.setAttribute('visible', (!currentVisible).toString());
         console.log(`[Dashboard] Toggled Robot Settings panel to ${!currentVisible}`);
+      }
+    });
+
+    const generalBtn = document.createElement('a-text');
+    generalBtn.setAttribute('value', 'General Settings');
+    generalBtn.setAttribute('align', 'center');
+    generalBtn.setAttribute('position', '0 -0.55 0.01');
+    generalBtn.setAttribute('width', '2');
+    generalBtn.setAttribute('color', '#00f');
+    generalBtn.setAttribute('class', 'clickable');
+    generalBtn.id = 'general-settings-btn';
+    el.appendChild(generalBtn);
+
+    generalBtn.addEventListener('click', () => {
+      console.log('[Dashboard] General Settings clicked');
+      const panel = document.querySelector('#general-settings-panel');
+      if (panel) {
+        const currentVisible = panel.getAttribute('visible') === 'true';
+        panel.setAttribute('visible', (!currentVisible).toString());
+        console.log(`[Dashboard] Toggled General Settings panel to ${!currentVisible}`);
       }
     });
   },

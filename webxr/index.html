@@ -28,6 +28,9 @@
       </a-entity>
 
       <a-entity id="dashboard" teleop-dashboard position="0 1.5 -1.5"></a-entity>
+      <a-entity id="camera-settings-panel" position="-0.6 1.6 -0.1" visible="false" panel-ui="config: ./ui/camera_settings.json">
+        <a-plane width="0.5" height="0.8" spatial-panel="color: #ffffff; opacity: 0.2; transmission: 0.95; roughness: 0.05; thickness: 0.5"></a-plane>
+      </a-entity>
       <a-entity id="robot-settings-panel" position="0 1.6 -0.1" visible="false" panel-ui="config: ./ui/robot_settings.json">
         <a-plane width="0.5" height="0.4" spatial-panel="color: #ffffff; opacity: 0.2; transmission: 0.95; roughness: 0.05; thickness: 0.5"></a-plane>
       </a-entity>
