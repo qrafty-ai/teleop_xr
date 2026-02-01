@@ -9,6 +9,7 @@ import "./components/ui-components.js";
 
 import "./robot_settings_system.js";
 import "./camera_settings_system.js";
+import "./general_settings_system.js";
 
 initConsoleStream();
 

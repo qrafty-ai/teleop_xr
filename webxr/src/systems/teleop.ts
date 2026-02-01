@@ -110,6 +110,16 @@ export class TeleopSystem extends createSystem({
         });
       }
 
+      const generalSettingsBtn = document.getElementById("general-settings-btn");
+      if (generalSettingsBtn) {
+        generalSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.generalSettingsPanel;
+          if (panel && panel.entity && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
       const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
       this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
     });
