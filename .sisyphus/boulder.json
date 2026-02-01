@@ -1,11 +1,11 @@
 {
-  "active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/urdf-vis-port.md",
-  "started_at": "2026-01-31T09:33:25.784Z",
-  "session_ids": [
-    "ses_3ec99928affe3QJPxUnLolFk0R",
-    "ses_3ec990b21ffecFT3OufVTa0sF7",
-    "ses_3ec96e015ffeKax6YmvwSeqXzE",
-    "ses_3ec9640dcffelQmcG8WPuXIPMv"
+  "plan": ".sisyphus/plans/enable-ar-passthrough.md",
+  "started_at": "2026-02-01T00:00:00Z",
+  "current_task": null,
+  "completed_tasks": [
+    "Task 1: Configure webxr/index.html for AR and VR",
+    "Task 2: Verify Configuration & Render"
   ],
-  "plan_name": "urdf-vis-port"
+  "status": "completed",
+  "completed_at": "2026-02-01T02:26:00Z"
 }

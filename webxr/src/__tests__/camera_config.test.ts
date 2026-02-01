@@ -29,7 +29,9 @@ describe("camera_config", () => {
 
     setCameraEnabled("wrist_left", false);
     expect(handler).toHaveBeenCalledTimes(2);
-    expect(handler).toHaveBeenLastCalledWith(expect.objectContaining({ wrist_left: false }));
+    expect(handler).toHaveBeenLastCalledWith(expect.objectContaining({
+        wrist_left: expect.objectContaining({ enabled: false })
+    }));
 
     unsubscribe();
     setCameraEnabled("wrist_left", true);

@@ -1,17 +1,41 @@
 import { CameraViewKey } from "./track_routing";
 
-export type CameraConfig = Record<CameraViewKey, boolean>;
+export interface CameraSettings {
+  width: number;
+  height: number;
+  fps: number;
+  deviceId: string;
+  enabled: boolean;
+}
+
+export type CameraConfig = Record<CameraViewKey, CameraSettings>;
+
+const DEFAULT_SETTINGS: CameraSettings = {
+  width: 1280,
+  height: 720,
+  fps: 30,
+  deviceId: "",
+  enabled: true,
+};
 
 let currentConfig: CameraConfig = {};
 const handlers: ((config: CameraConfig) => void)[] = [];
 
+export function getCameraSettings(key: CameraViewKey): CameraSettings {
+  return currentConfig[key] || { ...DEFAULT_SETTINGS };
+}
+
+export function setCameraSettings(key: CameraViewKey, settings: Partial<CameraSettings>): void {
+  currentConfig[key] = { ...getCameraSettings(key), ...settings };
+  notify();
+}
+
 export function getCameraEnabled(key: CameraViewKey): boolean {
-  return currentConfig[key] !== false;
+  return getCameraSettings(key).enabled;
 }
 
 export function setCameraEnabled(key: CameraViewKey, enabled: boolean): void {
-  currentConfig[key] = enabled;
-  notify();
+  setCameraSettings(key, { enabled });
 }
 
 export function onCameraConfigChanged(

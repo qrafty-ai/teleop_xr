@@ -1,0 +1,378 @@
+import {
+  createSystem,
+  PanelDocument,
+  PanelUI,
+  eq,
+  UIKitDocument,
+} from "@iwsdk/core";
+import { Quaternion, Vector3 } from "@iwsdk/core";
+import { GlobalRefs } from "../global_refs";
+import { setCameraViewsConfig } from "../camera_views";
+import { getCameraEnabled, setCameraEnabled } from "../camera_config";
+import { CameraViewKey } from "../track_routing";
+import { RobotModelSystem } from "../robot_system";
+
+type DevicePose = {
+  position: { x: number; y: number; z: number };
+  orientation: { x: number; y: number; z: number; w: number };
+};
+
+export class TeleopSystem extends createSystem({
+  teleopPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, "config", "./ui/teleop.json")],
+  },
+}) {
+  private ws: WebSocket | null = null;
+  private statusText: any = null;
+  private fpsText: any = null;
+  private latencyText: any = null;
+  private frameCount = 0;
+  private lastFpsTime = 0;
+  private currentFps = 0;
+  private lastSendTime = 0;
+  private inputMode = "auto";
+  private tempPosition = new Vector3();
+  private tempQuaternion = new Quaternion();
+  private menuButtonState = false;
+
+  init() {
+    this.connectWS();
+
+    this.queries.teleopPanel.subscribe("qualify", (entity) => {
+      const document = PanelDocument.data.document[entity.index] as UIKitDocument;
+      if (!document) {
+        return;
+      }
+
+      this.statusText = document.getElementById("status-text");
+      this.fpsText = document.getElementById("fps-text");
+      this.latencyText = document.getElementById("latency-text");
+
+      const cameraButton = document.getElementById("camera-button");
+      if (cameraButton) {
+        cameraButton.addEventListener("click", () => {
+          // Use GlobalRefs - populated by index.ts at creation time
+          // DO NOT access ECS queries during click events (causes freeze)
+
+          // Determine target state based on currently visible AND enabled panels
+          const floatingPanels = Array.from(GlobalRefs.cameraPanels.entries()).map(([key, panel]) => ({ key, panel }));
+          const wristPanels = [
+            { key: "wrist_left", panel: GlobalRefs.leftWristPanel },
+            { key: "wrist_right", panel: GlobalRefs.rightWristPanel },
+          ];
+
+          const allPanelRefs = [...floatingPanels, ...wristPanels].filter(p => !!p.panel);
+
+          // Find if any enabled panel is currently visible
+          const anyEnabledVisible = allPanelRefs.some(({ key, panel }) => {
+            const enabled = getCameraEnabled(key as CameraViewKey);
+            return enabled && panel.entity && panel.entity.object3D && panel.entity.object3D.visible;
+          });
+
+          const targetVisible = !anyEnabledVisible;
+
+          // Apply targetVisible ONLY to enabled panels. Disabled panels stay hidden.
+          allPanelRefs.forEach(({ key, panel }) => {
+            if (panel.entity && panel.entity.object3D) {
+              const enabled = getCameraEnabled(key as CameraViewKey);
+              if (targetVisible && enabled) {
+                // Only show if it has an active video track
+                if (typeof panel.hasVideoTrack === "function" && panel.hasVideoTrack()) {
+                  panel.entity.object3D.visible = true;
+                }
+              } else {
+                // Always hide if target is hidden OR if panel is disabled
+                panel.entity.object3D.visible = false;
+              }
+            }
+          });
+        });
+      }
+
+      const cameraSettingsBtn = document.getElementById("camera-settings-btn");
+      if (cameraSettingsBtn) {
+        cameraSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.cameraSettingsPanel;
+          if (panel && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
+      const robotSettingsBtn = document.getElementById("robot-settings-btn");
+      if (robotSettingsBtn) {
+        robotSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.robotSettingsPanel;
+          if (panel && panel.entity && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
+      const generalSettingsBtn = document.getElementById("general-settings-btn");
+      if (generalSettingsBtn) {
+        generalSettingsBtn.addEventListener("click", () => {
+          const panel = GlobalRefs.generalSettingsPanel;
+          if (panel && panel.entity && panel.entity.object3D) {
+            panel.entity.object3D.visible = !panel.entity.object3D.visible;
+          }
+        });
+      }
+
+      const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
+      this.updateStatus(isConnected ? "Connected" : "Disconnected", !!isConnected);
+    });
+  }
+
+  connectWS() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      this.updateStatus("Connected", true);
+    };
+
+    this.ws.onclose = () => {
+      this.updateStatus("Disconnected", false);
+      setTimeout(() => this.connectWS(), 3000);
+    };
+
+    this.ws.onerror = (error) => {
+      console.error("WS Error", error);
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "config") {
+          if (message.data?.input_mode) {
+            this.inputMode = message.data.input_mode;
+          }
+          setCameraViewsConfig(message.data?.camera_views ?? null);
+        } else if (message.type === "robot_config") {
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotConfig(message.data);
+          }
+        } else if (message.type === "robot_state") {
+          const robotSystem = this.world.getSystem(RobotModelSystem);
+          if (robotSystem) {
+            robotSystem.onRobotState(message.data);
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to parse WS message", error);
+      }
+    };
+  }
+
+  updateStatus(text: string, connected: boolean) {
+    if (!this.statusText) {
+      return;
+    }
+
+    this.statusText.setProperties({ text });
+    if (this.statusText.classList) {
+      if (connected) {
+        this.statusText.classList.add("connected");
+      } else {
+        this.statusText.classList.remove("connected");
+      }
+    }
+  }
+
+  poseFromObject(object: any): DevicePose | null {
+    if (!object?.getWorldPosition || !object?.getWorldQuaternion) {
+      return null;
+    }
+    object.getWorldPosition(this.tempPosition);
+    object.getWorldQuaternion(this.tempQuaternion);
+    return {
+      position: {
+        x: this.tempPosition.x,
+        y: this.tempPosition.y,
+        z: this.tempPosition.z,
+      },
+      orientation: {
+        x: this.tempQuaternion.x,
+        y: this.tempQuaternion.y,
+        z: this.tempQuaternion.z,
+        w: this.tempQuaternion.w,
+      },
+    };
+  }
+
+  buildControllerDevice(
+    handedness: "left" | "right",
+    raySpace: any,
+    gamepad: any,
+    isHandPrimary: boolean,
+  ) {
+    if (isHandPrimary) {
+      return null;
+    }
+
+    const pose = this.poseFromObject(raySpace);
+    if (!pose) {
+      return null;
+    }
+
+    const device: {
+      role: string;
+      handedness: string;
+      gripPose: DevicePose;
+      gamepad?: {
+        buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+        axes: number[];
+      };
+    } = {
+      role: "controller",
+      handedness,
+      gripPose: pose,
+    };
+
+    const rawGamepad = gamepad?.gamepad;
+    if (rawGamepad) {
+      device.gamepad = {
+        buttons: Array.from(rawGamepad.buttons).map((button: any) => ({
+          pressed: button.pressed,
+          touched: button.touched,
+          value: button.value,
+        })),
+        axes: Array.from(rawGamepad.axes),
+      };
+    }
+
+    return device;
+  }
+
+  update(delta: number, time: number) {
+    if (this.lastFpsTime === 0) {
+      this.lastFpsTime = time;
+    }
+
+    this.frameCount += 1;
+    if (time - this.lastFpsTime >= 1.0) {
+      this.currentFps = Math.round(
+        this.frameCount / (time - this.lastFpsTime),
+      );
+      this.frameCount = 0;
+      this.lastFpsTime = time;
+    }
+
+    if (time - this.lastSendTime <= 0.01) {
+      return;
+    }
+    this.lastSendTime = time;
+    const input = (this as any).input ?? this.world.input;
+
+    const state = this.gatherInputState(input);
+    if (!state || state.devices.length === 0) {
+      return;
+    }
+
+    const head = state.devices.find((device) => device.role === "head");
+    this.updateLocalStats(head?.pose ?? null, this.currentFps, state.fetch_latency_ms);
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(
+        JSON.stringify({
+          type: "xr_state",
+          data: state,
+        }),
+      );
+    }
+  }
+
+  updateLocalStats(pose: DevicePose | null, fps: number, latency: number) {
+    if (this.fpsText) {
+      this.fpsText.setProperties({ text: `${fps}` });
+    }
+
+    if (this.latencyText) {
+      const latencyValue = Number.isFinite(latency) ? latency : 0;
+      this.latencyText.setProperties({ text: `${latencyValue.toFixed(1)}ms` });
+    }
+  }
+
+  gatherInputState(input: any) {
+    const leftGamepad = input?.gamepads?.left?.gamepad;
+    if (leftGamepad && leftGamepad.buttons && leftGamepad.buttons.length > 0) {
+      // The menu button is the last item of the left gamepad button array
+      const menuButton = leftGamepad.buttons[leftGamepad.buttons.length - 1];
+
+      if (menuButton) {
+        if (menuButton.pressed) {
+          if (!this.menuButtonState) {
+            this.menuButtonState = true;
+            if (GlobalRefs.teleopPanelRoot) {
+              GlobalRefs.teleopPanelRoot.visible =
+                !GlobalRefs.teleopPanelRoot.visible;
+            }
+          }
+        } else {
+          this.menuButtonState = false;
+        }
+      }
+    }
+
+    const fetchStart = performance.now();
+    const timestamp_unix_ms = Date.now();
+    const devices: Array<{
+      role: string;
+      handedness: string;
+      pose?: DevicePose;
+      gripPose?: DevicePose;
+      gamepad?: {
+        buttons: Array<{ pressed: boolean; touched: boolean; value: number }>;
+        axes: number[];
+      };
+    }> = [];
+
+    const player = (this as any).player ?? this.world.player;
+    const headPose = this.poseFromObject(player?.head);
+    if (headPose) {
+      devices.push({
+        role: "head",
+        handedness: "none",
+        pose: headPose,
+      });
+    }
+
+    const leftDevice = this.buildControllerDevice(
+      "left",
+      player?.raySpaces?.left,
+      input?.gamepads?.left,
+      Boolean(input?.isPrimary?.("hand", "left")),
+    );
+    if (leftDevice) {
+      devices.push(leftDevice);
+    }
+
+    const rightDevice = this.buildControllerDevice(
+      "right",
+      player?.raySpaces?.right,
+      input?.gamepads?.right,
+      Boolean(input?.isPrimary?.("hand", "right")),
+    );
+    if (rightDevice) {
+      devices.push(rightDevice);
+    }
+
+    if (devices.length === 0) {
+      return null;
+    }
+
+    const fetch_latency_ms = performance.now() - fetchStart;
+
+    return {
+      timestamp_unix_ms,
+      devices,
+      fps: this.currentFps,
+      fetch_latency_ms,
+    };
+  }
+}

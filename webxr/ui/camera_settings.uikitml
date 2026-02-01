@@ -1,4 +1,3 @@
-<style>
   .panel-container {
     align-items: flex-start;
     padding: 2;
@@ -9,6 +8,8 @@
     border-color: #27272a;
     border-width: 0.15;
     border-radius: 3;
+    max-height: 80;
+    overflow: scroll;
   }
 
   .heading {
@@ -73,6 +74,70 @@
     display: none;
   }
 
+  .divider {
+    width: 100%;
+    height: 0.1;
+    background-color: #27272a;
+    margin-top: 2;
+    margin-bottom: 2;
+  }
+
+  .settings-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .section-title {
+    font-size: 2.5;
+    color: #fafafa;
+    margin-bottom: 1;
+  }
+
+  .input-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 1;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    width: 48%;
+  }
+
+  .input-label {
+    font-size: 1.8;
+    color: #a1a1aa;
+    margin-bottom: 0.3;
+  }
+
+  .text-input {
+    width: 100%;
+    padding: 0.8;
+    background-color: #27272a;
+    color: #fafafa;
+    border-radius: 1;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 1.8;
+  }
+
+  .update-btn {
+    width: 100%;
+    padding: 1;
+    margin-top: 1;
+    background-color: #3b82f6;
+    color: #ffffff;
+    border-radius: 1.5;
+    border-width: 0.1;
+    border-color: #3b82f6;
+    font-size: 2;
+    text-align: center;
+    cursor: pointer;
+  }
+
   .close-btn {
     width: 100%;
     padding: 1.2;
@@ -117,5 +182,41 @@
       <button id="btn-5" class="toggle-btn active">ON</button>
     </div>
   </div>
+
+  <div class="divider"></div>
+
+  <div class="settings-section">
+    <span class="section-title">Configuration</span>
+
+    <div class="input-group" style="width: 100%; margin-bottom: 1;">
+      <span class="input-label">Target Camera</span>
+      <input id="input-target-cam" class="text-input" value="wrist_left" />
+    </div>
+
+    <div class="input-row">
+      <div class="input-group">
+        <span class="input-label">Width</span>
+        <input id="input-width" class="text-input" value="1280" />
+      </div>
+      <div class="input-group">
+        <span class="input-label">Height</span>
+        <input id="input-height" class="text-input" value="720" />
+      </div>
+    </div>
+
+    <div class="input-row">
+      <div class="input-group">
+        <span class="input-label">FPS</span>
+        <input id="input-fps" class="text-input" value="30" />
+      </div>
+      <div class="input-group">
+        <span class="input-label">Device ID</span>
+        <input id="input-device-id" class="text-input" value="" />
+      </div>
+    </div>
+
+    <button id="update-btn" class="update-btn">Update Config</button>
+  </div>
+
   <button id="close-btn" class="close-btn">Close</button>
 </div>
