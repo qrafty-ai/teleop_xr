@@ -87,11 +87,11 @@ export class CameraSettingsSystem extends createSystem({
 		setCameraEnabled(targetKey as CameraViewKey, newState);
 
 		const btn = this.buttons[rowIndex];
-				if (btn) {
-					btn.setProperties({
-						backgroundColor: enabled ? "#16a34a" : "#e4e4e7",
-					});
-				}
+		if (btn) {
+			btn.setProperties({
+				backgroundColor: newState ? "#16a34a" : "#e4e4e7",
+			});
+		}
 	}
 
 	private updateRows(config: Record<string, any>) {
