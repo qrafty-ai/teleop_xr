@@ -6,7 +6,6 @@ webxr/node_modules/
 webxr/dist/
 .worktrees/
 teleop_xr/_version.py
-uv.lock
 coverage.xml
 .coverage
 htmlcov/
