@@ -15,7 +15,7 @@ const MAX_ROWS = 6;
 export class CameraSettingsSystem extends createSystem({
 	cameraSettingsPanel: {
 		required: [PanelUI, PanelDocument],
-		where: [eq(PanelUI, "config", "./ui/camera_settings.json")],
+		where: [eq(PanelUI, "config", "./ui/camera_settings.json?v=2")],
 	},
 }) {
 	private initialized = false;
