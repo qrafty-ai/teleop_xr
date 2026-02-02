@@ -84,15 +84,8 @@ export class CameraSettingsSystem extends createSystem({
     const btn = this.buttons[rowIndex];
     if (btn) {
       btn.setProperties({
-        text: newState ? "ON" : "OFF",
+        backgroundColor: newState ? "#22c55e" : "#3f3f46"
       });
-      if (btn.classList) {
-        if (newState) {
-          btn.classList.add("active");
-        } else {
-          btn.classList.remove("active");
-        }
-      }
     }
   }
 
@@ -124,15 +117,8 @@ export class CameraSettingsSystem extends createSystem({
         }
         if (btn) {
           btn.setProperties({
-            text: enabled ? "ON" : "OFF",
+            backgroundColor: enabled ? "#22c55e" : "#3f3f46"
           });
-          if (btn.classList) {
-            if (enabled) {
-              btn.classList.add("active");
-            } else {
-              btn.classList.remove("active");
-            }
-          }
         }
       } else {
         if (row) {

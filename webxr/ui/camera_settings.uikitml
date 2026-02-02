@@ -8,65 +8,65 @@
     border-color: #22c55e;
   }
 </style>
-<Panel width="800">
+<Panel width="800" backgroundColor="#18181b">
   <Container flex-direction="column" padding="40" gap="20">
     <Container flex-direction="column" gap="10">
-      <Text font-size="48" font-weight="bold" color="#fafafa" text="Camera Streams" />
+      <Text font-size="48" font-weight="bold" color="#fafafa" text="Camera Settings" />
       <Text font-size="24" color="#a1a1aa" text="Toggle visibility of camera panels" />
     </Container>
 
     <Container flex-direction="column" width="100%" gap="20">
       <!-- Row 0 -->
-      <Container id="row-0" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-0" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-0" font-size="32" color="#fafafa" text="Camera 0" />
-        <Button id="btn-0" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-0" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
 
       <!-- Row 1 -->
-      <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-1" font-size="32" color="#fafafa" text="Camera 1" />
-        <Button id="btn-1" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-1" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
 
       <!-- Row 2 -->
-      <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-2" font-size="32" color="#fafafa" text="Camera 2" />
-        <Button id="btn-2" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-2" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
 
       <!-- Row 3 -->
-      <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-3" font-size="32" color="#fafafa" text="Camera 3" />
-        <Button id="btn-3" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-3" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
 
       <!-- Row 4 -->
-      <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-4" font-size="32" color="#fafafa" text="Camera 4" />
-        <Button id="btn-4" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-4" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
 
       <!-- Row 5 -->
-      <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center">
+      <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#27272a" padding="20" border-radius="12">
         <Text id="label-5" font-size="32" color="#fafafa" text="Camera 5" />
-        <Button id="btn-5" class="active" width="150" padding="15" align-items="center" justify-content="center">
-           <Text font-size="24" font-weight="bold" text="ON" />
+        <Button id="btn-5" width="60" height="60" border-radius="8" background-color="#3f3f46" align-items="center" justify-content="center" flex-shrink="0">
+           <CheckIcon color="#fafafa" width="40" height="40" />
         </Button>
       </Container>
     </Container>
 
-    <Button id="close-btn" width="700" padding="30" margin-top="40" flex-direction="row" align-items="center" justify-content="center">
-      <Text style="font-size: 32; font-weight: bold; color: #18181b;" text="Close" />
+    <Button id="close-btn" width="100%" padding="30" margin-top="40" flex-direction="row" align-items="center" justify-content="center" background-color="#3f3f46" border-radius="16">
+      <Text style="font-size: 32; font-weight: bold; color: #fafafa;" text="Close" />
     </Button>
   </Container>
 </Panel>

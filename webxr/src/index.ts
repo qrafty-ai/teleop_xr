@@ -2,6 +2,7 @@ import { type AssetManifest, AssetType, SessionMode, World } from "@iwsdk/core";
 import { Container, Content, Image, Text } from "@pmndrs/uikit";
 import * as horizonKit from "@pmndrs/uikit-horizon";
 import {
+	CheckIcon,
 	LogInIcon,
 	SettingsIcon,
 	SignalIcon,
@@ -73,6 +74,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 					Image,
 					Text,
 					Content,
+					CheckIcon,
 					LogInIcon,
 					SettingsIcon,
 					XIcon,

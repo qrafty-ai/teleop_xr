@@ -177,7 +177,7 @@ export class CameraPanel extends DraggablePanel {
     // Position it slightly in front of the panel to avoid z-fighting
     this.videoMesh.position.z = 0.01;
     // Adjust y to be centered below the header
-    this.videoMesh.position.y = -0.05;
+    this.videoMesh.position.y = -0.1;
 
     // Attach to panelEntity, not the handle/root
     this.panelEntity.object3D.add(this.videoMesh);
