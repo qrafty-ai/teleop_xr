@@ -46,8 +46,14 @@ jobs:
           python-version-file: "pyproject.toml"
       - name: Install dependencies
         run: uv sync --all-extras --dev
-      - name: Run pytest
+      - name: Run pytest with coverage
         run: uv run pytest
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn
 
   build:
     name: Build Package (uv)

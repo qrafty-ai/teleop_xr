@@ -65,4 +65,20 @@ dev = [
   "pre-commit",
   "mkdocs-material",
   "mkdocstrings[python]",
+  "pytest-cov>=6.0.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=teleop_xr --cov-report=xml --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["teleop_xr"]
+omit = ["teleop_xr/_version.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
 ]
