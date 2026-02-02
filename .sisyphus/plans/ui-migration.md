@@ -53,9 +53,9 @@ Replace custom UI implementation with standardized Horizon Kit components while 
 - `ui/welcome.uikitml` (refactored)
 
 ### Definition of Done
-- [ ] Build succeeds (`npm run build`)
-- [ ] No forbidden `<style>` blocks (except allowed state classes)
-- [ ] All critical IDs present in new markup
+- [x] Build succeeds (`npm run build`)
+- [x] No forbidden `<style>` blocks (except allowed state classes)
+- [x] All critical IDs present in new markup
 
 ### Must Have
 - `<Panel>`, `<Button>`, `<ButtonIcon>`, `<Input>`, `<Card>` where applicable.

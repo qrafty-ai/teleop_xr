@@ -38,3 +38,13 @@ World.create(container, {
 - Replaced buttons with `<Button>` and `<ButtonIcon>` (using `VideoIcon`, `SettingsIcon`, `XIcon`).
 - Preserved IDs (`status-text`, `fps-text`, `latency-text`, `camera-button`, etc.) for `teleop_system.ts`.
 - Maintained `.connected` and `.status-value` classes via minimal `<style>` block, as `teleop_system.ts` toggles them.
+
+## 2026-02-02 Task: ui-migration (Final Update)
+The UI migration to Horizon Kit is complete.
+
+### Key Conclusions
+- **Horizon Kit Components**: Elements like `<Panel>`, `<Button>`, and `<Text>` provide a consistent glass-like spatial UI.
+- **ID Preservation**: Keeping original IDs is critical for TypeScript systems that use `getElementById` to drive UI state (e.g., `status-text`, `xr-button`).
+- **Layouting**: Standard flexbox properties (`flexDirection`, `justifyContent`, `alignItems`) work as expected in UIKitML containers.
+- **State Classes**: Functional CSS classes for visibility (`.hidden`) or status (`.connected`) should be preserved in small `<style>` blocks to minimize changes to system logic.
+- **Icon Kits**: Selective imports from `@pmndrs/uikit-lucide` keep the bundle size small while providing high-quality spatial icons.
