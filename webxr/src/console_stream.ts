@@ -6,72 +6,72 @@
 let ws: WebSocket | null = null;
 let messageQueue: string[] = [];
 const originalConsole = {
-  log: console.log.bind(console),
-  warn: console.warn.bind(console),
-  error: console.error.bind(console),
-  info: console.info.bind(console),
+	log: console.log.bind(console),
+	warn: console.warn.bind(console),
+	error: console.error.bind(console),
+	info: console.info.bind(console),
 };
 
 function sendLog(level: string, args: any[]) {
-  const message = args
-    .map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
-    .join(" ");
+	const message = args
+		.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
+		.join(" ");
 
-  const payload = JSON.stringify({
-    type: "console_log",
-    data: { level, message },
-  });
+	const payload = JSON.stringify({
+		type: "console_log",
+		data: { level, message },
+	});
 
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(payload);
-  } else {
-    // Queue messages until connected
-    messageQueue.push(payload);
-  }
+	if (ws && ws.readyState === WebSocket.OPEN) {
+		ws.send(payload);
+	} else {
+		// Queue messages until connected
+		messageQueue.push(payload);
+	}
 }
 
 export function initConsoleStream() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}/ws`;
+	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+	const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-  ws = new WebSocket(wsUrl);
+	ws = new WebSocket(wsUrl);
 
-  ws.onopen = () => {
-    // Flush queued messages
-    for (const msg of messageQueue) {
-      ws!.send(msg);
-    }
-    messageQueue = [];
-    originalConsole.log("[ConsoleStream] Connected");
-  };
+	ws.onopen = () => {
+		// Flush queued messages
+		for (const msg of messageQueue) {
+			ws?.send(msg);
+		}
+		messageQueue = [];
+		originalConsole.log("[ConsoleStream] Connected");
+	};
 
-  ws.onclose = () => {
-    originalConsole.warn("[ConsoleStream] Disconnected, reconnecting...");
-    setTimeout(initConsoleStream, 3000);
-  };
+	ws.onclose = () => {
+		originalConsole.warn("[ConsoleStream] Disconnected, reconnecting...");
+		setTimeout(initConsoleStream, 3000);
+	};
 
-  ws.onerror = (e) => {
-    originalConsole.error("[ConsoleStream] Error", e);
-  };
+	ws.onerror = (e) => {
+		originalConsole.error("[ConsoleStream] Error", e);
+	};
 
-  // Intercept console methods
-  console.log = (...args: any[]) => {
-    originalConsole.log(...args);
-    sendLog("log", args);
-  };
+	// Intercept console methods
+	console.log = (...args: any[]) => {
+		originalConsole.log(...args);
+		sendLog("log", args);
+	};
 
-  console.warn = (...args: any[]) => {
-    originalConsole.warn(...args);
-    sendLog("warn", args);
-  };
+	console.warn = (...args: any[]) => {
+		originalConsole.warn(...args);
+		sendLog("warn", args);
+	};
 
-  console.error = (...args: any[]) => {
-    originalConsole.error(...args);
-    sendLog("error", args);
-  };
+	console.error = (...args: any[]) => {
+		originalConsole.error(...args);
+		sendLog("error", args);
+	};
 
-  console.info = (...args: any[]) => {
-    originalConsole.info(...args);
-    sendLog("info", args);
-  };
+	console.info = (...args: any[]) => {
+		originalConsole.info(...args);
+		sendLog("info", args);
+	};
 }
