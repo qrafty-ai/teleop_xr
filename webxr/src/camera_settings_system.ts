@@ -20,9 +20,13 @@ export class CameraSettingsSystem extends createSystem({
 }) {
 	private initialized = false;
 	private keyToRowIndex = new Map<string, number>();
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private rows: any[] = [];
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private labels: any[] = [];
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private buttons: any[] = [];
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private btnTexts: any[] = [];
 
 	init() {
@@ -40,7 +44,7 @@ export class CameraSettingsSystem extends createSystem({
 			if (closeBtn) {
 				closeBtn.addEventListener("click", () => {
 					const panel = GlobalRefs.cameraSettingsPanel;
-					if (panel && panel.entity.object3D) {
+					if (panel?.entity.object3D) {
 						panel.entity.object3D.visible = false;
 					}
 				});
@@ -95,7 +99,7 @@ export class CameraSettingsSystem extends createSystem({
 
 		if (btn) {
 			btn.setProperties({
-				"background-color": newState ? "#16a34a" : "#ef4444",
+				backgroundColor: newState ? "#16a34a" : "#ef4444",
 			});
 		}
 		if (btnText) {
@@ -106,6 +110,7 @@ export class CameraSettingsSystem extends createSystem({
 		}
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private updateRows(config: Record<string, any>) {
 		const keys = Object.keys(config).sort();
 		console.log("[CameraSettings] updateRows, keys:", keys);
@@ -135,7 +140,7 @@ export class CameraSettingsSystem extends createSystem({
 				}
 				if (btn) {
 					btn.setProperties({
-						"background-color": enabled ? "#16a34a" : "#ef4444",
+						backgroundColor: enabled ? "#16a34a" : "#ef4444",
 					});
 				}
 				if (btnText) {
