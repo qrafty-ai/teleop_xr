@@ -19,10 +19,12 @@
     </Container>
 
     <Container flex-direction="column" width="100%" gap="16">
+
+
       <!-- Row 0 -->
       <Container id="row-0" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
-        <Container width="50" height="50" background-color="#0000ff" />
+
         <Button id="switch-0" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
           <Text id="switch-text-0" text="OFF" font-size="20" color="white" />
         </Button>

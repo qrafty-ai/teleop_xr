@@ -87,7 +87,23 @@ export class CameraSettingsSystem extends createSystem({
 		if (!targetKey) return;
 
 		const current = getCameraEnabled(targetKey as CameraViewKey);
-		setCameraEnabled(targetKey as CameraViewKey, !current);
+		const newState = !current;
+		setCameraEnabled(targetKey as CameraViewKey, newState);
+
+		const btn = this.buttons[rowIndex];
+		const btnText = this.btnTexts[rowIndex];
+
+		if (btn) {
+			btn.setProperties({
+				"background-color": newState ? "#16a34a" : "#ef4444",
+			});
+		}
+		if (btnText) {
+			btnText.setProperties({
+				text: newState ? "ON" : "OFF",
+				color: "white",
+			});
+		}
 	}
 
 	private updateRows(config: Record<string, any>) {
