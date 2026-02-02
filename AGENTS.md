@@ -16,8 +16,6 @@ Quest VR headset doesn't have accessible browser console. To debug:
 - `webxr/src/video.ts` - VideoClient for WebRTC video streaming
 - `webxr/src/teleop_system.ts` - XR input gathering and WebSocket streaming
 
-### Controller Camera Panels
-- Two panels (left/right) attached to controllers
-- Position: 15cm above, 5cm forward from controller
-- Billboard: Full 3-axis rotation to always face user's head
-- Video: Receives tracks from VideoClient with trackId metadata
+### Orchestration & Planning
+- **Always commit `.sisyphus/` files**: Plan files (`.sisyphus/plans/`) and notepads (`.sisyphus/notepads/`) must be included in commits to preserve work history and context.
+- **Boulder State**: Ensure `.sisyphus/boulder.json` reflects the current active plan.

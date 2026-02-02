@@ -9,6 +9,9 @@ artifacts = ["teleop_xr/cert.pem", "teleop_xr/key.pem"]
 [tool.hatch.version]
 source = "vcs"
 
+[tool.uv.sources]
+pyroki = { git = "https://github.com/chungmin99/pyroki.git" }
+
 [tool.hatch.build.hooks.vcs]
 version-file = "teleop_xr/_version.py"
 
@@ -44,6 +47,9 @@ dependencies = [
   "rich>=13.0.0",
   "tyro>=0.8.0",
   "pydantic>=2.0.0",
+  "jax>=0.6.2",
+  "spatialmath-python>=1.1.15",
+  "pyroki",
 ]
 
 [project.urls]
