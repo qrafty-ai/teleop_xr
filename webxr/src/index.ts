@@ -21,6 +21,9 @@ import {
 
 import { EnvironmentType, LocomotionEnvironment } from "@iwsdk/core";
 
+import * as horizonKit from "@pmndrs/uikit-horizon";
+import { LogInIcon, SettingsIcon, XIcon, VideoIcon, SignalIcon, SignalZeroIcon } from "@pmndrs/uikit-lucide";
+
 import { PanelSystem } from "./panel.js";
 
 import { TeleopSystem } from "./teleop_system.js";
@@ -73,6 +76,9 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
     grabbing: true,
     physics: false,
     sceneUnderstanding: true,
+    spatialUI: {
+      kits: [horizonKit, { LogInIcon, SettingsIcon, XIcon, VideoIcon, SignalIcon, SignalZeroIcon }],
+    },
   },
 }).then((world) => {
   const { camera } = world;

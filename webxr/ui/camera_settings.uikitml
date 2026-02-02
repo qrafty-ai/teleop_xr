@@ -1,121 +1,54 @@
 <style>
-  .panel-container {
-    align-items: flex-start;
-    padding: 2;
-    width: 50;
-    display: flex;
-    flex-direction: column;
-    background-color: #09090b;
-    border-color: #27272a;
-    border-width: 0.15;
-    border-radius: 3;
+  .hidden {
+    display: none;
   }
-
-  .heading {
-    font-size: 3.5;
-    font-weight: medium;
-    color: #fafafa;
-    text-align: left;
-  }
-
-  .sub-heading {
-    font-size: 2;
-    color: #a1a1aa;
-    text-align: left;
-    margin-top: 0.3;
-  }
-
-  .toggle-container {
-    margin-top: 1.5;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .toggle-row {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 0.8;
-    padding-bottom: 0.8;
-    border-bottom-width: 0.05;
-    border-color: #27272a;
-  }
-
-  .toggle-label {
-    font-size: 2.2;
-    color: #fafafa;
-  }
-
-  .toggle-btn {
-    width: 12;
-    padding: 0.8;
-    background-color: #27272a;
-    color: #a1a1aa;
-    border-radius: 1.5;
-    border-width: 0.1;
-    border-color: #3f3f46;
-    font-size: 1.8;
-    font-weight: medium;
-    text-align: center;
-    cursor: pointer;
-  }
-
-  .toggle-btn.active {
+  .active {
     background-color: #22c55e;
     color: #ffffff;
     border-color: #22c55e;
   }
-
-  .hidden {
-    display: none;
-  }
-
-  .close-btn {
-    width: 100%;
-    padding: 1.2;
-    margin-top: 2;
-    background-color: #27272a;
-    color: #fafafa;
-    border-radius: 1.5;
-    border-width: 0.1;
-    border-color: #3f3f46;
-    font-size: 2;
-    font-weight: medium;
-    text-align: center;
-    cursor: pointer;
-  }
 </style>
-<div class="panel-container">
-  <span class="heading">Camera Streams</span>
-  <span class="sub-heading">Toggle visibility of camera panels</span>
-  <div id="toggle-container" class="toggle-container">
-    <div id="row-0" class="toggle-row hidden">
-      <span id="label-0" class="toggle-label">Camera 0</span>
-      <button id="btn-0" class="toggle-btn active">ON</button>
+<Panel>
+  <Text style="font-size: 3.5; margin-bottom: 0.5;">Camera Streams</Text>
+  <Text style="font-size: 2; margin-bottom: 1.5; opacity: 0.7;">Toggle visibility of camera panels</Text>
+
+  <div style="width: 100%; display: flex; flex-direction: column;">
+    <!-- Row 0 -->
+    <div id="row-0" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-0" style="font-size: 2.2;">Camera 0</Text>
+      <Button id="btn-0" class="active" style="width: 12;">ON</Button>
     </div>
-    <div id="row-1" class="toggle-row hidden">
-      <span id="label-1" class="toggle-label">Camera 1</span>
-      <button id="btn-1" class="toggle-btn active">ON</button>
+
+    <!-- Row 1 -->
+    <div id="row-1" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-1" style="font-size: 2.2;">Camera 1</Text>
+      <Button id="btn-1" class="active" style="width: 12;">ON</Button>
     </div>
-    <div id="row-2" class="toggle-row hidden">
-      <span id="label-2" class="toggle-label">Camera 2</span>
-      <button id="btn-2" class="toggle-btn active">ON</button>
+
+    <!-- Row 2 -->
+    <div id="row-2" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-2" style="font-size: 2.2;">Camera 2</Text>
+      <Button id="btn-2" class="active" style="width: 12;">ON</Button>
     </div>
-    <div id="row-3" class="toggle-row hidden">
-      <span id="label-3" class="toggle-label">Camera 3</span>
-      <button id="btn-3" class="toggle-btn active">ON</button>
+
+    <!-- Row 3 -->
+    <div id="row-3" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-3" style="font-size: 2.2;">Camera 3</Text>
+      <Button id="btn-3" class="active" style="width: 12;">ON</Button>
     </div>
-    <div id="row-4" class="toggle-row hidden">
-      <span id="label-4" class="toggle-label">Camera 4</span>
-      <button id="btn-4" class="toggle-btn active">ON</button>
+
+    <!-- Row 4 -->
+    <div id="row-4" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-4" style="font-size: 2.2;">Camera 4</Text>
+      <Button id="btn-4" class="active" style="width: 12;">ON</Button>
     </div>
-    <div id="row-5" class="toggle-row hidden">
-      <span id="label-5" class="toggle-label">Camera 5</span>
-      <button id="btn-5" class="toggle-btn active">ON</button>
+
+    <!-- Row 5 -->
+    <div id="row-5" class="hidden" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8 0;">
+      <Text id="label-5" style="font-size: 2.2;">Camera 5</Text>
+      <Button id="btn-5" class="active" style="width: 12;">ON</Button>
     </div>
   </div>
-  <button id="close-btn" class="close-btn">Close</button>
-</div>
+
+  <Button id="close-btn" style="margin-top: 2; width: 100%;">Close</Button>
+</Panel>

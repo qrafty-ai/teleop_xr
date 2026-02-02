@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@iwsdk/core": "0.2.2",
+    "@pmndrs/uikit-horizon": "^1.0.61",
+    "@pmndrs/uikit-lucide": "^1.0.61",
     "three": "npm:super-three@0.177.0",
     "three-stdlib": "^2.36.1",
     "urdf-loader": "^0.12.6"

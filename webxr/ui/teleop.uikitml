@@ -1,100 +1,54 @@
 <style>
-  .panel-container {
-    align-items: flex-start;
-    padding: 2;
-    width: 60;
-    display: flex;
-    flex-direction: column;
-    background-color: #09090b;
-    border-color: #27272a;
-    border-width: 0.15;
-    border-radius: 3;
-  }
-
-  .heading {
-    font-size: 4;
-    font-weight: medium;
-    color: #fafafa;
-    text-align: left;
-  }
-
-  .sub-heading {
-    font-size: 2;
-    color: #a1a1aa;
-    text-align: left;
-    margin-top: 0.3;
-  }
-
-  .stats {
-    margin-top: 1.2;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .status-row {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 0.4;
-  }
-
-  .label {
-    font-size: 2.5;
-    color: #a1a1aa;
-  }
-
-  .value {
-    font-size: 2.5;
-    color: #fafafa;
-  }
-
   .status-value {
-    font-size: 2.5;
     color: #ef4444;
   }
-
   .connected {
     color: #22c55e;
   }
-
-  .button {
-    width: 100%;
-    padding: 1.5;
-    margin-top: 2;
-    background-color: #fafafa;
-    color: #09090b;
-    border-radius: 1.5;
-    border-width: 0.1;
-    border-color: #e4e4e7;
-    font-size: 2.5;
-    font-weight: medium;
-    text-align: center;
-    cursor: pointer;
-  }
-
 </style>
-<div class="panel-container">
-  <span class="heading"> Teleop Control </span>
-  <span class="sub-heading">
-    Enter XR to stream device pose to the robot.
-  </span>
-  <div class="stats">
-    <div class="status-row">
-      <span class="label">Status:</span>
-      <span id="status-text" class="status-value">Disconnected</span>
-    </div>
-    <div class="status-row">
-      <span class="label">FPS:</span>
-      <span id="fps-text" class="value">0</span>
-    </div>
-    <div class="status-row">
-      <span class="label">Latency:</span>
-      <span id="latency-text" class="value">0ms</span>
-    </div>
-  </div>
-  <button id="camera-button" class="button">Toggle Cameras</button>
-  <button id="camera-settings-btn" class="button">Camera Settings</button>
-  <button id="xr-button" class="button">Enter XR</button>
-</div>
+<Panel width="500">
+  <Container flexDirection="column" padding="20" gap="10">
+    <Container flexDirection="column" gap="5">
+      <Text fontSize="32" fontWeight="bold" color="#fafafa">Teleop Control</Text>
+      <Text fontSize="16" color="#a1a1aa">Enter XR to stream device pose to the robot.</Text>
+    </Container>
+
+    <Container flexDirection="column" marginTop="20" gap="10">
+      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
+        <Text fontSize="20" color="#a1a1aa">Status:</Text>
+        <Container flexDirection="row" alignItems="center" gap="5">
+          <SignalZeroIcon color="#a1a1aa" width="20" height="20" />
+          <Text id="status-text" class="status-value" fontSize="20">Disconnected</Text>
+        </Container>
+      </Container>
+
+      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
+        <Text fontSize="20" color="#a1a1aa">FPS:</Text>
+        <Text id="fps-text" fontSize="20" color="#fafafa">0</Text>
+      </Container>
+
+      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
+        <Text fontSize="20" color="#a1a1aa">Latency:</Text>
+        <Container flexDirection="row" alignItems="center" gap="5">
+           <SignalIcon color="#a1a1aa" width="20" height="20" />
+           <Text id="latency-text" fontSize="20" color="#fafafa">0ms</Text>
+        </Container>
+      </Container>
+    </Container>
+
+    <Container flexDirection="column" marginTop="30" gap="10">
+      <Button id="camera-button">
+        <ButtonIcon as="VideoIcon" />
+        <Text>Toggle Cameras</Text>
+      </Button>
+      <Button id="camera-settings-btn">
+        <ButtonIcon as="SettingsIcon" />
+        <Text>Camera Settings</Text>
+      </Button>
+      <Button id="xr-button">
+        <ButtonIcon as="XIcon" />
+        <Text>Enter XR</Text>
+      </Button>
+    </Container>
+  </Container>
+</Panel>
