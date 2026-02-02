@@ -23,6 +23,7 @@ export class CameraSettingsSystem extends createSystem({
 	private rows: any[] = [];
 	private labels: any[] = [];
 	private buttons: any[] = [];
+	private btnTexts: any[] = [];
 
 	init() {
 		this.queries.cameraSettingsPanel.subscribe("qualify", (entity) => {
@@ -50,16 +51,16 @@ export class CameraSettingsSystem extends createSystem({
 				const row = document.getElementById(`row-${i}`);
 				const label = document.getElementById(`label-${i}`);
 				const btn = document.getElementById(`switch-${i}`);
+				const btnText = document.getElementById(`switch-text-${i}`);
 
 				this.rows.push(row);
 				this.labels.push(label);
 				this.buttons.push(btn);
+				this.btnTexts.push(btnText);
 
 				if (btn) {
-					btn.addEventListener("value-change", (evt: CustomEvent) => {
-						const newValue = evt.detail?.value;
-						console.log(`[CameraSettings] Toggle ${i} changed to ${newValue}`);
-						this.handleToggleChange(i, newValue);
+					btn.addEventListener("click", () => {
+						this.handleToggleClick(i);
 					});
 				}
 			}
@@ -74,7 +75,7 @@ export class CameraSettingsSystem extends createSystem({
 		});
 	}
 
-	private handleToggleChange(rowIndex: number, newValue: boolean) {
+	private handleToggleClick(rowIndex: number) {
 		let targetKey: string | null = null;
 		for (const [key, idx] of this.keyToRowIndex.entries()) {
 			if (idx === rowIndex) {
@@ -85,7 +86,24 @@ export class CameraSettingsSystem extends createSystem({
 
 		if (!targetKey) return;
 
-		setCameraEnabled(targetKey as CameraViewKey, newValue);
+		const current = getCameraEnabled(targetKey as CameraViewKey);
+		const newState = !current;
+		setCameraEnabled(targetKey as CameraViewKey, newState);
+
+		const btn = this.buttons[rowIndex];
+		const btnText = this.btnTexts[rowIndex];
+
+		if (btn) {
+			btn.setProperties({
+				"background-color": newState ? "#16a34a" : "#ef4444",
+			});
+		}
+		if (btnText) {
+			btnText.setProperties({
+				text: newState ? "ON" : "OFF",
+				color: "white",
+			});
+		}
 	}
 
 	private updateRows(config: Record<string, any>) {
@@ -97,6 +115,7 @@ export class CameraSettingsSystem extends createSystem({
 			const row = this.rows[i];
 			const label = this.labels[i];
 			const btn = this.buttons[i];
+			const btnText = this.btnTexts[i];
 
 			if (i < keys.length) {
 				const key = keys[i];
@@ -116,7 +135,12 @@ export class CameraSettingsSystem extends createSystem({
 				}
 				if (btn) {
 					btn.setProperties({
-						checked: enabled,
+						"background-color": enabled ? "#16a34a" : "#ef4444",
+					});
+				}
+				if (btnText) {
+					btnText.setProperties({
+						text: enabled ? "ON" : "OFF",
 					});
 				}
 			} else {

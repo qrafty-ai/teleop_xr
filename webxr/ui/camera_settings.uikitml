@@ -25,7 +25,9 @@
         <Container flex-grow="1">
           <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
         </Container>
-        <Toggle id="switch-0" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-0" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-0" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
       <!-- Row 1 -->
@@ -33,7 +35,9 @@
         <Container flex-grow="1">
           <Text id="label-1" font-size="32" color="#09090b" text="Camera 1" />
         </Container>
-        <Toggle id="switch-1" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-1" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-1" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
       <!-- Row 2 -->
@@ -41,7 +45,9 @@
         <Container flex-grow="1">
           <Text id="label-2" font-size="32" color="#09090b" text="Camera 2" />
         </Container>
-        <Toggle id="switch-2" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-2" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-2" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
       <!-- Row 3 -->
@@ -49,7 +55,9 @@
         <Container flex-grow="1">
           <Text id="label-3" font-size="32" color="#09090b" text="Camera 3" />
         </Container>
-        <Toggle id="switch-3" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-3" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-3" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
       <!-- Row 4 -->
@@ -57,7 +65,9 @@
         <Container flex-grow="1">
           <Text id="label-4" font-size="32" color="#09090b" text="Camera 4" />
         </Container>
-        <Toggle id="switch-4" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-4" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-4" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
       <!-- Row 5 -->
@@ -65,7 +75,9 @@
         <Container flex-grow="1">
           <Text id="label-5" font-size="32" color="#09090b" text="Camera 5" />
         </Container>
-        <Toggle id="switch-5" width="60" height="32" flex-shrink="0" />
+        <Container id="switch-5" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="24" align-items="center" justify-content="center">
+          <Text id="switch-text-5" text="OFF" font-size="20" font-weight="bold" color="#ffffff" />
+        </Container>
       </Container>
 
     </Container>
