@@ -6,8 +6,8 @@
     color: #16a34a;
   }
 </style>
-<Panel width="100%" height="100%" background-color="#ffffff" border-radius="24">
-  <Container flex-direction="column" padding="40" gap="20">
+<Panel width="100%" height="100%" border-radius="24">
+  <Container width="100%" height="100%" background-color="#ffffff" border-radius="24" padding="40" flex-direction="column" gap="20">
     <Container flex-direction="column" gap="10">
       <Text font-size="48" font-weight="bold" color="#09090b" text="Teleop Control" />
       <Text font-size="24" color="#52525b" text="Enter XR to stream device pose to the robot." />

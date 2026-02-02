@@ -1,7 +1,7 @@
-<Panel width="800" height="600" backgroundColor="#18181b">
-  <Container width="100%" height="100%" flex-direction="column" align-items="center">
-    <Container width="100%" padding="20" background-color="#27272a" align-items="center" justify-content="center">
-      <Text id="camera-label" font-size="48" font-weight="bold" color="#fafafa">Camera Feed</Text>
+<Panel width="800" height="600" border-radius="24">
+  <Container width="100%" height="100%" background-color="#ffffff" border-radius="24" flex-direction="column" align-items="center">
+    <Container width="100%" padding="20" background-color="#f4f4f5" align-items="center" justify-content="center" border-top-left-radius="24" border-top-right-radius="24">
+      <Text id="camera-label" font-size="48" font-weight="bold" color="#09090b" text="Camera Feed" />
     </Container>
     <!-- Video mesh will be overlaid; ensure we leave space if needed, though videoMesh is independent 3D object -->
   </Container>
