@@ -1,33 +1,33 @@
 {
-  "name": "webxr",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@iwsdk/core": "0.2.2",
-    "@pmndrs/uikit-horizon": "^1.0.61",
-    "@pmndrs/uikit-lucide": "^1.0.61",
-    "three": "npm:super-three@0.177.0",
-    "three-stdlib": "^2.36.1",
-    "urdf-loader": "^0.12.6"
-  },
-  "devDependencies": {
-    "@iwsdk/vite-plugin-gltf-optimizer": "0.2.2",
-    "@iwsdk/vite-plugin-iwer": "0.2.2",
-    "@iwsdk/vite-plugin-uikitml": "0.2.2",
-    "@types/three": "^0.178.1",
-    "typescript": "^5.5.0",
-    "vite": "^7.1.4",
-    "vite-plugin-mkcert": "^1.17.0",
-    "vitest": "^4.0.18"
-  },
-  "engines": {
-    "node": ">=20.19.0"
-  }
+	"name": "webxr",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@iwsdk/core": "0.2.2",
+		"@pmndrs/uikit-horizon": "^1.0.61",
+		"@pmndrs/uikit-lucide": "^1.0.61",
+		"three": "npm:super-three@0.177.0",
+		"three-stdlib": "^2.36.1",
+		"urdf-loader": "^0.12.6"
+	},
+	"devDependencies": {
+		"@iwsdk/vite-plugin-gltf-optimizer": "0.2.2",
+		"@iwsdk/vite-plugin-iwer": "0.2.2",
+		"@iwsdk/vite-plugin-uikitml": "0.2.2",
+		"@types/three": "^0.178.1",
+		"typescript": "^5.5.0",
+		"vite": "^7.1.4",
+		"vite-plugin-mkcert": "^1.17.0",
+		"vitest": "^4.0.18"
+	},
+	"engines": {
+		"node": ">=20.19.0"
+	}
 }

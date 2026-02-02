@@ -7,7 +7,7 @@ import {
 	type UIKitDocument,
 	Vector3,
 } from "@iwsdk/core";
-import { getCameraEnabled, setCameraEnabled } from "./camera_config";
+import { getCameraEnabled } from "./camera_config";
 import { setCameraViewsConfig } from "./camera_views";
 import { GlobalRefs } from "./global_refs";
 import { RobotModelSystem } from "./robot_system";
@@ -292,7 +292,7 @@ export class TeleopSystem extends createSystem({
 		return device;
 	}
 
-	update(delta: number, time: number) {
+	update(_delta: number, time: number) {
 		const isPresenting = this.world.renderer.xr.isPresenting;
 		if (isPresenting !== this.wasPresenting) {
 			this.wasPresenting = isPresenting;
@@ -341,7 +341,7 @@ export class TeleopSystem extends createSystem({
 		}
 	}
 
-	updateLocalStats(pose: DevicePose | null, fps: number, latency: number) {
+	updateLocalStats(_pose: DevicePose | null, fps: number, latency: number) {
 		if (!this.loggedStats) {
 			console.log(
 				`[TeleopSystem] First updateLocalStats: fps=${fps}, latency=${latency}, fpsText=${!!this

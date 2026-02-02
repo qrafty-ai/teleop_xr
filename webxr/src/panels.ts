@@ -169,7 +169,7 @@ export class CameraPanel extends DraggablePanel {
 			} else {
 				(this.videoMesh.material as any).dispose();
 			}
-			if (this.panelEntity && this.panelEntity.object3D) {
+			if (this.panelEntity?.object3D) {
 				this.panelEntity.object3D.remove(this.videoMesh);
 			}
 			this.videoMesh = null;

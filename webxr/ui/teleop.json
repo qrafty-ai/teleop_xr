@@ -1,6 +1,6 @@
 {
-  "root": "teleop.uikitml",
-  "width": 1024,
-  "height": 512,
-  "pixelRatio": 2
+	"root": "teleop.uikitml",
+	"width": 1024,
+	"height": 512,
+	"pixelRatio": 2
 }
