@@ -14,8 +14,12 @@
 <Panel width="800" border-radius="24">
   <Container width="100%" height="100%" background-color="#ffffff" border-radius="24" flex-direction="column" padding="40" gap="20">
     <Container flex-direction="column" gap="10">
-      <Text font-size="48" font-weight="bold" color="#09090b" text="Camera Settings" />
+      <Text font-size="48" font-weight="bold" color="#09090b" text="Camera Settings v4" />
       <Text font-size="24" color="#52525b" text="Toggle visibility of camera panels" />
+    </Container>
+
+    <Container width="100" height="50" background-color="#0000ff" align-items="center" justify-content="center">
+        <Text text="Test Box" color="white" />
     </Container>
 
     <Container flex-direction="column" width="100%" gap="16">
@@ -25,48 +29,48 @@
       <Container id="row-0" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
 
-        <Container id="switch-0" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-0" text="OFF" font-size="20" color="white" />
+        <Container id="switch-0" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-0" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
       <!-- Row 1 -->
       <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-1" font-size="32" color="#09090b" text="Camera 1" />
-        <Container id="switch-1" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-1" text="OFF" font-size="20" color="white" />
+        <Container id="switch-1" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-1" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
       <!-- Row 2 -->
       <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-2" font-size="32" color="#09090b" text="Camera 2" />
-        <Container id="switch-2" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-2" text="OFF" font-size="20" color="white" />
+        <Container id="switch-2" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-2" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
       <!-- Row 3 -->
       <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-3" font-size="32" color="#09090b" text="Camera 3" />
-        <Container id="switch-3" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-3" text="OFF" font-size="20" color="white" />
+        <Container id="switch-3" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-3" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
       <!-- Row 4 -->
       <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-4" font-size="32" color="#09090b" text="Camera 4" />
-        <Container id="switch-4" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-4" text="OFF" font-size="20" color="white" />
+        <Container id="switch-4" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-4" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
       <!-- Row 5 -->
       <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-5" font-size="32" color="#09090b" text="Camera 5" />
-        <Container id="switch-5" width="80" height="40" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
-          <Text id="switch-text-5" text="OFF" font-size="20" color="white" />
+        <Container id="switch-5" width="80" height="40" flex-shrink="0" background-color="#ef4444" border-radius="20" align-items="center" justify-content="center">
+          <Text id="switch-text-5" text="OFF" font-size="20" color="#ffffff" />
         </Container>
       </Container>
 
