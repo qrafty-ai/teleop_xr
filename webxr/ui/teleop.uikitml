@@ -36,18 +36,18 @@
       </Container>
     </Container>
 
-    <Container flex-direction="column" margin-top="30" gap="10">
-      <Button id="camera-button">
-        <ButtonIcon as="VideoIcon" />
-        <Text>Toggle Cameras</Text>
+    <Container flex-direction="column" margin-top="30" gap="20" align-items="center">
+      <Button id="camera-button" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
+        <ButtonIcon as="VideoIcon" color="#18181b" />
+        <Text font-size="24" font-weight="bold" color="#18181b">Toggle Cameras</Text>
       </Button>
-      <Button id="camera-settings-btn">
-        <ButtonIcon as="SettingsIcon" />
-        <Text>Camera Settings</Text>
+      <Button id="camera-settings-btn" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
+        <ButtonIcon as="SettingsIcon" color="#18181b" />
+        <Text font-size="24" font-weight="bold" color="#18181b">Camera Settings</Text>
       </Button>
-      <Button id="xr-button">
-        <ButtonIcon as="XIcon" />
-        <Text>Enter XR</Text>
+      <Button id="xr-button" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
+        <ButtonIcon as="XIcon" color="#18181b" />
+        <Text font-size="24" font-weight="bold" color="#18181b">Enter XR</Text>
       </Button>
     </Container>
   </Container>
