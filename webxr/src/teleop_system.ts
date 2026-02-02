@@ -38,6 +38,10 @@ export class TeleopSystem extends createSystem({
 	private tempPosition = new Vector3();
 	private tempQuaternion = new Quaternion();
 	private menuButtonState = false;
+	private loggedStats = false;
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
+	private xrButtonText: any = null;
+	private wasPresenting = false;
 
 	init() {
 		this.connectWS();
@@ -53,11 +57,13 @@ export class TeleopSystem extends createSystem({
 			this.statusText = document.getElementById("status-text");
 			this.fpsText = document.getElementById("fps-text");
 			this.latencyText = document.getElementById("latency-text");
+			this.xrButtonText = document.getElementById("xr-button-text");
 
 			console.log("[TeleopSystem] Found elements:", {
 				status: !!this.statusText,
 				fps: !!this.fpsText,
 				latency: !!this.latencyText,
+				xrBtn: !!this.xrButtonText,
 			});
 
 			const cameraButton = document.getElementById("camera-button");
@@ -119,6 +125,33 @@ export class TeleopSystem extends createSystem({
 					const panel = GlobalRefs.cameraSettingsPanel;
 					if (panel?.entity.object3D) {
 						panel.entity.object3D.visible = !panel.entity.object3D.visible;
+					}
+				});
+			}
+
+			const xrButton = document.getElementById("xr-button");
+			if (xrButton) {
+				xrButton.addEventListener("click", async () => {
+					const renderer = this.world.renderer;
+					if (renderer.xr.isPresenting) {
+						renderer.xr.getSession()?.end();
+					} else {
+						// Attempt to enter XR
+						if ("xr" in navigator) {
+							try {
+								// biome-ignore lint/suspicious/noExplicitAny: navigator.xr
+								const session = await (navigator as any).xr.requestSession(
+									"immersive-ar",
+									{
+										requiredFeatures: ["local-floor"],
+										optionalFeatures: ["hand-tracking", "anchors", "layers"],
+									},
+								);
+								renderer.xr.setSession(session);
+							} catch (e) {
+								console.error("Failed to enter XR", e);
+							}
+						}
 					}
 				});
 			}
@@ -260,6 +293,16 @@ export class TeleopSystem extends createSystem({
 	}
 
 	update(delta: number, time: number) {
+		const isPresenting = this.world.renderer.xr.isPresenting;
+		if (isPresenting !== this.wasPresenting) {
+			this.wasPresenting = isPresenting;
+			if (this.xrButtonText) {
+				this.xrButtonText.setProperties({
+					text: isPresenting ? "Exit XR" : "Enter XR",
+				});
+			}
+		}
+
 		if (this.lastFpsTime === 0) {
 			this.lastFpsTime = time;
 		}
@@ -299,6 +342,14 @@ export class TeleopSystem extends createSystem({
 	}
 
 	updateLocalStats(pose: DevicePose | null, fps: number, latency: number) {
+		if (!this.loggedStats) {
+			console.log(
+				`[TeleopSystem] First updateLocalStats: fps=${fps}, latency=${latency}, fpsText=${!!this
+					.fpsText}`,
+			);
+			this.loggedStats = true;
+		}
+
 		if (this.fpsText) {
 			this.fpsText.setProperties({ text: `${fps}`, color: "#18181b" });
 		}
