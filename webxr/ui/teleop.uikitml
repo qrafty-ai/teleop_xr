@@ -7,47 +7,53 @@
   }
 </style>
 <Panel width="1024">
-  <Container flex-direction="column" padding="20" gap="10">
-    <Container flex-direction="column" gap="5">
-      <Text font-size="32" font-weight="bold" color="#fafafa">Teleop Control</Text>
-      <Text font-size="16" color="#a1a1aa">Enter XR to stream device pose to the robot.</Text>
+  <Container flex-direction="column" padding="40" gap="20">
+    <Container flex-direction="column" gap="10">
+      <Text font-size="48" font-weight="bold" color="#fafafa">Teleop Control</Text>
+      <Text font-size="24" color="#a1a1aa">Enter XR to stream device pose to the robot.</Text>
     </Container>
 
-    <Container flex-direction="column" margin-top="20" gap="10">
+    <Container flex-direction="column" margin-top="40" gap="20">
       <Container flex-direction="row" justify-content="space-between" align-items="center">
-        <Text font-size="20" color="#a1a1aa">Status:</Text>
-        <Container flex-direction="row" align-items="center" gap="5">
-          <SignalZeroIcon color="#a1a1aa" width="20" height="20" />
-          <Text id="status-text" class="status-value" font-size="20">Disconnected</Text>
+        <Text font-size="32" color="#a1a1aa">Status:</Text>
+        <Container flex-direction="row" align-items="center" gap="10">
+          <SignalZeroIcon color="#a1a1aa" width="32" height="32" />
+          <Text id="status-text" class="status-value" font-size="32">Disconnected</Text>
         </Container>
       </Container>
 
       <Container flex-direction="row" justify-content="space-between" align-items="center">
-        <Text font-size="20" color="#a1a1aa">FPS:</Text>
-        <Text id="fps-text" font-size="20" color="#fafafa">0</Text>
+        <Text font-size="32" color="#a1a1aa">FPS:</Text>
+        <Text id="fps-text" font-size="32" color="#fafafa">0</Text>
       </Container>
 
       <Container flex-direction="row" justify-content="space-between" align-items="center">
-        <Text font-size="20" color="#a1a1aa">Latency:</Text>
-        <Container flex-direction="row" align-items="center" gap="5">
-           <SignalIcon color="#a1a1aa" width="20" height="20" />
-           <Text id="latency-text" font-size="20" color="#fafafa">0ms</Text>
+        <Text font-size="32" color="#a1a1aa">Latency:</Text>
+        <Container flex-direction="row" align-items="center" gap="10">
+           <SignalIcon color="#a1a1aa" width="32" height="32" />
+           <Text id="latency-text" font-size="32" color="#fafafa">0ms</Text>
         </Container>
       </Container>
     </Container>
 
-    <Container flex-direction="column" margin-top="30" gap="20" align-items="center">
-      <Button id="camera-button" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
-        <ButtonIcon as="VideoIcon" color="#18181b" />
-        <Text font-size="24" font-weight="bold" color="#18181b">Toggle Cameras</Text>
+    <Container flex-direction="column" margin-top="60" gap="30" align-items="center">
+      <Button id="camera-button" width="500" padding="30">
+        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
+          <ButtonIcon as="VideoIcon" color="#18181b" width="32" height="32" />
+          <Text font-size="32" font-weight="bold" color="#18181b">Toggle Cameras</Text>
+        </Container>
       </Button>
-      <Button id="camera-settings-btn" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
-        <ButtonIcon as="SettingsIcon" color="#18181b" />
-        <Text font-size="24" font-weight="bold" color="#18181b">Camera Settings</Text>
+      <Button id="camera-settings-btn" width="500" padding="30">
+        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
+          <ButtonIcon as="SettingsIcon" color="#18181b" width="32" height="32" />
+          <Text font-size="32" font-weight="bold" color="#18181b">Camera Settings</Text>
+        </Container>
       </Button>
-      <Button id="xr-button" width="400" padding="20" flex-direction="row" align-items="center" justify-content="center" gap="15">
-        <ButtonIcon as="XIcon" color="#18181b" />
-        <Text font-size="24" font-weight="bold" color="#18181b">Enter XR</Text>
+      <Button id="xr-button" width="500" padding="30">
+        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
+          <ButtonIcon as="XIcon" color="#18181b" width="32" height="32" />
+          <Text font-size="32" font-weight="bold" color="#18181b">Enter XR</Text>
+        </Container>
       </Button>
     </Container>
   </Container>
