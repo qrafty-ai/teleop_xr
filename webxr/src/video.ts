@@ -28,7 +28,7 @@ export class VideoClient {
 		};
 	}
 
-	private async handleMessage(msg: any) {
+	private async handleMessage(msg: { type: string; data: unknown }) {
 		if (msg.type === "video_offer") {
 			this.pc = new RTCPeerConnection();
 			this.pc.ontrack = (event) => {
@@ -47,7 +47,7 @@ export class VideoClient {
 					);
 				}
 			};
-			await this.pc.setRemoteDescription(msg.data);
+			await this.pc.setRemoteDescription(msg.data as RTCSessionDescriptionInit);
 			const answer = await this.pc.createAnswer();
 			await this.pc.setLocalDescription(answer);
 			this.ws.send(
@@ -59,7 +59,7 @@ export class VideoClient {
 			this.startStats();
 		}
 		if (msg.type === "video_ice" && this.pc) {
-			await this.pc.addIceCandidate(msg.data);
+			await this.pc.addIceCandidate(msg.data as RTCIceCandidateInit);
 		}
 	}
 

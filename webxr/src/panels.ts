@@ -13,11 +13,16 @@ import {
 	Visibility,
 	type World,
 } from "@iwsdk/core";
+
+export type Entity = ReturnType<World["createTransformEntity"]>;
+
 import {
 	BoxGeometry,
 	DoubleSide,
+	type Material,
 	Mesh,
 	MeshBasicMaterial,
+	type Object3D,
 	PlaneGeometry,
 	VideoTexture,
 } from "three";
@@ -39,13 +44,17 @@ export const PanelHandle = createComponent("PanelHandle", {
 });
 
 export class DraggablePanel {
-	public entity: any;
-	public panelEntity: any;
+	public entity: Entity;
+	public panelEntity: Entity;
 
 	constructor(
 		protected world: World,
 		configPath: string,
-		options: any = {},
+		options: {
+			maxWidth?: number;
+			maxHeight?: number;
+			[key: string]: unknown;
+		} = {},
 	) {
 		const width = options.maxWidth || 0.8;
 		const height = options.maxHeight || 0.6;
@@ -167,7 +176,7 @@ export class CameraPanel extends DraggablePanel {
 			if (Array.isArray(this.videoMesh.material)) {
 				this.videoMesh.material.forEach((m) => m.dispose());
 			} else {
-				(this.videoMesh.material as any).dispose();
+				(this.videoMesh.material as Material).dispose();
 			}
 			if (this.panelEntity?.object3D) {
 				this.panelEntity.object3D.remove(this.videoMesh);
@@ -212,7 +221,7 @@ export class CameraPanel extends DraggablePanel {
 }
 
 export class ControllerCameraPanel {
-	public entity: any;
+	public entity: Entity;
 	public handedness: "left" | "right";
 	private videoMesh: Mesh | null = null;
 	private videoElement: HTMLVideoElement | null = null;
@@ -330,7 +339,9 @@ export class PanelHoverSystem extends createSystem({
 			PanelHandle.data.visualState[entity.index] = visualState;
 			PanelHandle.data.cooldown[entity.index] = cd;
 
-			const mesh = entity.object3D.children.find((c: any) => c.isMesh) as Mesh;
+			const mesh = entity.object3D.children.find(
+				(c: Object3D) => (c as Mesh).isMesh,
+			) as Mesh;
 			if (!mesh) return;
 
 			const mat = mesh.material as MeshBasicMaterial;

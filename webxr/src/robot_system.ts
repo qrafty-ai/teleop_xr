@@ -1,10 +1,15 @@
-import { createSystem } from "@iwsdk/core";
+import { createSystem, type World } from "@iwsdk/core";
 import { LoadingManager, type Object3D } from "three";
 import URDFLoader from "urdf-loader";
+import type { Entity } from "./panels";
+
+interface URDFRobot extends Object3D {
+	joints: Record<string, { setJointValue: (v: number) => void }>;
+}
 
 export class RobotModelSystem extends createSystem({}) {
 	private loader!: URDFLoader;
-	private robotEntity: any = null;
+	private robotEntity: Entity | null = null;
 	private robotModel: Object3D | null = null;
 
 	init() {
@@ -76,8 +81,8 @@ export class RobotModelSystem extends createSystem({}) {
 			//robot.scale.set(0.001, 0.001, 0.001);
 
 			this.robotModel = robot;
-			this.robotEntity = (this.world as any).createTransformEntity();
-			this.robotEntity.object3D.add(robot);
+			this.robotEntity = (this.world as World).createTransformEntity();
+			this.robotEntity?.object3D.add(robot);
 
 			console.log("[RobotModelSystem] Robot model loaded and added to scene");
 		} catch (error: unknown) {
@@ -96,7 +101,7 @@ export class RobotModelSystem extends createSystem({}) {
 	onRobotState(data: { joints: Record<string, number> }) {
 		if (!this.robotModel || !data.joints) return;
 
-		const robot = this.robotModel as any;
+		const robot = this.robotModel as unknown as URDFRobot;
 		if (robot.joints) {
 			for (const [name, value] of Object.entries(data.joints)) {
 				if (

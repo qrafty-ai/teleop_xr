@@ -12,6 +12,7 @@ const originalConsole = {
 	info: console.info.bind(console),
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Console args are any
 function sendLog(level: string, args: any[]) {
 	const message = args
 		.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
@@ -55,21 +56,25 @@ export function initConsoleStream() {
 	};
 
 	// Intercept console methods
+	// biome-ignore lint/suspicious/noExplicitAny: Console methods accept any arguments
 	console.log = (...args: any[]) => {
 		originalConsole.log(...args);
 		sendLog("log", args);
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: Console methods accept any arguments
 	console.warn = (...args: any[]) => {
 		originalConsole.warn(...args);
 		sendLog("warn", args);
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: Console methods accept any arguments
 	console.error = (...args: any[]) => {
 		originalConsole.error(...args);
 		sendLog("error", args);
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: Console methods accept any arguments
 	console.info = (...args: any[]) => {
 		originalConsole.info(...args);
 		sendLog("info", args);

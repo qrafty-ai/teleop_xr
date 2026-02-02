@@ -1,10 +1,11 @@
 import { createSystem } from "@iwsdk/core";
-import { Vector3 } from "three";
+import { type Object3D, Vector3 } from "three";
+import type { ControllerCameraPanel, DraggablePanel } from "./panels";
 
 type ControllerCameraPanelRef = {
-	panel: any; // ControllerCameraPanel instance
-	controllerObject: any; // raySpace Object3D
-	getControllerObject?: () => any; // Getter for dynamic raySpace resolution
+	panel: ControllerCameraPanel | DraggablePanel; // ControllerCameraPanel instance
+	controllerObject: Object3D; // raySpace Object3D
+	getControllerObject?: () => Object3D; // Getter for dynamic raySpace resolution
 };
 
 export class ControllerCameraPanelSystem extends createSystem({}) {
@@ -16,11 +17,17 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 	// Offset above controller (15cm up, 5cm forward)
 	private offset = new Vector3(0, 0.15, -0.05);
 
-	registerPanel(panel: any, controllerObject: any) {
+	registerPanel(
+		panel: ControllerCameraPanel | DraggablePanel,
+		controllerObject: Object3D,
+	) {
 		this.panels.push({ panel, controllerObject });
 	}
 
-	registerPanelWithGetter(panel: any, getControllerObject: () => any) {
+	registerPanelWithGetter(
+		panel: ControllerCameraPanel | DraggablePanel,
+		getControllerObject: () => Object3D,
+	) {
 		this.panels.push({ panel, controllerObject: null, getControllerObject });
 	}
 
@@ -37,7 +44,7 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 			const handedness = panel?.handedness as "left" | "right" | undefined;
 
 			// Resolve controller object based on primary/secondary controller spaces
-			let controllerObject: any;
+			let controllerObject: Object3D | undefined;
 			if (handedness) {
 				const primaryGrip = player.gripSpaces?.[handedness];
 				const secondaryGrip = player.secondaryGripSpaces?.[handedness];
