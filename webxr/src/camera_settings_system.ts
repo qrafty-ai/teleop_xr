@@ -131,7 +131,7 @@ export class CameraSettingsSystem extends createSystem({
 					}
 				}
 				if (label) {
-					// label.setProperties({ text: key.toUpperCase() });
+					label.setProperties({ text: key.toUpperCase() });
 				}
 				if (btn) {
 					btn.setProperties({
@@ -145,16 +145,10 @@ export class CameraSettingsSystem extends createSystem({
 				}
 			} else {
 				if (row) {
-					// Force show for debugging
-					row.setProperties({ display: "flex" });
+					row.setProperties({ display: "none" });
 					if (row.classList) {
-						row.classList.remove("hidden");
-						row.classList.add("toggle-row");
+						row.classList.add("hidden");
 					}
-					// row.setProperties({ display: "none" });
-					// if (row.classList) {
-					// 	row.classList.add("hidden");
-					// }
 				}
 			}
 		}
