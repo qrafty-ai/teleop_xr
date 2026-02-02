@@ -201,13 +201,13 @@ export class CameraPanel extends DraggablePanel {
 		const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
 		this.videoMesh = new Mesh(geometry, material);
 
-		// Position it slightly in front of the panel to avoid z-fighting
-		this.videoMesh.position.z = 0.01;
-		// Adjust y to be centered below the header
-		this.videoMesh.position.y = -0.1;
+    // Position it slightly in front of the panel to avoid z-fighting
+    this.videoMesh.position.z = 0.01;
+    // Adjust y to be centered below the header
+    this.videoMesh.position.y = -0.1;
 
-		// Attach to panelEntity, not the handle/root
-		this.panelEntity.object3D.add(this.videoMesh);
+    // Attach to panelEntity, not the handle/root
+    this.panelEntity.object3D.add(this.videoMesh);
 	}
 }
 

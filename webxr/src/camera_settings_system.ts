@@ -87,11 +87,11 @@ export class CameraSettingsSystem extends createSystem({
 		setCameraEnabled(targetKey as CameraViewKey, newState);
 
 		const btn = this.buttons[rowIndex];
-		if (btn) {
-			btn.setProperties({
-				backgroundColor: newState ? "#22c55e" : "#3f3f46",
-			});
-		}
+				if (btn) {
+					btn.setProperties({
+						backgroundColor: enabled ? "#16a34a" : "#e4e4e7",
+					});
+				}
 	}
 
 	private updateRows(config: Record<string, any>) {
@@ -121,8 +121,9 @@ export class CameraSettingsSystem extends createSystem({
 					label.setProperties({ text: key.toUpperCase() });
 				}
 				if (btn) {
+					// Use CheckIcon logic or color toggle
 					btn.setProperties({
-						backgroundColor: enabled ? "#22c55e" : "#3f3f46",
+						backgroundColor: enabled ? "#16a34a" : "#e4e4e7",
 					});
 				}
 			} else {
