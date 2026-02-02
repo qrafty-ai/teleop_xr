@@ -31,9 +31,8 @@ class UnitreeH1Robot(BaseRobot):
             raise FileNotFoundError(f"H1_2 URDF not found at {urdf_path}")
 
         urdf = yourdfpy.URDF.load(urdf_path)
-        self.robot = pk.Robot.from_urdf(urdf)
 
-        # Identify joint names and indices for leg freezing (12 joints)
+        # Identify leg joints names to freeze
         self.leg_joint_names = [
             "left_hip_yaw_joint",
             "left_hip_pitch_joint",
@@ -48,12 +47,12 @@ class UnitreeH1Robot(BaseRobot):
             "right_ankle_pitch_joint",
             "right_ankle_roll_joint",
         ]
-        self.leg_joint_indices = jnp.array(
-            [
-                self.robot.joints.actuated_names.index(name)
-                for name in self.leg_joint_names
-            ]
-        )
+
+        for joint_name in self.leg_joint_names:
+            if joint_name in urdf.joint_map:
+                urdf.joint_map[joint_name].type = "fixed"
+
+        self.robot = pk.Robot.from_urdf(urdf)
 
         # End effector and torso link indices
         # We use hand base links as end effectors (L_ee, R_ee frames)
@@ -82,10 +81,7 @@ class UnitreeH1Robot(BaseRobot):
         }
 
     def get_default_config(self) -> jax.Array:
-        """
-        Get the default configuration (mid-range of limits).
-        """
-        return (self.robot.joints.lower_limits + self.robot.joints.upper_limits) / 2
+        return jnp.zeros_like(self.robot.joints.lower_limits)
 
     def build_costs(
         self, target_L: jaxlie.SE3, target_R: jaxlie.SE3, target_Head: jaxlie.SE3
@@ -120,9 +116,12 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        # 2. Head-Waist yaw cost on torso_link
-        # Weighted orientation cost: only Z-axis (yaw) is matched.
-        # We use pose_cost (numerical jac) here as it easily supports vector weights.
+        costs.append(
+            pk.costs.limit_cost(  # pyright: ignore[reportCallIssue]
+                self.robot, JointVar(0), weight=100.0
+            )
+        )
+
         costs.append(
             pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
                 robot=self.robot,
@@ -131,25 +130,6 @@ class UnitreeH1Robot(BaseRobot):
                 target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
                 pos_weight=0.0,
                 ori_weight=jnp.array([0.0, 0.0, 20.0]),
-            )
-        )
-
-        # 3. Leg freezing: high-weight rest cost mask for the 12 leg joints
-        weight_mask = jnp.zeros(self.robot.joints.num_actuated_joints)
-        weight_mask = weight_mask.at[self.leg_joint_indices].set(200.0)
-
-        costs.append(
-            pk.costs.rest_cost(  # pyright: ignore[reportCallIssue]
-                joint_var=JointVar(0),
-                rest_pose=self.get_default_config(),
-                weight=weight_mask,
-            )
-        )
-
-        # Add joint limit costs (standard for any robot)
-        costs.append(
-            pk.costs.limit_cost(  # pyright: ignore[reportCallIssue]
-                self.robot, JointVar(0), weight=100.0
             )
         )
 

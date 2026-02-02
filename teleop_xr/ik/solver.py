@@ -61,7 +61,12 @@ class PyrokiSolver:
         problem = jaxls.LeastSquaresProblem(costs, [var_joints])
 
         # solve() returns a VarValues object containing the solution
-        solution = problem.analyze().solve(initial_vals=initial_vals)
+        solution = problem.analyze().solve(
+            initial_vals=initial_vals,
+            verbose=False,
+            linear_solver="dense_cholesky",
+            termination=jaxls.TerminationConfig(max_iterations=15),
+        )
 
         # Return the optimized joint configuration for the first (and only) timestep
         return solution[var_joints][0]
