@@ -196,18 +196,18 @@ export class CameraPanel extends DraggablePanel {
 		});
 
 		const texture = new VideoTexture(this.videoElement);
-		// Aspect ratio 1.5 roughly
-		const geometry = new PlaneGeometry(0.76, 0.55);
+		// Aspect ratio adjusted to fit panel
+		const geometry = new PlaneGeometry(0.76, 0.45);
 		const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
 		this.videoMesh = new Mesh(geometry, material);
 
-    // Position it slightly in front of the panel to avoid z-fighting
-    this.videoMesh.position.z = 0.01;
-    // Adjust y to be centered below the header
-    this.videoMesh.position.y = -0.1;
+		// Position it slightly in front of the panel to avoid z-fighting
+		this.videoMesh.position.z = 0.01;
+		// Adjust y to be centered below the header
+		this.videoMesh.position.y = -0.05;
 
-    // Attach to panelEntity, not the handle/root
-    this.panelEntity.object3D.add(this.videoMesh);
+		// Attach to panelEntity, not the handle/root
+		this.panelEntity.object3D.add(this.videoMesh);
 	}
 }
 

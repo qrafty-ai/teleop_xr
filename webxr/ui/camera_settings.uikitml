@@ -19,37 +19,37 @@
       <!-- Row 0 -->
       <Container id="row-0" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
-        <Switch id="switch-0" />
+        <Toggle id="switch-0" width="60" height="32" />
       </Container>
 
       <!-- Row 1 -->
       <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-1" font-size="32" color="#09090b" text="Camera 1" />
-        <Switch id="switch-1" />
+        <Toggle id="switch-1" width="60" height="32" />
       </Container>
 
       <!-- Row 2 -->
       <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-2" font-size="32" color="#09090b" text="Camera 2" />
-        <Switch id="switch-2" />
+        <Toggle id="switch-2" width="60" height="32" />
       </Container>
 
       <!-- Row 3 -->
       <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-3" font-size="32" color="#09090b" text="Camera 3" />
-        <Switch id="switch-3" />
+        <Toggle id="switch-3" width="60" height="32" />
       </Container>
 
       <!-- Row 4 -->
       <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-4" font-size="32" color="#09090b" text="Camera 4" />
-        <Switch id="switch-4" />
+        <Toggle id="switch-4" width="60" height="32" />
       </Container>
 
       <!-- Row 5 -->
       <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-5" font-size="32" color="#09090b" text="Camera 5" />
-        <Switch id="switch-5" />
+        <Toggle id="switch-5" width="60" height="32" />
       </Container>
 
     </Container>
