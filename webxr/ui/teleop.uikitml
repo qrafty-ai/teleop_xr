@@ -6,7 +6,7 @@
     color: #22c55e;
   }
 </style>
-<Panel width="1024">
+<Panel width="100%" height="100%">
   <Container flex-direction="column" padding="40" gap="20">
     <Container flex-direction="column" gap="10">
       <Text font-size="48" font-weight="bold" color="#fafafa" text="Teleop Control" />
