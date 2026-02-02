@@ -37,23 +37,23 @@
     </Container>
 
     <Container flex-direction="column" margin-top="60" gap="30" align-items="center">
-      <Button id="camera-button" width="500" padding="30">
-        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
-          <ButtonIcon as="VideoIcon" color="#18181b" width="32" height="32" />
-          <Text font-size="32" font-weight="bold" color="#18181b">Toggle Cameras</Text>
-        </Container>
+      <Button id="camera-button" width="500" padding="30" flex-direction="row" align-items="center" justify-content="center" gap="20">
+        <ButtonIcon color="#18181b" width="32" height="32">
+          <VideoIcon />
+        </ButtonIcon>
+        <Text font-size="32" font-weight="bold" color="#18181b">Toggle Cameras</Text>
       </Button>
-      <Button id="camera-settings-btn" width="500" padding="30">
-        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
-          <ButtonIcon as="SettingsIcon" color="#18181b" width="32" height="32" />
-          <Text font-size="32" font-weight="bold" color="#18181b">Camera Settings</Text>
-        </Container>
+      <Button id="camera-settings-btn" width="500" padding="30" flex-direction="row" align-items="center" justify-content="center" gap="20">
+        <ButtonIcon color="#18181b" width="32" height="32">
+          <SettingsIcon />
+        </ButtonIcon>
+        <Text font-size="32" font-weight="bold" color="#18181b">Camera Settings</Text>
       </Button>
-      <Button id="xr-button" width="500" padding="30">
-        <Container flex-direction="row" align-items="center" justify-content="center" gap="20" width="100%" height="100%">
-          <ButtonIcon as="XIcon" color="#18181b" width="32" height="32" />
-          <Text font-size="32" font-weight="bold" color="#18181b">Enter XR</Text>
-        </Container>
+      <Button id="xr-button" width="500" padding="30" flex-direction="row" align-items="center" justify-content="center" gap="20">
+        <ButtonIcon color="#18181b" width="32" height="32">
+          <XIcon />
+        </ButtonIcon>
+        <Text font-size="32" font-weight="bold" color="#18181b">Enter XR</Text>
       </Button>
     </Container>
   </Container>
