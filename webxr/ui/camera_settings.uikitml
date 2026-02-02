@@ -18,44 +18,44 @@
     <Container flex-direction="column" width="100%" gap="16">
       <!-- Debug Row -->
       <Container flex-direction="row" justify-content="space-between" align-items="center" background-color="#e4e4e7" padding="20" border-radius="16">
-        <Text font-size="32" color="#09090b" text="Debug Constant" />
-        <Toggle width="60" height="32" background-color="#000000" />
+        <Text font-size="32" color="#09090b" text="Debug Toggle" />
+        <Toggle width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 0 -->
       <Container id="row-0" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
-        <Toggle id="switch-0" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-0" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 1 -->
       <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-1" font-size="32" color="#09090b" text="Camera 1" />
-        <Toggle id="switch-1" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-1" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 2 -->
       <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-2" font-size="32" color="#09090b" text="Camera 2" />
-        <Toggle id="switch-2" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-2" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 3 -->
       <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-3" font-size="32" color="#09090b" text="Camera 3" />
-        <Toggle id="switch-3" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-3" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 4 -->
       <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-4" font-size="32" color="#09090b" text="Camera 4" />
-        <Toggle id="switch-4" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-4" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
       <!-- Row 5 -->
       <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-5" font-size="32" color="#09090b" text="Camera 5" />
-        <Toggle id="switch-5" width="60" height="32" background-color="#000000" />
+        <Toggle id="switch-5" width="60" height="32" style="width: 60; height: 32;" variant="primary" />
       </Container>
 
     </Container>
