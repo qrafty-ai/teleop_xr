@@ -1,9 +1,9 @@
 <style>
   .status-value {
-    color: #ef4444;
+    color: #b91c1c;
   }
   .connected {
-    color: #16a34a;
+    color: #15803d;
   }
 </style>
 <Panel width="100%" height="100%" border-radius="24">
@@ -16,22 +16,22 @@
     <Container flex-direction="column" margin-top="40" gap="20">
       <Container flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text font-size="32" color="#52525b" text="Status:" />
-        <Container flex-direction="row" align-items="center" gap="10">
-          <SignalZeroIcon color="#52525b" width="32" height="32" />
-          <Text id="status-text" class="status-value" font-size="32" text="Disconnected" />
-        </Container>
+          <Container flex-direction="row" align-items="center" gap="10">
+            <SignalZeroIcon color="#52525b" width="32" height="32" />
+            <Text id="status-text" class="status-value" font-size="32" color="#b91c1c" text="Disconnected" />
+          </Container>
       </Container>
 
       <Container flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text font-size="32" color="#52525b" text="FPS:" />
-        <Text id="fps-text" font-size="32" color="#09090b" text="0" />
+        <Text id="fps-text" font-size="32" color="#18181b" text="0" />
       </Container>
 
       <Container flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text font-size="32" color="#52525b" text="Latency:" />
         <Container flex-direction="row" align-items="center" gap="10">
            <SignalIcon color="#52525b" width="32" height="32" />
-           <Text id="latency-text" font-size="32" color="#09090b" text="0ms" />
+           <Text id="latency-text" font-size="32" color="#18181b" text="0ms" />
         </Container>
       </Container>
     </Container>
