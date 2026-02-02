@@ -49,11 +49,21 @@ class IKController:
     def compute_teleop_transform(
         self, t_ctrl_curr: jaxlie.SE3, t_ctrl_init: jaxlie.SE3, t_ee_init: jaxlie.SE3
     ) -> jaxlie.SE3:
-        q_delta = t_ctrl_curr.rotation() @ t_ctrl_init.rotation().inverse()
-        q_new = q_delta @ t_ee_init.rotation()
+        R_xr_to_robot = jaxlie.SO3.from_matrix(
+            jnp.array([[0.0, 0.0, -1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        )
 
-        t_delta = t_ctrl_curr.translation() - t_ctrl_init.translation()
-        t_new = t_ee_init.translation() + t_delta
+        t_delta_xr = t_ctrl_curr.translation() - t_ctrl_init.translation()
+        t_delta_robot = R_xr_to_robot @ t_delta_xr
+
+        print(f"[IKController] t_delta_xr: {t_delta_xr}")
+        print(f"[IKController] t_delta_robot: {t_delta_robot}")
+
+        q_delta_xr = t_ctrl_curr.rotation() @ t_ctrl_init.rotation().inverse()
+        q_delta_robot = R_xr_to_robot @ q_delta_xr @ R_xr_to_robot.inverse()
+
+        t_new = t_ee_init.translation() + t_delta_robot
+        q_new = q_delta_robot @ t_ee_init.rotation()
 
         return jaxlie.SE3.from_rotation_and_translation(q_new, t_new)
 
@@ -107,6 +117,8 @@ class IKController:
                     "right": fk_poses["right"],
                     "head": fk_poses["head"],
                 }
+
+                print(f"[IKController] Initial Robot FK: {self.snapshot_robot}")
                 return current_config
 
             # Active control
@@ -125,6 +137,9 @@ class IKController:
                 self.snapshot_xr["head"],
                 self.snapshot_robot["head"],
             )
+
+            print(f"[IKController] Target L: {target_L.translation()}")
+            print(f"[IKController] Target R: {target_R.translation()}")
 
             if self.solver is not None:
                 # Solve for new configuration using target poses and current config
