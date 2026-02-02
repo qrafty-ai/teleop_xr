@@ -102,7 +102,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 
 	const cameraSettingsPanel = new DraggablePanel(
 		world,
-		"./ui/camera_settings.json?v=2",
+		"./ui/camera_settings.json?v=3",
 		{
 			maxHeight: 0.6,
 			maxWidth: 1.2,
