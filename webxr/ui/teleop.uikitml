@@ -7,36 +7,36 @@
   }
 </style>
 <Panel width="1024">
-  <Container flexDirection="column" padding="20" gap="10">
-    <Container flexDirection="column" gap="5">
-      <Text fontSize="32" fontWeight="bold" color="#fafafa">Teleop Control</Text>
-      <Text fontSize="16" color="#a1a1aa">Enter XR to stream device pose to the robot.</Text>
+  <Container flex-direction="column" padding="20" gap="10">
+    <Container flex-direction="column" gap="5">
+      <Text font-size="32" font-weight="bold" color="#fafafa">Teleop Control</Text>
+      <Text font-size="16" color="#a1a1aa">Enter XR to stream device pose to the robot.</Text>
     </Container>
 
-    <Container flexDirection="column" marginTop="20" gap="10">
-      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
-        <Text fontSize="20" color="#a1a1aa">Status:</Text>
-        <Container flexDirection="row" alignItems="center" gap="5">
+    <Container flex-direction="column" margin-top="20" gap="10">
+      <Container flex-direction="row" justify-content="space-between" align-items="center">
+        <Text font-size="20" color="#a1a1aa">Status:</Text>
+        <Container flex-direction="row" align-items="center" gap="5">
           <SignalZeroIcon color="#a1a1aa" width="20" height="20" />
-          <Text id="status-text" class="status-value" fontSize="20">Disconnected</Text>
+          <Text id="status-text" class="status-value" font-size="20">Disconnected</Text>
         </Container>
       </Container>
 
-      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
-        <Text fontSize="20" color="#a1a1aa">FPS:</Text>
-        <Text id="fps-text" fontSize="20" color="#fafafa">0</Text>
+      <Container flex-direction="row" justify-content="space-between" align-items="center">
+        <Text font-size="20" color="#a1a1aa">FPS:</Text>
+        <Text id="fps-text" font-size="20" color="#fafafa">0</Text>
       </Container>
 
-      <Container flexDirection="row" justifyContent="space-between" alignItems="center">
-        <Text fontSize="20" color="#a1a1aa">Latency:</Text>
-        <Container flexDirection="row" alignItems="center" gap="5">
+      <Container flex-direction="row" justify-content="space-between" align-items="center">
+        <Text font-size="20" color="#a1a1aa">Latency:</Text>
+        <Container flex-direction="row" align-items="center" gap="5">
            <SignalIcon color="#a1a1aa" width="20" height="20" />
-           <Text id="latency-text" fontSize="20" color="#fafafa">0ms</Text>
+           <Text id="latency-text" font-size="20" color="#fafafa">0ms</Text>
         </Container>
       </Container>
     </Container>
 
-    <Container flexDirection="column" marginTop="30" gap="10">
+    <Container flex-direction="column" margin-top="30" gap="10">
       <Button id="camera-button">
         <ButtonIcon as="VideoIcon" />
         <Text>Toggle Cameras</Text>
