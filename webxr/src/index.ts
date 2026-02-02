@@ -68,7 +68,7 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 		sceneUnderstanding: true,
 		spatialUI: {
 			kits: [
-				horizonKit,
+				{ ...horizonKit, Switch: horizonKit.Toggle },
 				{
 					Container,
 					Image,

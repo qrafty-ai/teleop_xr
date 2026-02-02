@@ -197,7 +197,7 @@ export class CameraPanel extends DraggablePanel {
 
 		const texture = new VideoTexture(this.videoElement);
 		// Aspect ratio 1.5 roughly
-		const geometry = new PlaneGeometry(0.6, 0.4);
+		const geometry = new PlaneGeometry(0.76, 0.55);
 		const material = new MeshBasicMaterial({ map: texture, side: DoubleSide });
 		this.videoMesh = new Mesh(geometry, material);
 

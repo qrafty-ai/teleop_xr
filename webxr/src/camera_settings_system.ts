@@ -49,15 +49,17 @@ export class CameraSettingsSystem extends createSystem({
 			for (let i = 0; i < MAX_ROWS; i++) {
 				const row = document.getElementById(`row-${i}`);
 				const label = document.getElementById(`label-${i}`);
-				const btn = document.getElementById(`btn-${i}`);
+				const btn = document.getElementById(`switch-${i}`);
 
 				this.rows.push(row);
 				this.labels.push(label);
 				this.buttons.push(btn);
 
 				if (btn) {
-					btn.addEventListener("click", () => {
-						this.handleToggleClick(i);
+					btn.setProperties({
+						onCheckedChange: (checked: boolean) => {
+							this.handleToggleClick(i, checked);
+						},
 					});
 				}
 			}
@@ -72,7 +74,7 @@ export class CameraSettingsSystem extends createSystem({
 		});
 	}
 
-	private handleToggleClick(rowIndex: number) {
+	private handleToggleClick(rowIndex: number, checked: boolean) {
 		let targetKey: string | null = null;
 		for (const [key, idx] of this.keyToRowIndex.entries()) {
 			if (idx === rowIndex) {
@@ -83,15 +85,7 @@ export class CameraSettingsSystem extends createSystem({
 
 		if (!targetKey) return;
 
-		const newState = !getCameraEnabled(targetKey as CameraViewKey);
-		setCameraEnabled(targetKey as CameraViewKey, newState);
-
-		const btn = this.buttons[rowIndex];
-		if (btn) {
-			btn.setProperties({
-				backgroundColor: newState ? "#16a34a" : "#e4e4e7",
-			});
-		}
+		setCameraEnabled(targetKey as CameraViewKey, checked);
 	}
 
 	private updateRows(config: Record<string, any>) {
@@ -121,9 +115,8 @@ export class CameraSettingsSystem extends createSystem({
 					label.setProperties({ text: key.toUpperCase() });
 				}
 				if (btn) {
-					// Use CheckIcon logic or color toggle
 					btn.setProperties({
-						backgroundColor: enabled ? "#16a34a" : "#e4e4e7",
+						checked: enabled,
 					});
 				}
 			} else {

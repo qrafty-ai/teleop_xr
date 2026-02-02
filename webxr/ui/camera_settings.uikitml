@@ -19,50 +19,39 @@
       <!-- Row 0 -->
       <Container id="row-0" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-0" font-size="32" color="#09090b" text="Camera 0" />
-        <Button id="btn-0" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-0" />
       </Container>
 
       <!-- Row 1 -->
       <Container id="row-1" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-1" font-size="32" color="#09090b" text="Camera 1" />
-        <Button id="btn-1" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-1" />
       </Container>
 
       <!-- Row 2 -->
       <Container id="row-2" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-2" font-size="32" color="#09090b" text="Camera 2" />
-        <Button id="btn-2" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-2" />
       </Container>
 
       <!-- Row 3 -->
       <Container id="row-3" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-3" font-size="32" color="#09090b" text="Camera 3" />
-        <Button id="btn-3" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-3" />
       </Container>
 
       <!-- Row 4 -->
       <Container id="row-4" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-4" font-size="32" color="#09090b" text="Camera 4" />
-        <Button id="btn-4" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-4" />
       </Container>
 
       <!-- Row 5 -->
       <Container id="row-5" class="hidden" flex-direction="row" justify-content="space-between" align-items="center" background-color="#f4f4f5" padding="20" border-radius="16">
         <Text id="label-5" font-size="32" color="#09090b" text="Camera 5" />
-        <Button id="btn-5" width="60" height="60" border-radius="12" background-color="#e4e4e7" align-items="center" justify-content="center" flex-shrink="0">
-           <CheckIcon color="#18181b" width="32" height="32" />
-        </Button>
+        <Switch id="switch-5" />
       </Container>
+
     </Container>
 
     <Button id="close-btn" width="100%" padding="24" margin-top="20" flex-direction="row" align-items="center" justify-content="center" background-color="#e4e4e7" border-radius="16">
