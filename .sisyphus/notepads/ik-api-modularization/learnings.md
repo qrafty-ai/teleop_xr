@@ -20,3 +20,9 @@
 - Used modern Python type hints (e.g., `| None`, `dict[]`, `list[]`) where applicable.
 - Explicitly handled type conversions between NumPy and JAX (`jnp.asarray`, `np.array`) in `IKController` to ensure compatibility and satisfy type checkers.
 - Included usage examples in the module-level docstring of `teleop_xr/ik/__init__.py`.
+
+## ROS2 CLI Modularization
+- Added `--mode` flag to ROS2 node using `tyro`.
+- Supported modes: `teleop` (default) and `ik`.
+- Placeholder logic added to `main()` for IK mode.
+- Verified CLI changes using `tyro` help output even without ROS2 sourced by temporarily bypassing the `rclpy` import check.

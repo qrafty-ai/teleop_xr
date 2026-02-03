@@ -210,7 +210,7 @@ Wave 3 (After Wave 2):
 
 ---
 
-- [ ] 2. Add TDD Tests for Public API Surface
+- [x] 2. Add TDD Tests for Public API Surface
 
   **What to do**:
   - Create `tests/test_ik_api.py` with tests for public imports
@@ -259,7 +259,7 @@ Wave 3 (After Wave 2):
 
 ---
 
-- [ ] 3. Add Comprehensive Docstrings and Type Hints
+- [x] 3. Add Comprehensive Docstrings and Type Hints
 
   **What to do**:
   - Add module-level docstring to `teleop_xr/ik/__init__.py` explaining usage
