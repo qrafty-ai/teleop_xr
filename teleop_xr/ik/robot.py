@@ -37,6 +37,16 @@ class BaseRobot(ABC):
         """
         pass
 
+    @property
+    def supported_frames(self) -> set[str]:
+        """
+        Get the set of supported frames for this robot.
+
+        Returns:
+            set[str]: A set of frame names (e.g., {"left", "right", "head"}).
+        """
+        return {"left", "right", "head"}
+
     @abstractmethod
     def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
         """
