@@ -41,6 +41,43 @@ The demo supports two operation modes:
     python -m teleop_xr.demo --mode ik
     ```
 
+### Custom Robot Support
+
+TeleopXR supports dynamic loading of custom robot models for IK-based control.
+
+#### 1. CLI Arguments (ROS2)
+
+When using the ROS2 interface, you can specify your custom robot class:
+
+- `--robot-class`: The robot specification. Can be an entry point name or `module.path:ClassName`.
+- `--robot-args`: A JSON string of arguments passed to the robot constructor.
+- `--list-robots`: Lists all robots registered via entry points.
+- `--urdf-topic`: Topic to fetch URDF from (default: `/robot_description`).
+- `--no-urdf-topic`: Disable automatic URDF fetching.
+
+Example:
+```bash
+python -m teleop_xr.ros2 --mode ik --robot-class "my_package.robots:MyRobot" --robot-args '{"arm_length": 0.5}'
+```
+
+#### 2. Robot Constructor Contract
+
+Custom robot classes must inherit from `teleop_xr.ik.robot.BaseRobot` and support the following constructor signature:
+
+```python
+def __init__(self, urdf_string: str | None = None, **kwargs):
+    ...
+```
+
+#### 3. Entry Points
+
+You can register your robot in `pyproject.toml` to make it discoverable by name:
+
+```toml
+[project.entry-points."teleop_xr.robots"]
+my-robot = "my_package.robots:MyRobot"
+```
+
 ### Usage
 
 1. Open the displayed URL (`https://<ip>:4443`) in your headset.
