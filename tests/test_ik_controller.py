@@ -131,3 +131,19 @@ def test_ik_controller_deadman_requires_two_buttons():
     out = controller.step(state, q0)
     assert controller.active is False
     np.testing.assert_allclose(out, q0)
+
+
+def test_ik_controller_reset():
+    class DummyRobot:
+        def get_default_config(self):
+            return np.array([0.0])
+
+    robot = DummyRobot()
+    controller = IKController(robot=robot)
+    controller.active = True
+    ident = jaxlie.SE3.identity()
+    controller.snapshot_xr = {"left": ident}
+    controller.reset()
+    assert controller.active is False
+    assert controller.snapshot_xr == {}
+    assert controller.snapshot_robot == {}
