@@ -20,6 +20,10 @@ class DummyRobot(BaseRobot):
         return None
 
     @property
+    def actuated_joint_names(self) -> list[str]:
+        return ["joint1", "joint2"]
+
+    @property
     def joint_var_cls(self):
         return None
 
