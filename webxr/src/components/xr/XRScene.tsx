@@ -94,10 +94,15 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 			const currentSession = world.renderer.xr.getSession();
 			if (currentSession) {
 				sessionRef.current = currentSession;
-				const currentMode =
-					activeModeRef.current ?? inferSessionMode(currentSession);
+				const inferredMode = inferSessionMode(currentSession);
+				if (inferredMode) {
+					activeModeRef.current = inferredMode;
+				}
+				const currentMode = inferredMode ?? activeModeRef.current;
 				if (currentMode === mode) {
-					activeModeRef.current = currentMode ?? mode;
+					if (currentMode) {
+						activeModeRef.current = currentMode;
+					}
 					setIsImmersiveActive(true);
 					return;
 				}

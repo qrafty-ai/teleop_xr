@@ -48,6 +48,8 @@ export default function Home() {
 		[
 			isImmersiveActive,
 			setIsPassthroughEnabled,
+			setXrBusy,
+			setXrError,
 			xrActions,
 			xrBusy,
 		],
