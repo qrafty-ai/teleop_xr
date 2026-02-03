@@ -1,4 +1,4 @@
-import { getClientId } from "./client_id";
+import { getClientId } from "../client_id";
 
 /**
  * Console log streaming utility for Quest VR debugging.

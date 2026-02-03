@@ -1,4 +1,4 @@
-import { getClientId } from "./client_id";
+import { getClientId } from "../client_id";
 
 export type VideoStats = {
 	state: string;
@@ -18,7 +18,6 @@ export class VideoClient {
 	private pc: RTCPeerConnection | null = null;
 	private statsTimer: number | null = null;
 	private clientId = getClientId();
-	private inControl = false;
 	private controlPollTimer: number | null = null;
 	private waitingForOffer = false;
 
@@ -30,7 +29,6 @@ export class VideoClient {
 		this.ws = new WebSocket(url);
 		this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
 		this.ws.onopen = () => {
-			this.inControl = false;
 			this.waitingForOffer = false;
 			this.sendControlCheck();
 			this.startControlPolling();
@@ -39,7 +37,6 @@ export class VideoClient {
 
 	private async handleMessage(msg: { type: string; data: unknown }) {
 		if (msg.type === "deny") {
-			this.inControl = false;
 			this.waitingForOffer = false;
 			this.closePeerConnection();
 			this.startControlPolling();
@@ -49,7 +46,6 @@ export class VideoClient {
 		if (msg.type === "control_status") {
 			// biome-ignore lint/suspicious/noExplicitAny: external message
 			const inControl = Boolean((msg as any).data?.in_control);
-			this.inControl = inControl;
 			if (inControl) {
 				this.stopControlPolling();
 				if (!this.pc && !this.waitingForOffer) {

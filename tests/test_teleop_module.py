@@ -5,19 +5,19 @@ import teleop_xr
 from teleop_xr.config import TeleopSettings
 
 
-def test_resolve_frontend_paths_prefers_webxr_dist(tmp_path):
+def test_resolve_frontend_paths_prefers_webxr_out(tmp_path):
     package_dir = tmp_path / "pkg"
     package_dir.mkdir()
     repo_root = package_dir.parent
-    webxr_dist = repo_root / "webxr" / "dist"
-    webxr_dist.mkdir(parents=True)
-    (webxr_dist / "index.html").write_text("ok")
+    webxr_out = repo_root / "webxr" / "out"
+    webxr_out.mkdir(parents=True)
+    (webxr_out / "index.html").write_text("ok")
 
     static_dir, index_path, mount_path, mount_name = teleop_xr._resolve_frontend_paths(
         str(package_dir)
     )
-    assert static_dir == str(webxr_dist)
-    assert index_path == str(webxr_dist / "index.html")
+    assert static_dir == str(webxr_out)
+    assert index_path == str(webxr_out / "index.html")
     assert mount_path == "/"
     assert mount_name == "webxr"
 
