@@ -43,21 +43,52 @@ The demo supports two operation modes:
 
 ### Custom Robot Support
 
-TeleopXR supports dynamic loading of custom robot models for IK-based control.
+TeleopXR supports dynamic loading of custom robot models. For robust management of robot descriptions (URDF/Xacro) and their dependencies, we use the **Robot Asset Manager (RAM)**.
 
-#### 1. CLI Arguments (ROS2)
+#### 1. Robot Asset Manager (RAM)
 
-When using the ROS2 interface, you can specify your custom robot class:
+RAM simplifies robot integration by automatically cloning repositories, processing Xacro files, and resolving asset paths. It ensures that the IK solver has absolute paths to meshes while the WebXR frontend receives the standard `package://` URIs.
 
-- `--robot-class`: The robot specification. Can be an entry point name or `module.path:ClassName`.
-- `--robot-args`: A JSON string of arguments passed to the robot constructor.
-- `--list-robots`: Lists all robots registered via entry points.
-- `--urdf-topic`: Topic to fetch URDF from (default: `/robot_description`).
-- `--no-urdf-topic`: Disable automatic URDF fetching.
+**Example: Implementation using RAM**
+The `FrankaRobot` implementation uses RAM to fetch the official description:
 
-Example:
-```bash
-python -m teleop_xr.ros2 --mode ik --robot-class "my_package.robots:MyRobot" --robot-args '{"arm_length": 0.5}'
+```python
+from teleop_xr import ram
+from teleop_xr.ik.robot import BaseRobot, RobotVisConfig
+
+class FrankaRobot(BaseRobot):
+    def __init__(self, urdf_string: str | None = None):
+        if urdf_string:
+            # Initialize from ROS2 provided string
+            ...
+        else:
+            repo_url = "https://github.com/frankarobotics/franka_ros.git"
+            xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
+
+            # 1. Get resolved URDF for local IK (absolute mesh paths)
+            self.urdf_path = ram.get_resource(
+                repo_url=repo_url,
+                path_inside_repo=xacro_path,
+                xacro_args={"hand": "true"},
+                resolve_packages=True
+            )
+
+            # 2. Get unresolved URDF for WebXR (package:// paths)
+            self.vis_urdf_path = ram.get_resource(
+                repo_url=repo_url,
+                path_inside_repo=xacro_path,
+                xacro_args={"hand": "true"},
+                resolve_packages=False
+            )
+
+            # 3. Get repo root to serve meshes
+            self.mesh_path = ram.get_repo(repo_url)
+
+    def get_vis_config(self):
+        return RobotVisConfig(
+            urdf_path=self.vis_urdf_path,
+            mesh_path=self.mesh_path
+        )
 ```
 
 #### 2. Robot Constructor Contract
@@ -69,9 +100,24 @@ def __init__(self, urdf_string: str | None = None, **kwargs):
     ...
 ```
 
-#### 3. Entry Points
+*   **`urdf_string`**: If provided (e.g., via ROS2 `/robot_description`), the robot should prioritize initializing from this string. If `None`, it should fallback to RAM or local files.
 
-You can register your robot in `pyproject.toml` to make it discoverable by name:
+#### 3. CLI Arguments
+
+When using the ROS2 interface or the demo, you can specify your custom robot:
+
+- **`--robot-class`**: The robot specification. Can be an entry point name (e.g., `franka`, `h1`) or a full module path (`my_package.robots:MyRobot`).
+- **`--robot-args`**: A JSON string of arguments passed to the robot constructor.
+- **`--list-robots`**: Lists all registered robots.
+
+Example:
+```bash
+python -m teleop_xr.ros2 --mode ik --robot-class "franka"
+```
+
+#### 4. Entry Points
+
+Register your robot in `pyproject.toml` to make it discoverable by name:
 
 ```toml
 [project.entry-points."teleop_xr.robots"]
