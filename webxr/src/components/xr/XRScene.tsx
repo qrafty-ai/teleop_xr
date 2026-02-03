@@ -110,7 +110,7 @@ export function XRScene({
 	);
 }
 
-function cleanupWorld(world: XRWorld) {
+function cleanupWorld(world: any) {
 	try {
 		if (typeof world.dispose === "function") {
 			world.dispose();

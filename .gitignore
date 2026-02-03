@@ -2,8 +2,11 @@
 *.egg-info
 build/
 dist/
+node_modules/
 webxr/node_modules/
 webxr/dist/
+webxr/.next/
+webxr/out/
 .worktrees/
 uv.lock
 teleop_xr/_version.py
