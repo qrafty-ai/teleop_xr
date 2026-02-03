@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { initWorld } from "@/xr";
 
-export function XRScene() {
+export function XRScene({ onExit }: { onExit?: () => void }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const worldRef = useRef<Awaited<ReturnType<typeof initWorld>> | null>(null);
 
@@ -27,6 +27,13 @@ export function XRScene() {
 				}
 
 				worldRef.current = world;
+
+				if (world.renderer?.xr) {
+					world.renderer.xr.addEventListener("sessionend", () => {
+						console.log("XR Session ended");
+						onExit?.();
+					});
+				}
 			} catch (err) {
 				console.error("Failed to initialize XR world:", err);
 			}
@@ -42,7 +49,7 @@ export function XRScene() {
 				worldRef.current = null;
 			}
 		};
-	}, []);
+	}, [onExit]);
 
 	return (
 		<div

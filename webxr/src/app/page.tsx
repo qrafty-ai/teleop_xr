@@ -17,7 +17,7 @@ export default function Home() {
 
 	return (
 		<main className="min-h-screen bg-background p-8">
-			{isXRActive && <XRScene />}
+			{isXRActive && <XRScene onExit={() => setIsXRActive(false)} />}
 			<div className="mx-auto max-w-5xl space-y-8">
 				<header className="flex items-center justify-between border-b pb-6">
 					<div>
