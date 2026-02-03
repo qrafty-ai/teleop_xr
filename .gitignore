@@ -5,6 +5,7 @@ dist/
 webxr/node_modules/
 webxr/dist/
 .worktrees/
+uv.lock
 teleop_xr/_version.py
 coverage.xml
 .coverage
