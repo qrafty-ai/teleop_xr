@@ -52,9 +52,22 @@ def test_pyroki_solver_instantiation():
 
 
 def test_ik_controller_instantiation():
-    class MockRobot:
-        def get_default_config(self):
-            return np.zeros(2)
+    class MockRobot(BaseRobot):
+        def get_vis_config(self):
+            return None
+
+        @property
+        def joint_var_cls(self):
+            return None
+
+        def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
+            return {}
+
+        def get_default_config(self) -> jnp.ndarray:
+            return jnp.zeros(2)
+
+        def build_costs(self, target_L, target_R, target_Head):
+            return []
 
     robot = MockRobot()
     controller = IKController(robot=robot)
@@ -64,9 +77,22 @@ def test_ik_controller_instantiation():
 
 
 def test_ik_controller_with_filter():
-    class MockRobot:
-        def get_default_config(self):
-            return np.zeros(2)
+    class MockRobot(BaseRobot):
+        def get_vis_config(self):
+            return None
+
+        @property
+        def joint_var_cls(self):
+            return None
+
+        def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
+            return {}
+
+        def get_default_config(self) -> jnp.ndarray:
+            return jnp.zeros(2)
+
+        def build_costs(self, target_L, target_R, target_Head):
+            return []
 
     robot = MockRobot()
     filter_weights = np.array([0.5, 0.5])

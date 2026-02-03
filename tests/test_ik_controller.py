@@ -1,7 +1,8 @@
 import numpy as np
-
+import jax.numpy as jnp
 import jaxlie
-
+from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
 from teleop_xr.messages import (
     XRButtonState,
@@ -12,6 +13,34 @@ from teleop_xr.messages import (
     XRPose,
     XRState,
 )
+
+
+class DummyRobot(BaseRobot):
+    def get_vis_config(self):
+        return None
+
+    @property
+    def joint_var_cls(self):
+        return None
+
+    def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
+        ident = jaxlie.SE3.identity()
+        return {"left": ident, "right": ident, "head": ident}
+
+    def get_default_config(self) -> jnp.ndarray:
+        return jnp.array([0.0, 0.0])
+
+    def build_costs(self, target_L, target_R, target_Head):
+        return []
+
+
+class DummySolver(PyrokiSolver):
+    def __init__(self, out: np.ndarray):
+        # We don't call super().__init__ because we don't want to trigger _warmup
+        self.out = out
+
+    def solve(self, target_L, target_R, target_Head, q_current):
+        return jnp.asarray(self.out)
 
 
 def _pose(x: float, y: float, z: float) -> XRPose:
@@ -30,25 +59,10 @@ def _deadman_gamepad(pressed: bool) -> XRGamepad:
 
 
 def test_ik_controller_deadman_and_step_transitions():
-    class DummyRobot:
-        def get_default_config(self):
-            return np.array([0.0, 0.0])
-
-        def forward_kinematics(self, _config):
-            ident = jaxlie.SE3.identity()
-            return {"left": ident, "right": ident, "head": ident}
-
-    class DummySolver:
-        def __init__(self, out: np.ndarray):
-            self.out = out
-
-        def solve(self, _target_L, _target_R, _target_Head, _q_current):
-            return self.out
-
     robot = DummyRobot()
     solver = DummySolver(np.array([1.0, 2.0]))
     controller = IKController(
-        robot=robot, solver=solver, filter_weights=np.array([1.0])
+        robot=robot, solver=solver, filter_weights=np.array([0.5, 0.5])
     )
 
     left = XRInputSource(
@@ -97,14 +111,6 @@ def test_ik_controller_deadman_and_step_transitions():
 
 
 def test_ik_controller_deadman_requires_two_buttons():
-    class DummyRobot:
-        def get_default_config(self):
-            return np.array([0.0])
-
-        def forward_kinematics(self, _config):
-            ident = jaxlie.SE3.identity()
-            return {"left": ident, "right": ident, "head": ident}
-
     robot = DummyRobot()
     controller = IKController(robot=robot)
 
@@ -127,17 +133,13 @@ def test_ik_controller_deadman_requires_two_buttons():
         ],
     )
 
-    q0 = np.array([0.0])
+    q0 = np.array([0.0, 0.0])
     out = controller.step(state, q0)
     assert controller.active is False
     np.testing.assert_allclose(out, q0)
 
 
 def test_ik_controller_reset():
-    class DummyRobot:
-        def get_default_config(self):
-            return np.array([0.0])
-
     robot = DummyRobot()
     controller = IKController(robot=robot)
     controller.active = True

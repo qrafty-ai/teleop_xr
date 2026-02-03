@@ -65,6 +65,78 @@ teleop.run()
     options:
         show_root_heading: false
 
+## Inverse Kinematics (IK) API
+
+TeleopXR provides a modularized IK stack for mapping XR device poses to robot joint configurations. This is useful for controlling humanoid or multi-arm robots.
+
+### Core Components
+
+*   `BaseRobot`: An abstract base class for defining your robot's kinematic model and optimization costs.
+*   `PyrokiSolver`: A high-performance, JAX-powered IK solver that optimizes for target poses.
+*   `IKController`: A high-level controller that manages teleoperation state, "deadman switch" logic, and coordinate snapshots.
+
+### IK Integration Example
+
+The following example shows how to use the IK API with a custom robot model (inheriting from `BaseRobot`):
+
+```python
+import numpy as np
+import jax.numpy as jnp
+from teleop_xr import Teleop, TeleopSettings
+from teleop_xr.ik import IKController, PyrokiSolver, BaseRobot
+from teleop_xr.messages import XRState
+
+# 1. Define or use a robot model
+# See teleop_xr.ik.robots.h1_2.UnitreeH1Robot for a complete implementation
+class MyRobot(BaseRobot):
+    # Implement abstract methods: get_vis_config, joint_var_cls,
+    # forward_kinematics, get_default_config, build_costs
+    ...
+
+robot = MyRobot()
+solver = PyrokiSolver(robot)
+controller = IKController(robot, solver)
+
+# Initialize current joint state
+q_current = np.array(robot.get_default_config())
+
+def on_xr_update(pose: np.ndarray, info: dict):
+    global q_current
+
+    # Validate raw state
+    state = XRState.model_validate(info)
+
+    # Calculate new joint configuration
+    # IKController handles relative motion snapshots and deadman logic automatically
+    q_new = controller.step(state, q_current)
+
+    # Update state and send to robot
+    q_current = q_new
+    print(f"New Joint Command: {q_current}")
+
+# 2. Setup Teleop
+teleop = Teleop(TeleopSettings(input_mode="controller"))
+teleop.subscribe(on_xr_update)
+teleop.run()
+```
+
+### API Reference (IK)
+
+#### IKController
+::: teleop_xr.ik.controller.IKController
+    options:
+        show_root_heading: false
+
+#### PyrokiSolver
+::: teleop_xr.ik.solver.PyrokiSolver
+    options:
+        show_root_heading: false
+
+#### BaseRobot
+::: teleop_xr.ik.robot.BaseRobot
+    options:
+        show_root_heading: false
+
 ## Video Streaming
 
 To stream video from Python to the headset:
