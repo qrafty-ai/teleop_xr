@@ -215,6 +215,7 @@ class Teleop:
         self.__previous_received_pose = None
         self.__callbacks = []
         self.__pose = np.eye(4)
+        self.__last_joint_state: Optional[Dict[str, float]] = None
 
         euler = self.__settings.natural_phone_orientation_euler
         self.__natural_phone_pose = t3d.affines.compose(
@@ -448,6 +449,7 @@ class Teleop:
                     return
 
     async def publish_joint_state(self, joints: Dict[str, float]):
+        self.__last_joint_state = joints
         if self.robot_vis:
             await self.robot_vis.broadcast_state(self.__manager, joints)
 
@@ -505,6 +507,15 @@ class Teleop:
                             }
                         )
                     )
+                    if self.__last_joint_state:
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "robot_state",
+                                    "data": {"joints": self.__last_joint_state},
+                                }
+                            )
+                        )
 
                 if self.__video_streams:
                     await self.__manager.send_personal_message(

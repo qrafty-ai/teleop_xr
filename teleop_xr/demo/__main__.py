@@ -2,6 +2,7 @@ import logging
 import time
 import asyncio
 import threading
+import json
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -23,7 +24,8 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
 from teleop_xr.camera_views import build_camera_views_config
-from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.loader import load_robot_class, list_available_robots
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
 from teleop_xr.events import (
@@ -58,6 +60,14 @@ class DemoCLI(CommonCLI):
 
     no_tui: bool = False
     """Disable TUI for cleaner logging debugging"""
+
+    # Robot Loader args
+    robot_class: Optional[str] = None
+    """Robot class to load (e.g., 'teleop_xr.ik.robots.h1_2:UnitreeH1Robot' or entry point name)."""
+    robot_args: str = "{}"
+    """JSON string of arguments to pass to the robot constructor."""
+    list_robots: bool = False
+    """List available robots and exit."""
 
     # Event system configuration
     double_press_ms: float = 300
@@ -249,7 +259,7 @@ def generate_ik_status_table(
     parse_time: float,
     xr_state: XRState | None,
     controller: IKController,
-    robot: UnitreeH1Robot,
+    robot: BaseRobot,
     current_q: np.ndarray,
 ) -> Panel:
     table = Table(box=box.ROUNDED, expand=True)
@@ -340,7 +350,7 @@ class IKWorker(threading.Thread):
     def __init__(
         self,
         controller: IKController,
-        robot: UnitreeH1Robot,
+        robot: BaseRobot,
         teleop: Teleop,
         state_container: dict,
         logger: logging.Logger,
@@ -364,6 +374,18 @@ class IKWorker(threading.Thread):
     def set_teleop_loop(self, loop: asyncio.AbstractEventLoop):
         if self.teleop_loop is None:
             self.teleop_loop = loop
+            # Trigger initial publish of current (default) joint state
+            if "q" in self.state_container:
+                joint_dict = {
+                    name: float(val)
+                    for name, val in zip(
+                        self.robot.actuated_joint_names, self.state_container["q"]
+                    )
+                }
+                asyncio.run_coroutine_threadsafe(
+                    self.teleop.publish_joint_state(joint_dict),
+                    self.teleop_loop,
+                )
 
     def run(self):
         while self.running:
@@ -402,7 +424,7 @@ class IKWorker(threading.Thread):
                     joint_dict = {
                         name: float(val)
                         for name, val in zip(
-                            self.robot.robot.joints.actuated_names, new_config
+                            self.robot.actuated_joint_names, new_config
                         )
                     }
 
@@ -420,6 +442,15 @@ def main():
     jax.config.update("jax_platform_name", "cpu")
 
     cli = tyro.cli(DemoCLI)
+
+    if cli.list_robots:
+        robots = list_available_robots()
+        print("Available robots (via entry points):")
+        if not robots:
+            print("  None")
+        for name, path in robots.items():
+            print(f"  {name}: {path}")
+        return
 
     # Backward compatibility: default to head on device 0 if no flags provided
     if (
@@ -473,8 +504,10 @@ def main():
 
     robot_vis = None
     if cli.mode == "ik":
-        logger.info("Initializing Unitree H1 robot and IK solver...")
-        robot = UnitreeH1Robot()
+        robot_cls = load_robot_class(cli.robot_class)
+        robot_args = json.loads(cli.robot_args)
+        logger.info(f"Initializing {robot_cls.__name__} with args: {robot_args}")
+        robot = robot_cls(**robot_args)
         solver = PyrokiSolver(robot)
         controller = IKController(robot, solver)
         state_container["q"] = np.array(robot.get_default_config())
@@ -535,9 +568,7 @@ def main():
                     if ik_worker.teleop_loop:
                         joint_dict = {
                             name: float(val)
-                            for name, val in zip(
-                                robot.robot.joints.actuated_names, default_q
-                            )
+                            for name, val in zip(robot.actuated_joint_names, default_q)
                         }
                         asyncio.run_coroutine_threadsafe(
                             teleop.publish_joint_state(joint_dict),
