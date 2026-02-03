@@ -28,16 +28,16 @@ def _get_repo_dir(repo_url: str, cache_dir: Path) -> Path:
     return cache_dir / "repos" / f"{repo_name}_{url_hash}"
 
 
-def _replace_package_uris(urdf_content: str) -> str:
+def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
     """
-    Replace package:// URI with paths relative to the repository root.
-    Currently, we strip the package name and keep the remaining path.
+    Replace package:// URI with absolute paths to files in the repository.
     """
 
     def resolve_uri(match):
         # match.group(1) is the package name
         sub_path = match.group(2)
-        return sub_path
+        # Return absolute path to the file in repo_root
+        return str((repo_root / sub_path).absolute())
 
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
@@ -77,13 +77,15 @@ def get_repo(
     return repo_dir
 
 
-def process_xacro(xacro_path: Path, mappings: Optional[Dict[str, str]] = None) -> str:
+def process_xacro(
+    xacro_path: Path, repo_root: Path, mappings: Optional[Dict[str, str]] = None
+) -> str:
     """
     Process a xacro file and return the URDF XML string with package:// URIs resolved.
     """
     doc = xacro.process_file(str(xacro_path), mappings=mappings)
     urdf_xml = doc.toprettyxml(indent="  ")
-    return _replace_package_uris(urdf_xml)
+    return _replace_package_uris(urdf_xml, repo_root)
 
 
 def get_resource(
@@ -107,24 +109,25 @@ def get_resource(
             f"Asset {path_inside_repo} not found in repo {repo_url}"
         )
 
-    processed_dir = cache_dir / "processed"
-    processed_dir.mkdir(parents=True, exist_ok=True)
-
-    # Unique name for output based on repo URL, path and args
-    arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
-    content_hash = hashlib.sha256(
-        (repo_url + path_inside_repo + arg_str).encode()
-    ).hexdigest()[:12]
-    output_urdf_path = processed_dir / f"{file_path.stem}_{content_hash}.urdf"
-
     if file_path.suffix == ".xacro" or ".urdf.xacro" in file_path.name:
-        urdf_content = process_xacro(file_path, mappings=xacro_args)
+        # Unique name for output based on args
+        arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
+        arg_hash = hashlib.sha256(arg_str.encode()).hexdigest()[:6]
+        output_urdf_path = file_path.parent / f"{file_path.stem}_{arg_hash}.urdf"
+
+        # Process xacro
+        urdf_content = process_xacro(file_path, repo_dir, mappings=xacro_args)
         output_urdf_path.write_text(urdf_content)
     else:
-        # For plain URDF
+        # For plain URDF, if it has package://, we must process it.
+        # Otherwise, we can just return the original file_path.
         content = file_path.read_text()
-        content = _replace_package_uris(content)
-        output_urdf_path.write_text(content)
+        if "package://" in content:
+            output_urdf_path = file_path.parent / f"{file_path.stem}_processed.urdf"
+            content = _replace_package_uris(content, repo_dir)
+            output_urdf_path.write_text(content)
+        else:
+            output_urdf_path = file_path
 
     return output_urdf_path
 

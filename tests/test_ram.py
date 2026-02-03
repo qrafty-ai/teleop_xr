@@ -105,7 +105,7 @@ def test_xacro_conversion(temp_git_repo, mock_cache_dir):
 def test_process_xacro(temp_git_repo):
     """Test process_xacro directly."""
     xacro_path = temp_git_repo / "robot.xacro"
-    urdf_xml = ram.process_xacro(xacro_path)
+    urdf_xml = ram.process_xacro(xacro_path, repo_root=temp_git_repo)
     assert "test_xacro" in urdf_xml
     assert "package://" not in urdf_xml
 
