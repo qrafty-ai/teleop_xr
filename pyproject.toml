@@ -50,6 +50,9 @@ dependencies = [
   "jax>=0.6.2",
   "spatialmath-python>=1.1.15",
   "pyroki",
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
 ]
 
 [project.urls]
