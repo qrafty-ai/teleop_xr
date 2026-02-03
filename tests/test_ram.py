@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import git
@@ -226,3 +227,76 @@ def test_checkout_new_remote_branch(temp_git_repo, mock_cache_dir):
     # Verify we are on the correct branch
     cache_repo = git.Repo(repo_dir)
     assert cache_repo.active_branch.name == new_branch_name
+
+
+def test_resolve_package_in_repo(temp_git_repo, monkeypatch):
+    """Test _resolve_package correctly finds a package in the repo."""
+    # Create a dummy package structure
+    (temp_git_repo / "my_pkg").mkdir()
+    (temp_git_repo / "my_pkg" / "package.xml").write_text("<package>my_pkg</package>")
+
+    # Mock _CURRENT_REPO_ROOT
+    with ram._ram_repo_context(temp_git_repo):
+        path = ram._resolve_package("my_pkg")
+        assert path == str(temp_git_repo / "my_pkg")
+
+
+def test_resolve_package_not_found(temp_git_repo):
+    """Test _resolve_package raises ValueError if package is missing."""
+    with ram._ram_repo_context(temp_git_repo):
+        with pytest.raises(ValueError):
+            ram._resolve_package("nonexistent_pkg")
+
+
+def test_mock_eval_find():
+    """Test _mock_eval_find calls _resolve_package correctly."""
+    # This just ensures the wiring is correct
+    with patch("teleop_xr.ram._resolve_package") as mock_resolve:
+        ram._mock_eval_find("foo")
+        mock_resolve.assert_called_with("foo")
+
+
+def test_get_resource_no_resolve_packages(temp_git_repo, mock_cache_dir):
+    """Test get_resource with resolve_packages=False."""
+    repo_url = f"file://{temp_git_repo}"
+
+    # Create a urdf with package://
+    (temp_git_repo / "pkg.urdf").write_text(
+        '<mesh filename="package://my_pkg/mesh.stl"/>'
+    )
+    repo = git.Repo(temp_git_repo)
+    repo.index.add(["pkg.urdf"])
+    repo.index.commit("Add pkg urdf")
+
+    # Fetch without resolution
+    path = ram.get_resource(
+        repo_url, "pkg.urdf", cache_dir=mock_cache_dir, resolve_packages=False
+    )
+
+    content = path.read_text()
+    assert "package://my_pkg/mesh.stl" in content
+    assert "file://" not in content  # Should NOT be resolved to absolute path
+
+
+def test_get_resource_with_resolve_packages(temp_git_repo, mock_cache_dir):
+    """Test get_resource with resolve_packages=True."""
+    repo_url = f"file://{temp_git_repo}"
+
+    # Create a urdf with package://
+    (temp_git_repo / "pkg.urdf").write_text(
+        '<mesh filename="package://test_repo/mesh.stl"/>'
+    )
+    repo = git.Repo(temp_git_repo)
+    repo.index.add(["pkg.urdf"])
+    repo.index.commit("Add pkg urdf")
+
+    # Fetch with resolution
+    path = ram.get_resource(
+        repo_url, "pkg.urdf", cache_dir=mock_cache_dir, resolve_packages=True
+    )
+
+    content = path.read_text()
+    assert "package://" not in content
+    # Should resolve to an absolute path ending in mesh.stl
+    assert content.strip().endswith('mesh.stl"/>')
+    assert "ram_cache" in content
