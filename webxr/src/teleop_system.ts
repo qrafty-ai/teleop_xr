@@ -9,6 +9,7 @@ import {
 } from "@iwsdk/core";
 import { getCameraEnabled } from "./camera_config";
 import { setCameraViewsConfig } from "./camera_views";
+import { getClientId } from "./client_id";
 import { GlobalRefs } from "./global_refs";
 import { RobotModelSystem } from "./robot_system";
 import type { CameraViewKey } from "./track_routing";
@@ -25,6 +26,9 @@ export class TeleopSystem extends createSystem({
 	},
 }) {
 	private ws: WebSocket | null = null;
+	private clientId = getClientId();
+	private inControl = false;
+	private controlPollTimer: number | null = null;
 	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private statusText: any = null;
 	// biome-ignore lint/suspicious/noExplicitAny: legacy
@@ -42,6 +46,7 @@ export class TeleopSystem extends createSystem({
 	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private xrButtonText: any = null;
 	private wasPresenting = false;
+	private lastConnectionError: string | null = null;
 
 	init() {
 		this.connectWS();
@@ -171,12 +176,22 @@ export class TeleopSystem extends createSystem({
 		this.ws = new WebSocket(wsUrl);
 
 		this.ws.onopen = () => {
+			this.lastConnectionError = null;
+			this.inControl = false;
 			this.updateStatus("Connected", true);
+			this.startControlPolling();
+			this.sendControlCheck();
 		};
 
 		this.ws.onclose = () => {
-			this.updateStatus("Disconnected", false);
-			setTimeout(() => this.connectWS(), 3000);
+			this.stopControlPolling();
+			if (this.lastConnectionError) {
+				this.updateStatus(this.lastConnectionError, false);
+			} else {
+				this.updateStatus("Disconnected", false);
+			}
+			const delayMs = this.lastConnectionError ? 500 : 3000;
+			setTimeout(() => this.connectWS(), delayMs);
 		};
 
 		this.ws.onerror = (error) => {
@@ -186,7 +201,26 @@ export class TeleopSystem extends createSystem({
 		this.ws.onmessage = (event) => {
 			try {
 				const message = JSON.parse(event.data);
-				if (message.type === "config") {
+				if (message.type === "deny") {
+					this.inControl = false;
+					this.lastConnectionError =
+						message.data?.reason === "not_in_control"
+							? "Connected (no control)"
+							: "Connected (denied)";
+					this.updateStatus(this.lastConnectionError, true);
+					this.startControlPolling();
+				} else if (message.type === "control_status") {
+					const inControl = Boolean(message.data?.in_control);
+					this.inControl = inControl;
+					if (inControl) {
+						this.lastConnectionError = null;
+						this.updateStatus("Connected (in control)", true);
+						this.stopControlPolling();
+					} else {
+						this.updateStatus("Connected (waiting for control)", true);
+						this.startControlPolling();
+					}
+				} else if (message.type === "config") {
 					if (message.data?.input_mode) {
 						this.inputMode = message.data.input_mode;
 					}
@@ -206,6 +240,36 @@ export class TeleopSystem extends createSystem({
 				console.warn("Failed to parse WS message", error);
 			}
 		};
+	}
+
+	private startControlPolling() {
+		if (this.controlPollTimer !== null) {
+			return;
+		}
+		this.controlPollTimer = window.setInterval(() => {
+			this.sendControlCheck();
+		}, 1000);
+	}
+
+	private stopControlPolling() {
+		if (this.controlPollTimer === null) {
+			return;
+		}
+		window.clearInterval(this.controlPollTimer);
+		this.controlPollTimer = null;
+	}
+
+	private sendControlCheck() {
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+			return;
+		}
+		this.ws.send(
+			JSON.stringify({
+				type: "control_check",
+				client_id: this.clientId,
+				data: {},
+			}),
+		);
 	}
 
 	updateStatus(text: string, connected: boolean) {
@@ -331,10 +395,11 @@ export class TeleopSystem extends createSystem({
 			return;
 		}
 
-		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+		if (this.ws && this.ws.readyState === WebSocket.OPEN && this.inControl) {
 			this.ws.send(
 				JSON.stringify({
 					type: "xr_state",
+					client_id: this.clientId,
 					data: state,
 				}),
 			);
