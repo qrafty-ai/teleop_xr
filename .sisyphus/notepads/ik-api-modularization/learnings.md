@@ -14,3 +14,9 @@
 - Verified that `BaseRobot` is an ABC and requires all abstract methods to be implemented.
 - Mocking: Method signatures in mock classes must match the base class exactly to satisfy LSP and type checkers.
 - Execution: Running tests with `uv run pytest` ensures that all dependencies (including dev groups) are correctly loaded from the project configuration.
+
+## Docstrings and Type Hints (2026-02-02)
+- Added comprehensive docstrings to the public IK API (`BaseRobot`, `PyrokiSolver`, `IKController`).
+- Used modern Python type hints (e.g., `| None`, `dict[]`, `list[]`) where applicable.
+- Explicitly handled type conversions between NumPy and JAX (`jnp.asarray`, `np.array`) in `IKController` to ensure compatibility and satisfy type checkers.
+- Included usage examples in the module-level docstring of `teleop_xr/ik/__init__.py`.
