@@ -36,8 +36,21 @@ class RobotVisModule:
                     )
                     full_path = clean_path
             else:
+                # Try relative to URDF directory first
                 urdf_dir = os.path.dirname(os.path.abspath(self.config.urdf_path))
-                full_path = os.path.join(urdf_dir, file_path)
+                potential_paths = [os.path.join(urdf_dir, file_path)]
+
+                # If mesh_path is configured, try resolving against it
+                if self.config.mesh_path:
+                    potential_paths.append(
+                        os.path.join(self.config.mesh_path, file_path)
+                    )
+
+                full_path = potential_paths[0]
+                for p in potential_paths:
+                    if os.path.exists(p):
+                        full_path = p
+                        break
 
             if not os.path.exists(full_path):
                 self.logger.warning(f"Asset not found: {full_path}")
@@ -59,7 +72,11 @@ class RobotVisModule:
             return FileResponse(full_path, media_type=media_type)
 
     def get_frontend_config(self) -> Dict[str, Any]:
-        return {"urdf_url": "/robot_assets/robot.urdf"}
+        return {
+            "urdf_url": "/robot_assets/robot.urdf",
+            "model_scale": self.config.model_scale,
+            "initial_rotation_euler": self.config.initial_rotation_euler,
+        }
 
     async def broadcast_state(self, connection_manager: Any, joints: Dict[str, float]):
         """

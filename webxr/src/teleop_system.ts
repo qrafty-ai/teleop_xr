@@ -42,6 +42,7 @@ export class TeleopSystem extends createSystem({
 	// biome-ignore lint/suspicious/noExplicitAny: legacy
 	private xrButtonText: any = null;
 	private wasPresenting = false;
+	private lastConnectionError: string | null = null;
 
 	init() {
 		this.connectWS();
@@ -171,12 +172,18 @@ export class TeleopSystem extends createSystem({
 		this.ws = new WebSocket(wsUrl);
 
 		this.ws.onopen = () => {
+			this.lastConnectionError = null;
 			this.updateStatus("Connected", true);
 		};
 
 		this.ws.onclose = () => {
-			this.updateStatus("Disconnected", false);
-			setTimeout(() => this.connectWS(), 3000);
+			if (this.lastConnectionError) {
+				this.updateStatus(this.lastConnectionError, false);
+			} else {
+				this.updateStatus("Disconnected", false);
+			}
+			const delayMs = this.lastConnectionError ? 500 : 3000;
+			setTimeout(() => this.connectWS(), delayMs);
 		};
 
 		this.ws.onerror = (error) => {
@@ -186,7 +193,15 @@ export class TeleopSystem extends createSystem({
 		this.ws.onmessage = (event) => {
 			try {
 				const message = JSON.parse(event.data);
-				if (message.type === "config") {
+				if (message.type === "connection_error") {
+					const reason = message.data?.reason;
+					const msg = message.data?.message;
+					if (reason === "connecting") {
+						this.lastConnectionError = msg || "Waiting for WebSocket slot...";
+					} else {
+						this.lastConnectionError = msg || "Connection Denied";
+					}
+				} else if (message.type === "config") {
 					if (message.data?.input_mode) {
 						this.inputMode = message.data.input_mode;
 					}

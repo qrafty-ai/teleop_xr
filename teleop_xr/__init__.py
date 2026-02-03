@@ -1,8 +1,9 @@
+import asyncio
 import os
 import math
 import socket
 import logging
-from typing import Callable, List, Optional, Dict
+from typing import Callable, List, Optional, Dict, Any
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -154,24 +155,36 @@ def interpolate_transforms(T1, T2, alpha):
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+    async def register(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            self.active_connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections)
+
+        broken: list[WebSocket] = []
+        for connection in connections:
             try:
                 await connection.send_text(message)
             except Exception:
-                # Remove broken connections
-                self.active_connections.remove(connection)
+                broken.append(connection)
+
+        if broken:
+            async with self._lock:
+                for connection in broken:
+                    if connection in self.active_connections:
+                        self.active_connections.remove(connection)
 
 
 class Teleop:
@@ -217,6 +230,7 @@ class Teleop:
             allow_headers=["*"],
         )
         self.__manager = ConnectionManager()
+        self.__ws_connect_lock = asyncio.Lock()
 
         self.__video_streams: list[VideoStreamConfig] = []
         self.__video_sources: dict[str, VideoSource] = video_sources or {}
@@ -246,15 +260,15 @@ class Teleop:
         """
         self.__pose = pose
 
-    def subscribe(self, callback: Callable[[np.ndarray, dict], None]) -> None:
+    def subscribe(self, callback: Callable[[np.ndarray, Any], None]) -> None:
         """
         Subscribe to receive updates from the teleop module.
 
         Parameters:
-            callback (Callable[[np.ndarray, dict], None]): A callback function that will be called when pose updates are received.
+            callback (Callable[[np.ndarray, dict[str, Any]], None]): A callback function that will be called when pose updates are received.
                 The callback function should take two arguments:
                     - np.ndarray: A 4x4 transformation matrix representing the end-effector target pose.
-                    - dict: A dictionary containing additional information.
+                    - dict[str, Any]: A dictionary containing additional information.
         """
         self.__callbacks.append(callback)
 
@@ -262,7 +276,7 @@ class Teleop:
         for callback in self.__callbacks:
             callback(pose, message)
 
-    def set_video_streams(self, payload: dict) -> None:
+    def set_video_streams(self, payload: Any) -> None:
         self.__video_streams = parse_video_config(payload)
 
     def clear_video_streams(self) -> None:
@@ -283,7 +297,7 @@ class Teleop:
             websocket,
         )
 
-    async def _handle_video_message(self, websocket: WebSocket, message: dict) -> None:
+    async def _handle_video_message(self, websocket: WebSocket, message: Any) -> None:
         msg_type = message.get("type")
         self.__logger.info(f"Received video message: {msg_type}")
 
@@ -437,41 +451,66 @@ class Teleop:
 
         @self.__app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
-            await self.__manager.connect(websocket)
-            self.__logger.info("Client connected")
+            await websocket.accept()
 
-            # Send config message on connect
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "config",
-                        "data": self.__settings.model_dump(),
-                    }
-                )
-            )
-
-            if self.robot_vis:
+            try:
+                await asyncio.wait_for(self.__ws_connect_lock.acquire(), timeout=0.05)
+            except TimeoutError:
                 await websocket.send_text(
                     json.dumps(
                         {
-                            "type": "robot_config",
-                            "data": self.robot_vis.get_frontend_config(),
+                            "type": "connection_error",
+                            "data": {
+                                "reason": "connecting",
+                                "message": "WebSocket busy: another client is connecting.",
+                            },
+                        }
+                    )
+                )
+                await websocket.close()
+                return
+
+            try:
+                await self.__manager.register(websocket)
+
+                # Send config message on connect
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "config",
+                            "data": self.__settings.model_dump(),
                         }
                     )
                 )
 
-            if self.__video_streams:
-                await self.__manager.send_personal_message(
-                    json.dumps(
-                        {
-                            "type": "video_config",
-                            "data": {
-                                "streams": [s.__dict__ for s in self.__video_streams]
-                            },
-                        }
-                    ),
-                    websocket,
-                )
+                if self.robot_vis:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "robot_config",
+                                "data": self.robot_vis.get_frontend_config(),
+                            }
+                        )
+                    )
+
+                if self.__video_streams:
+                    await self.__manager.send_personal_message(
+                        json.dumps(
+                            {
+                                "type": "video_config",
+                                "data": {
+                                    "streams": [
+                                        s.__dict__ for s in self.__video_streams
+                                    ]
+                                },
+                            }
+                        ),
+                        websocket,
+                    )
+            finally:
+                self.__ws_connect_lock.release()
+
+            self.__logger.info("Client connected")
 
             try:
                 while True:
@@ -502,7 +541,7 @@ class Teleop:
                 session = self.__video_sessions.pop(websocket, None)
                 if session:
                     await session.close()
-                self.__manager.disconnect(websocket)
+                await self.__manager.disconnect(websocket)
                 self.__logger.info("Client disconnected")
 
         self.__app.mount(mount_path, StaticFiles(directory=static_dir), name=mount_name)

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
+from teleop_xr.config import RobotVisConfig
 
 # Placeholder for Cost type until it's defined in the module
 Cost = Any
@@ -9,6 +10,13 @@ class BaseRobot(ABC):
     """
     Abstract base class for robot models used in IK optimization.
     """
+
+    @abstractmethod
+    def get_vis_config(self) -> Optional[RobotVisConfig]:
+        """
+        Get the visualization configuration for this robot.
+        """
+        pass
 
     @property
     @abstractmethod

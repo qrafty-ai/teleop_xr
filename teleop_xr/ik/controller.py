@@ -95,6 +95,17 @@ class IKController:
                     right_squeezed = is_squeezed
         return left_squeezed and right_squeezed
 
+    def reset(self) -> None:
+        """
+        Resets the controller state, forcing it to re-take snapshots on the next step.
+        """
+        self.active = False
+        self.snapshot_xr = {}
+        self.snapshot_robot = {}
+        if self.filter is not None:
+            self.filter.reset()
+        print("[IKController] Reset triggered")
+
     def step(self, state: XRState, current_config: np.ndarray) -> np.ndarray:
         is_deadman_active = self._check_deadman(state)
         curr_xr_poses = self._get_device_poses(state)
