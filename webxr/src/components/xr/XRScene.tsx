@@ -1,42 +1,80 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import type { WebGLRenderer } from "three";
-import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/lib/store";
 import { initWorld } from "@/xr";
 
 type XRSceneProps = {
 	onExitAction: () => void;
+	isImmersiveRequested: boolean;
+	passthrough: boolean;
 };
 
 type XRWorld = Awaited<ReturnType<typeof initWorld>>;
 
-export function XRScene({ onExitAction }: XRSceneProps) {
+export function XRScene({
+	onExitAction,
+	isImmersiveRequested,
+	passthrough,
+}: XRSceneProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const worldRef = useRef<XRWorld | null>(null);
 	const onExitRef = useRef(onExitAction);
-	const exitTriggeredRef = useRef(false);
+	const setIsImmersiveActive = useAppStore(
+		(state) => state.setIsImmersiveActive,
+	);
 
 	useEffect(() => {
 		onExitRef.current = onExitAction;
 	}, [onExitAction]);
 
 	const triggerExit = useCallback(() => {
-		if (exitTriggeredRef.current) return;
-		exitTriggeredRef.current = true;
 		onExitRef.current();
-	}, []);
+		setIsImmersiveActive(false);
+	}, [setIsImmersiveActive]);
+
+	useEffect(() => {
+		const world = worldRef.current;
+		if (!world || !world.renderer || !world.renderer.xr) return;
+
+		const xrManager = world.renderer.xr;
+		const session = xrManager.getSession();
+		const isSessionActive = Boolean(session);
+
+		if (isImmersiveRequested && !isSessionActive) {
+			const mode = passthrough ? "immersive-ar" : "immersive-vr";
+			const sessionInit: XRSessionInit = {
+				requiredFeatures: ["local-floor"],
+				optionalFeatures: ["hand-tracking", "layers", "anchors"],
+			};
+
+			if (navigator.xr) {
+				navigator.xr
+					.requestSession(mode, sessionInit)
+					.then((newSession) => {
+						xrManager.setSession(newSession);
+						setIsImmersiveActive(true);
+						newSession.addEventListener("end", triggerExit);
+					})
+					.catch((err) => {
+						console.error("Failed to request XR session:", err);
+						triggerExit();
+					});
+			}
+		} else if (!isImmersiveRequested && isSessionActive) {
+			session?.end().catch(console.error);
+		}
+	}, [isImmersiveRequested, passthrough, triggerExit, setIsImmersiveActive]);
 
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
 		let isMounted = true;
-		let renderer: unknown = null;
 
 		const setup = async () => {
 			try {
-				// Prevent double initialization if possible, though strict mode handles cleanup
+				// Prevent double initialization if possible
 				if (worldRef.current) return;
 
 				const world = await initWorld(container);
@@ -48,12 +86,6 @@ export function XRScene({ onExitAction }: XRSceneProps) {
 				}
 
 				worldRef.current = world;
-				renderer = world.renderer;
-				const xrManager = (renderer as WebGLRenderer | null)?.xr;
-
-				if (xrManager?.addEventListener) {
-					xrManager.addEventListener("sessionend", triggerExit);
-				}
 			} catch (err) {
 				console.error("Failed to initialize XR world:", err);
 			}
@@ -63,24 +95,13 @@ export function XRScene({ onExitAction }: XRSceneProps) {
 
 		return () => {
 			isMounted = false;
-			const xrManager = (renderer as WebGLRenderer | null)?.xr;
-			if (xrManager?.removeEventListener) {
-				xrManager.removeEventListener("sessionend", triggerExit);
-			}
-
-			const sessionActive =
-				xrManager?.isPresenting || Boolean(xrManager?.getSession?.());
-			if (sessionActive) {
-				triggerExit();
-			}
-
 			if (worldRef.current) {
 				console.log("Disposing XR world");
 				cleanupWorld(worldRef.current);
 				worldRef.current = null;
 			}
 		};
-	}, [triggerExit]);
+	}, []);
 
 	return (
 		<div className="fixed inset-0 z-0" data-testid="xr-scene">
@@ -89,7 +110,7 @@ export function XRScene({ onExitAction }: XRSceneProps) {
 	);
 }
 
-function cleanupWorld(world: any) {
+function cleanupWorld(world: XRWorld) {
 	try {
 		if (typeof world.dispose === "function") {
 			world.dispose();

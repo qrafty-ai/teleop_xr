@@ -1,7 +1,5 @@
 import { create } from "zustand";
 
-import type { CameraViewKey } from "../xr/track_routing";
-
 export type CameraConfig = Record<string, boolean>;
 
 export type TeleopSettings = {
@@ -23,12 +21,17 @@ export type AppState = {
 	teleopSettings: TeleopSettings;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
+	isPassthroughEnabled: boolean;
+	isImmersiveActive: boolean;
 	getCameraEnabled: (key: string) => boolean;
 	setCameraEnabled: (key: string, enabled: boolean) => void;
+	toggleAllCameras: (enabled: boolean) => void;
 	setAvailableCameras: (keys: string[]) => void;
 	setTeleopSettings: (settings: Partial<TeleopSettings>) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
+	setIsPassthroughEnabled: (enabled: boolean) => void;
+	setIsImmersiveActive: (active: boolean) => void;
 };
 
 const defaultTeleopSettings: TeleopSettings = {
@@ -48,11 +51,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 	teleopSettings: defaultTeleopSettings,
 	teleopTelemetry: defaultTeleopTelemetry,
 	connectionStatus: "disconnected",
+	isPassthroughEnabled: true,
+	isImmersiveActive: false,
 	getCameraEnabled: (key) => get().cameraConfig[key] !== false,
 	setCameraEnabled: (key, enabled) => {
 		set((state) => ({
 			cameraConfig: { ...state.cameraConfig, [key]: enabled },
 		}));
+	},
+	toggleAllCameras: (enabled) => {
+		const { availableCameras } = get();
+		const newConfig: CameraConfig = {};
+		for (const key of availableCameras) {
+			newConfig[key] = enabled;
+		}
+		set({ cameraConfig: newConfig });
 	},
 	setAvailableCameras: (keys) => {
 		set({ availableCameras: keys });
@@ -67,5 +80,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 	},
 	setConnectionStatus: (status) => {
 		set({ connectionStatus: status });
+	},
+	setIsPassthroughEnabled: (enabled) => {
+		set({ isPassthroughEnabled: enabled });
+	},
+	setIsImmersiveActive: (active) => {
+		set({ isImmersiveActive: active });
 	},
 }));
