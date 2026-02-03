@@ -10,3 +10,4 @@ teleop_xr/_version.py
 coverage.xml
 .coverage
 htmlcov/
+site/

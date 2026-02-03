@@ -63,7 +63,7 @@ def get_local_ip():
         return f"Error: {e}"
 
 
-def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9):
+def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9) -> bool:
     """
     Check if two transformation matrices are close to each other within specified tolerances.
 
@@ -88,7 +88,7 @@ def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9):
     return np.allclose(rpy, np.zeros(3), atol=ang_tol)
 
 
-def slerp(q1, q2, t):
+def slerp(q1, q2, t) -> np.ndarray:
     """Spherical linear interpolation between two quaternions."""
     q1 = q1 / np.linalg.norm(q1)
     q2 = q2 / np.linalg.norm(q2)
@@ -115,7 +115,7 @@ def slerp(q1, q2, t):
     return q1 * np.cos(theta) + q3 * np.sin(theta)
 
 
-def interpolate_transforms(T1, T2, alpha):
+def interpolate_transforms(T1, T2, alpha) -> np.ndarray:
     """
     Interpolate between two 4x4 transformation matrices using SLERP + linear translation.
 
