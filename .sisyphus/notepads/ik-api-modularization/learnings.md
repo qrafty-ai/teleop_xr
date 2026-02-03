@@ -26,3 +26,10 @@
 - Supported modes: `teleop` (default) and `ik`.
 - Placeholder logic added to `main()` for IK mode.
 - Verified CLI changes using `tyro` help output even without ROS2 sourced by temporarily bypassing the `rclpy` import check.
+
+### ROS2 IK Integration
+- **Joint Mapping**: Successfully mapped joint names between the `UnitreeH1Robot` model (`actuated_names`) and ROS2 messages (`JointState`, `JointTrajectory`).
+- **State Synchronization**: Implemented a `JointState` subscriber that updates the internal configuration (`q`) when IK is not actively engaging, preventing drift before control starts.
+- **Worker Pattern**: Reused the `IKWorker` thread pattern from the demo to ensure IK calculations don't block the ROS2 spin or Teleop websocket threads.
+- **Event Handling**: Integrated the `EventProcessor` to handle robot reset gestures (double-press on deadman switch) consistently with the demo mode.
+- **Dependencies**: Ensuring `jax` is configured for CPU mode at node startup is critical for performance and compatibility in ROS2 environments without GPU access.
