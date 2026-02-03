@@ -60,6 +60,9 @@ Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 [project.optional-dependencies]
 utils = ["pin"]
 
+[project.entry-points."teleop_xr.robots"]
+h1 = "teleop_xr.ik.robots.h1_2:UnitreeH1Robot"
+
 [dependency-groups]
 dev = [
   "pre-commit",
