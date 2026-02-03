@@ -10,6 +10,7 @@ import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
+from teleop_xr import ram
 
 
 class FrankaRobot(BaseRobot):
@@ -19,32 +20,47 @@ class FrankaRobot(BaseRobot):
     """
 
     def __init__(self, urdf_string: str | None = None) -> None:
+        self.vis_urdf_path = None
+        self.mesh_path = None
+
         if urdf_string:
             urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
             self.urdf_path = ""
-            self.mesh_path = ""
         else:
-            # Load URDF from assets
-            self.urdf_path = os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "..",
-                    "..",
-                    "assets",
-                    "franka",
-                    "panda.urdf",
+            # Load URDF via RAM
+            repo_url = "https://github.com/frankarobotics/franka_ros.git"
+            xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
+            # We need hand=true to include the gripper
+            xacro_args = {"hand": "true"}
+
+            # 1. Get resolved URDF for IK (absolute paths)
+            self.urdf_path = str(
+                ram.get_resource(
+                    repo_url=repo_url,
+                    path_inside_repo=xacro_path,
+                    xacro_args=xacro_args,
+                    resolve_packages=True,
                 )
             )
-            if not os.path.exists(self.urdf_path):
-                # Fallback
-                self.urdf_path = os.path.join(
-                    "teleop_xr", "assets", "franka", "panda.urdf"
+
+            # 2. Get unresolved URDF for Visualization (package:// paths)
+            self.vis_urdf_path = str(
+                ram.get_resource(
+                    repo_url=repo_url,
+                    path_inside_repo=xacro_path,
+                    xacro_args=xacro_args,
+                    resolve_packages=False,
                 )
+            )
+
+            # Set mesh path to the repo root in RAM cache
+            # We can get it by asking for the repo dir
+            repo_path = ram.get_repo(repo_url)
+            self.mesh_path = str(repo_path)
 
             if not os.path.exists(self.urdf_path):
                 raise FileNotFoundError(f"Franka URDF not found at {self.urdf_path}")
 
-            self.mesh_path = os.path.dirname(self.urdf_path)
             urdf = yourdfpy.URDF.load(self.urdf_path)
 
         self.robot = pk.Robot.from_urdf(urdf)
@@ -62,12 +78,12 @@ class FrankaRobot(BaseRobot):
         return {"right"}
 
     def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.urdf_path:
+        if not self.vis_urdf_path:
             return None
         return RobotVisConfig(
-            urdf_path=self.urdf_path,
+            urdf_path=self.vis_urdf_path,
             mesh_path=self.mesh_path,
-            model_scale=1.0,
+            model_scale=0.5,
             initial_rotation_euler=[0.0, 0.0, 0.0],
         )
 
@@ -86,10 +102,20 @@ class FrankaRobot(BaseRobot):
         }
 
     def get_default_config(self) -> jax.Array:
-        # Default home pose
-        q = jnp.zeros_like(self.robot.joints.lower_limits)
-        # Set some reasonable angles if possible (e.g. elbow bent)
-        # but zeros is fine for now
+        # Default home pose (non-singular)
+        # Standard Franka Panda home pose: [0, -pi/4, 0, -3pi/4, 0, pi/2, pi/4]
+        # q1..q7 (7 joints)
+        q_target = [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+        q = jnp.array(q_target)
+
+        # If there are more joints (e.g. gripper finger1, finger2), pad with zeros
+        # Typically panda has 7 arm joints + 2 finger joints = 9
+        n_actuated = len(self.robot.joints.actuated_names)
+        if len(q) < n_actuated:
+            q = jnp.pad(q, (0, n_actuated - len(q)))
+        elif len(q) > n_actuated:
+            q = q[:n_actuated]
+
         return q
 
     def build_costs(
