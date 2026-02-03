@@ -45,7 +45,7 @@ class CustomBuildHook(BuildHookInterface):
             sys.exit(1)
 
         # Copy artifacts
-        dist_dir = os.path.join(webxr_dir, "dist")
+        dist_dir = os.path.join(webxr_dir, "out")
         if not os.path.exists(dist_dir):
             print(f"Error: {dist_dir} does not exist after build", file=sys.stderr)
             sys.exit(1)

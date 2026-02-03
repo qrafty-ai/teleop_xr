@@ -10,31 +10,27 @@ import {
 	VideoIcon,
 	XIcon,
 } from "@pmndrs/uikit-lucide";
-import { getCameraEnabled, onCameraConfigChanged } from "./camera_config.js";
-import { CameraSettingsSystem } from "./camera_settings_system.js";
+import { getCameraEnabled, onCameraConfigChanged } from "./camera_config";
+import { CameraSettingsSystem } from "./camera_settings_system";
 import {
 	getCameraViewsConfig,
 	isViewEnabled,
 	onCameraViewsChanged,
-} from "./camera_views.js";
-import { initConsoleStream } from "./console_stream.js";
-import { ControllerCameraPanelSystem } from "./controller_camera_system.js";
-import { GlobalRefs } from "./global_refs.js";
-import { PanelSystem } from "./panel.js";
+} from "./camera_views";
+import { initConsoleStream } from "./console_stream";
+import { ControllerCameraPanelSystem } from "./controller_camera_system";
+import { GlobalRefs } from "./global_refs";
+import { PanelSystem } from "./panel";
 import {
 	CameraPanel,
 	CameraPanelSystem,
 	ControllerCameraPanel,
-	DraggablePanel,
 	PanelHoverSystem,
-} from "./panels.js";
-import { RobotModelSystem } from "./robot_system.js";
-import { TeleopSystem } from "./teleop_system.js";
-import { type CameraViewKey, resolveTrackView } from "./track_routing.js";
-import { VideoClient } from "./video.js";
-
-// Initialize console streaming for Quest VR debugging
-initConsoleStream();
+} from "./panels";
+import { RobotModelSystem } from "./robot_system";
+import { TeleopSystem } from "./teleop_system";
+import { type CameraViewKey, resolveTrackView } from "./track_routing";
+import { VideoClient } from "./video";
 
 const disableHeadCameraPanel = true;
 
@@ -46,74 +42,54 @@ const assets: AssetManifest = {
 	},
 };
 
-World.create(document.getElementById("scene-container") as HTMLDivElement, {
-	assets,
-	xr: {
-		sessionMode: SessionMode.ImmersiveAR,
-		offer: "always",
-		// Optional structured features; layers/local-floor are offered by default
+export const initWorld = async (container: HTMLElement) => {
+	// Initialize console streaming for Quest VR debugging
+	initConsoleStream();
+
+	const world = await World.create(container as HTMLDivElement, {
+		assets,
+		xr: {
+			sessionMode: SessionMode.ImmersiveAR,
+			offer: "always",
+			// Optional structured features; layers/local-floor are offered by default
+			features: {
+				handTracking: true,
+				anchors: true,
+				hitTest: false,
+				planeDetection: false,
+				meshDetection: false,
+				layers: true,
+			},
+		},
 		features: {
-			handTracking: true,
-			anchors: true,
-			hitTest: false,
-			planeDetection: false,
-			meshDetection: false,
-			layers: true,
+			locomotion: false,
+			grabbing: true,
+			physics: false,
+			sceneUnderstanding: true,
+			spatialUI: {
+				kits: [
+					{ ...horizonKit, Toggle: horizonKit.Toggle },
+					{
+						Container,
+						Image,
+						Text,
+						Content,
+						CheckIcon,
+						LogInIcon,
+						SettingsIcon,
+						XIcon,
+						VideoIcon,
+						SignalIcon,
+						SignalZeroIcon,
+					},
+				],
+			},
 		},
-	},
-	features: {
-		locomotion: false,
-		grabbing: true,
-		physics: false,
-		sceneUnderstanding: true,
-		spatialUI: {
-			kits: [
-				{ ...horizonKit, Toggle: horizonKit.Toggle },
-				{
-					Container,
-					Image,
-					Text,
-					Content,
-					CheckIcon,
-					LogInIcon,
-					SettingsIcon,
-					XIcon,
-					VideoIcon,
-					SignalIcon,
-					SignalZeroIcon,
-				},
-			],
-		},
-	},
-}).then((world) => {
+	});
+
 	const { camera } = world;
 
 	camera.position.set(0, 1, 0.5);
-
-	const teleopPanel = new DraggablePanel(world, "./ui/teleop.json", {
-		maxHeight: 0.8,
-		maxWidth: 1.6,
-	});
-	teleopPanel.setPosition(0, 1.29, -1.9);
-	teleopPanel.faceUser();
-	if (teleopPanel.entity.object3D) {
-		GlobalRefs.teleopPanelRoot = teleopPanel.entity.object3D;
-	}
-
-	const cameraSettingsPanel = new DraggablePanel(
-		world,
-		"./ui/camera_settings.json?v=4",
-		{
-			maxHeight: 0.6,
-			maxWidth: 1.2,
-		},
-	);
-	cameraSettingsPanel.setPosition(0.8, 1.29, -1.7);
-	cameraSettingsPanel.faceUser();
-	if (cameraSettingsPanel.entity.object3D) {
-		GlobalRefs.cameraSettingsPanel = cameraSettingsPanel;
-		cameraSettingsPanel.entity.object3D.visible = false;
-	}
 
 	const cameraPanels = new Map<string, CameraPanel>();
 
@@ -355,4 +331,6 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
 			getRightRaySpace,
 		);
 	}
-});
+
+	return world;
+};

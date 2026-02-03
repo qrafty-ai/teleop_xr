@@ -125,42 +125,24 @@ export class RobotModelSystem extends createSystem({}) {
 				.addComponent(DistanceGrabbable, {
 					movementMode: MovementMode.MoveFromTarget,
 				});
-
-			this.robotEntity?.object3D.add(robot);
+			const robotObject = this.robotEntity?.object3D;
+			if (!robotObject) {
+				console.warn("[RobotModelSystem] Robot entity has no object3D");
+				return;
+			}
+			const robotObject3D: Object3D = robotObject;
+			robotObject3D.add(robot);
 
 			// Add lights to ensure textures are visible
 			const ambientLight = new AmbientLight(0xffffff, 0.6);
 			const dirLight = new DirectionalLight(0xffffff, 0.8);
 			dirLight.position.set(1, 2, 1);
-			this.robotEntity?.object3D.add(ambientLight);
-			this.robotEntity?.object3D.add(dirLight);
+			robotObject3D.add(ambientLight);
+			robotObject3D.add(dirLight);
 
-			// Position in front of user
-			if (this.world.camera) {
-				const camera = this.world.camera;
-				const forward = new Vector3(0, 0, -1).applyQuaternion(
-					camera.quaternion,
-				);
-				forward.y = 0; // Keep horizontal
-				forward.normalize();
-
-				const spawnDist = 1.0; // 1 meter in front
-				const spawnPos = camera.position
-					.clone()
-					.add(forward.multiplyScalar(spawnDist));
-
-				// Keep somewhat level with camera but not too high/low
-				// If we assume floor is 0, maybe fixed height?
-				// But user might be sitting/standing. Let's use camera height minus a bit, or just keep camera height.
-				// Let's drop it slightly below eye level (e.g. 30cm down) so it's comfortable to look at
-				spawnPos.y = Math.max(0.5, camera.position.y - 0.3);
-
-				this.robotEntity.object3D.position.copy(spawnPos);
-				this.robotEntity.object3D.lookAt(
-					camera.position.x,
-					spawnPos.y,
-					camera.position.z,
-				);
+			const camera = this.world.camera;
+			if (camera) {
+				this.positionRobotInFront(robotObject3D, camera);
 			}
 
 			console.log("[RobotModelSystem] Robot model loaded and added to scene");
@@ -177,6 +159,33 @@ export class RobotModelSystem extends createSystem({}) {
 		}
 	}
 
+	private positionRobotInFront(
+		robotObject: Object3D,
+		camera: Object3D | null | undefined,
+	) {
+		if (!camera || !camera.position) {
+			return;
+		}
+		const cameraPosition = camera.position;
+		const forward = new Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+		forward.y = 0; // Keep horizontal
+		forward.normalize();
+		const spawnDist = 1.0; // 1 meter in front
+		const spawnPos = cameraPosition
+			.clone()
+			.add(forward.multiplyScalar(spawnDist));
+		if (!robotObject.position || !robotObject.lookAt) {
+			return;
+		}
+		// Keep somewhat level with camera but not too high/low
+		// If we assume floor is 0, maybe fixed height?
+		// But user might be sitting/standing. Let's use camera height minus a bit, or just keep camera height.
+		// Let's drop it slightly below eye level (e.g. 30cm down) so it's comfortable to look at
+		spawnPos.y = Math.max(0.5, cameraPosition.y - 0.3);
+		robotObject.position.copy(spawnPos);
+		robotObject.lookAt(cameraPosition.x, spawnPos.y, cameraPosition.z);
+	}
+
 	private processRobotMaterials(robot: Object3D) {
 		robot.traverse((child) => {
 			if (child instanceof Mesh) {
@@ -188,16 +197,27 @@ export class RobotModelSystem extends createSystem({}) {
 
 					for (const m of mats) {
 						// Ensure texture encoding is correct for standard materials
-						// biome-ignore lint/suspicious/noExplicitAny: Check for map property safely
-						if ((m as any).map && (m as any).map instanceof Texture) {
-							(m as any).map.colorSpace = SRGBColorSpace;
-							(m as any).map.needsUpdate = true;
+						const textureMap = this.getTextureMap(m);
+						if (textureMap) {
+							textureMap.colorSpace = SRGBColorSpace;
+							textureMap.needsUpdate = true;
 						}
 						m.needsUpdate = true;
 					}
 				}
 			}
 		});
+	}
+
+	private getTextureMap(material: unknown): Texture | null {
+		if (typeof material !== "object" || material === null) {
+			return null;
+		}
+		if (!("map" in material)) {
+			return null;
+		}
+		const map = (material as { map?: unknown }).map;
+		return map instanceof Texture ? map : null;
 	}
 
 	onRobotState(data: { joints: Record<string, number> }) {

@@ -18,7 +18,7 @@ version-file = "teleop_xr/_version.py"
 [tool.hatch.build.targets.sdist]
 exclude = [
   "webxr/node_modules",
-  "webxr/dist",
+  "webxr/out",
   "webxr/.vite",
 ]
 

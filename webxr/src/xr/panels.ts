@@ -80,7 +80,9 @@ export class DraggablePanel {
 			opacity: 0.5,
 		});
 		const handleMesh = new Mesh(handleGeo, handleMat);
-		this.entity.object3D.add(handleMesh);
+		if (this.entity.object3D) {
+			this.entity.object3D.add(handleMesh);
+		}
 
 		this.entity.addComponent(PanelHandle, {
 			originalPosZ: handleMesh.position.z,
@@ -108,16 +110,22 @@ export class DraggablePanel {
 			});
 
 		// Parent Panel to Handle
-		this.entity.object3D.add(this.panelEntity.object3D);
+		if (this.entity.object3D && this.panelEntity.object3D) {
+			this.entity.object3D.add(this.panelEntity.object3D);
+		}
 
 		// Offset Panel above Handle
 		// Panel Y - height/2 = handleHeight/2 + gap
 		const panelY = height / 2 + handleHeight / 2 + gap;
-		this.panelEntity.object3D.position.set(0, panelY, 0);
+		if (this.panelEntity.object3D) {
+			this.panelEntity.object3D.position.set(0, panelY, 0);
+		}
 	}
 
 	setPosition(x: number, y: number, z: number) {
-		this.entity.object3D.position.set(x, y, z);
+		if (this.entity.object3D) {
+			this.entity.object3D.position.set(x, y, z);
+		}
 	}
 
 	faceUser() {
@@ -174,7 +182,9 @@ export class CameraPanel extends DraggablePanel {
 		if (this.videoMesh) {
 			this.videoMesh.geometry.dispose();
 			if (Array.isArray(this.videoMesh.material)) {
-				this.videoMesh.material.forEach((m) => m.dispose());
+				this.videoMesh.material.forEach((m) => {
+					m.dispose();
+				});
 			} else {
 				(this.videoMesh.material as Material).dispose();
 			}
@@ -216,7 +226,9 @@ export class CameraPanel extends DraggablePanel {
 		this.videoMesh.position.y = -0.05;
 
 		// Attach to panelEntity, not the handle/root
-		this.panelEntity.object3D.add(this.videoMesh);
+		if (this.panelEntity.object3D) {
+			this.panelEntity.object3D.add(this.videoMesh);
+		}
 	}
 }
 
@@ -245,7 +257,9 @@ export class ControllerCameraPanel {
 		const bgMesh = new Mesh(bgGeo, bgMat);
 		bgMesh.position.z = -0.002;
 		bgMesh.renderOrder = 0;
-		this.entity.object3D.add(bgMesh);
+		if (this.entity.object3D) {
+			this.entity.object3D.add(bgMesh);
+		}
 
 		// Default to hidden if no track
 		if (this.entity.object3D) {
@@ -283,7 +297,9 @@ export class ControllerCameraPanel {
 		this.videoMesh = new Mesh(geometry, material);
 		this.videoMesh.position.z = 0.001; // Slightly in front of bg
 		this.videoMesh.renderOrder = 1;
-		this.entity.object3D.add(this.videoMesh);
+		if (this.entity.object3D) {
+			this.entity.object3D.add(this.videoMesh);
+		}
 	}
 }
 
@@ -324,20 +340,22 @@ export class PanelHoverSystem extends createSystem({
 			let cd = PanelHandle.data.cooldown[entity.index];
 
 			if (isCurrentlyHovered) {
-				visualState = true;
+				visualState = 1;
 				cd = 0.1; // Cooldown of 0.1s to prevent flicker
 			} else if (cd > 0) {
 				cd -= delta;
 				if (cd <= 0) {
-					visualState = false;
+					visualState = 0;
 					cd = 0;
 				}
 			} else {
-				visualState = false;
+				visualState = 0;
 			}
 
 			PanelHandle.data.visualState[entity.index] = visualState;
 			PanelHandle.data.cooldown[entity.index] = cd;
+
+			if (!entity.object3D) return;
 
 			const mesh = entity.object3D.children.find(
 				(c: Object3D) => (c as Mesh).isMesh,

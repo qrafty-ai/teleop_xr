@@ -4,8 +4,8 @@ import type { ControllerCameraPanel, DraggablePanel } from "./panels";
 
 type ControllerCameraPanelRef = {
 	panel: ControllerCameraPanel | DraggablePanel; // ControllerCameraPanel instance
-	controllerObject: Object3D; // raySpace Object3D
-	getControllerObject?: () => Object3D; // Getter for dynamic raySpace resolution
+	controllerObject: Object3D | null; // raySpace Object3D
+	getControllerObject?: () => Object3D | undefined; // Getter for dynamic raySpace resolution
 };
 
 export class ControllerCameraPanelSystem extends createSystem({}) {
@@ -41,10 +41,14 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 
 		for (const ref of this.panels) {
 			const { panel, getControllerObject } = ref;
-			const handedness = panel?.handedness as "left" | "right" | undefined;
+			// biome-ignore lint/suspicious/noExplicitAny: Accessing potential handedness
+			const handedness = (panel as any)?.handedness as
+				| "left"
+				| "right"
+				| undefined;
 
 			// Resolve controller object based on primary/secondary controller spaces
-			let controllerObject: Object3D | undefined;
+			let controllerObject: Object3D | null | undefined;
 			if (handedness) {
 				const primaryGrip = player.gripSpaces?.[handedness];
 				const secondaryGrip = player.secondaryGripSpaces?.[handedness];
