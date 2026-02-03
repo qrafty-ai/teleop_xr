@@ -108,3 +108,121 @@ def test_process_xacro(temp_git_repo):
     urdf_xml = ram.process_xacro(xacro_path)
     assert "test_xacro" in urdf_xml
     assert "package://" not in urdf_xml
+
+
+def test_get_cache_root():
+    """Test get_cache_root returns the default path."""
+    cache_root = ram.get_cache_root()
+    assert cache_root == Path.home() / ".cache" / "ram"
+    assert cache_root.exists()
+
+
+def test_get_repo_default_cache(temp_git_repo, monkeypatch):
+    """Test get_repo uses default cache if not provided."""
+    # Mock home directory to avoid polluting real home
+    with tempfile.TemporaryDirectory() as tmp_home:
+        monkeypatch.setenv("HOME", tmp_home)
+        repo_url = f"file://{temp_git_repo}"
+        repo_dir = ram.get_repo(repo_url)
+        assert repo_dir.exists()
+        assert str(repo_dir).startswith(tmp_home)
+
+
+def test_update_existing_repo(temp_git_repo, mock_cache_dir):
+    """Test that RAM correctly updates an existing repo in cache."""
+    repo_url = f"file://{temp_git_repo}"
+
+    # First fetch
+    repo_dir = ram.get_repo(repo_url, cache_dir=mock_cache_dir)
+
+    # Modify the source repo
+    new_file = temp_git_repo / "new_file.txt"
+    new_file.write_text("new content")
+    repo = git.Repo(temp_git_repo)
+    repo.index.add(["new_file.txt"])
+    repo.index.commit("Add new file")
+
+    # Second fetch should update
+    repo_dir2 = ram.get_repo(repo_url, cache_dir=mock_cache_dir)
+    assert repo_dir2 == repo_dir
+    assert (repo_dir / "new_file.txt").exists()
+
+
+def test_update_with_branch(temp_git_repo, mock_cache_dir):
+    """Test updating an existing repo with a specific branch."""
+    repo_url = f"file://{temp_git_repo}"
+    repo = git.Repo(temp_git_repo)
+
+    # Identify default branch (master or main)
+    default_branch = repo.active_branch.name
+
+    # Create a new branch
+    repo.create_head("feature")
+    repo.git.checkout("feature")
+    feature_file = temp_git_repo / "feature.txt"
+    feature_file.write_text("feature content")
+    repo.index.add(["feature.txt"])
+    repo.index.commit("Add feature file")
+    repo.git.checkout(default_branch)  # Switch back to default
+
+    # Fetch default branch
+    ram.get_repo(repo_url, branch=default_branch, cache_dir=mock_cache_dir)
+
+    # Fetch feature branch
+    repo_dir = ram.get_repo(repo_url, branch="feature", cache_dir=mock_cache_dir)
+    assert (repo_dir / "feature.txt").exists()
+
+    # Test switching back to default
+    repo_dir = ram.get_repo(repo_url, branch=default_branch, cache_dir=mock_cache_dir)
+    assert not (repo_dir / "feature.txt").exists()
+
+
+def test_get_resource_default_cache(temp_git_repo, monkeypatch):
+    """Test get_resource uses default cache if not provided."""
+    with tempfile.TemporaryDirectory() as tmp_home:
+        monkeypatch.setenv("HOME", tmp_home)
+        repo_url = f"file://{temp_git_repo}"
+        asset_path = ram.get_resource(repo_url, "robot.urdf")
+        assert asset_path.exists()
+        assert str(asset_path).startswith(tmp_home)
+
+
+def test_asset_not_found(temp_git_repo, mock_cache_dir):
+    """Test that RAM raises FileNotFoundError if asset is missing."""
+    repo_url = f"file://{temp_git_repo}"
+    with pytest.raises(FileNotFoundError):
+        ram.get_resource(
+            repo_url=repo_url, path_inside_repo="missing.urdf", cache_dir=mock_cache_dir
+        )
+
+
+def test_get_asset_alias(temp_git_repo, mock_cache_dir):
+    """Test that get_asset is indeed an alias for get_resource."""
+    repo_url = f"file://{temp_git_repo}"
+    asset_path = ram.get_asset(
+        repo_url=repo_url, path_inside_repo="robot.urdf", cache_dir=mock_cache_dir
+    )
+    assert asset_path.exists()
+
+
+def test_checkout_new_remote_branch(temp_git_repo, mock_cache_dir):
+    """Test that RAM fetches if checkout fails (e.g. new remote branch)."""
+    repo_url = f"file://{temp_git_repo}"
+
+    # 1. Initial fetch of default branch
+    ram.get_repo(repo_url, cache_dir=mock_cache_dir)
+
+    # 2. Create a new branch in the SOURCE repo
+    repo = git.Repo(temp_git_repo)
+    new_branch_name = "new-remote-branch"
+    repo.create_head(new_branch_name)
+
+    # 3. Fetch the new branch.
+    # Local cache repo doesn't know about it yet, so initial checkout fails.
+    # It should then fetch and succeed.
+    repo_dir = ram.get_repo(repo_url, branch=new_branch_name, cache_dir=mock_cache_dir)
+    assert repo_dir.exists()
+
+    # Verify we are on the correct branch
+    cache_repo = git.Repo(repo_dir)
+    assert cache_repo.active_branch.name == new_branch_name
