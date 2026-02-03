@@ -1,0 +1,7 @@
+- 2026-02-02: Ensured XRScene is dynamically imported for SSR safety; teleop panel visibility toggles via Visibility component.
+- 2026-02-03: Found build errors in existing `webxr` codebase:
+  - `World` type definition in `@iwsdk/core` is missing `dispose()`. Implemented manual cleanup (renderer dispose) in `XRScene`.
+  - `zustand` v5 breaking change in `subscribe` usage in `camera_settings_system.ts`. Fixed.
+  - `Object3D` optionality issues in `panels.ts`, `controller_camera_system.ts`, `robot_system.ts`, `teleop_system.ts`. Added checks.
+  - `Types.Boolean` in ECS components maps to `number` (0/1), causing type errors with `boolean`. Fixed usage.
+  - Missing `inputMode` property in `TeleopSystem`. Added.

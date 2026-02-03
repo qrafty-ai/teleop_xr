@@ -1,0 +1,1 @@
+- 2026-02-02: Moved console stream initialization inside `initWorld` to keep initialization aligned with world setup.

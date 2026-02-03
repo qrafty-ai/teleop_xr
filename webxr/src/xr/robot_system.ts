@@ -82,7 +82,9 @@ export class RobotModelSystem extends createSystem({}) {
 
 			this.robotModel = robot;
 			this.robotEntity = (this.world as World).createTransformEntity();
-			this.robotEntity?.object3D.add(robot);
+			if (this.robotEntity?.object3D) {
+				this.robotEntity.object3D.add(robot);
+			}
 
 			console.log("[RobotModelSystem] Robot model loaded and added to scene");
 		} catch (error: unknown) {
