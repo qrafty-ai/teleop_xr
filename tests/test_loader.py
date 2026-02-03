@@ -44,3 +44,50 @@ def test_load_robot_class_entry_point():
     # Note: This also depends on the entry point being registered.
     cls = load_robot_class("h1")
     assert cls == UnitreeH1Robot
+
+
+def test_load_robot_class_entry_point_load_error(monkeypatch):
+    """Test: load_robot_class raises RobotLoadError if entry point load fails"""
+    from unittest.mock import MagicMock
+
+    # Mock entry point that fails to load
+    bad_ep = MagicMock()
+    bad_ep.name = "bad_robot"
+    bad_ep.load.side_effect = ImportError("Broken dependency")
+
+    # Mock entry_points return value
+    # Python 3.10+ returns a SelectableGroups, we need to mock access by name/iteration
+    # entry_points(group=...) returns EntryPoints object (iterable)
+    class MockEntryPoints:
+        def __init__(self):
+            self.names = ["bad_robot"]
+
+        def __getitem__(self, name):
+            if name == "bad_robot":
+                return bad_ep
+            raise KeyError(name)
+
+        def __iter__(self):
+            return iter([bad_ep])
+
+    monkeypatch.setattr(
+        "importlib.metadata.entry_points", lambda group: MockEntryPoints()
+    )
+
+    with pytest.raises(RobotLoadError) as excinfo:
+        load_robot_class("bad_robot")
+    assert "Failed to load robot class" in str(excinfo.value)
+    assert "Broken dependency" in str(excinfo.value)
+
+
+def test_list_available_robots_error(monkeypatch):
+    """Test: list_available_robots handles exceptions gracefully"""
+
+    def raise_err(*args, **kwargs):
+        raise RuntimeError("Metadata broken")
+
+    monkeypatch.setattr("importlib.metadata.entry_points", raise_err)
+
+    # Should return empty dict instead of crashing
+    available = list_available_robots()
+    assert available == {}
