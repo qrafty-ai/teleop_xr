@@ -1,4 +1,5 @@
 import { createSystem, Quaternion, Vector3, Visibility } from "@iwsdk/core";
+import { getClientId } from "../client_id";
 import {
 	type TeleopSettings,
 	type TeleopTelemetry,
@@ -23,6 +24,7 @@ export class TeleopSystem extends createSystem({}) {
 	private tempQuaternion = new Quaternion();
 	private menuButtonState = false;
 	public inputMode: string | null = null;
+	private clientId = getClientId();
 
 	init() {
 		this.connectWS();
@@ -51,18 +53,20 @@ export class TeleopSystem extends createSystem({}) {
 		this.ws.onmessage = (event) => {
 			try {
 				const message = JSON.parse(event.data);
-			if (message.type === "config") {
-				if (message.data?.input_mode) {
-					this.inputMode = message.data.input_mode;
-				}
-				const cameraViews = message.data?.camera_views ?? null;
-				const availableCameraKeys = cameraViews ? Object.keys(cameraViews) : [];
-				useAppStore.getState().setAvailableCameras(availableCameraKeys);
-				setCameraViewsConfig(cameraViews);
-			} else if (message.type === "robot_config") {
-				const robotSystem = this.world.getSystem(RobotModelSystem);
-				if (robotSystem) {
-					robotSystem.onRobotConfig(message.data);
+				if (message.type === "config") {
+					if (message.data?.input_mode) {
+						this.inputMode = message.data.input_mode;
+					}
+					const cameraViews = message.data?.camera_views ?? null;
+					const availableCameraKeys = cameraViews
+						? Object.keys(cameraViews)
+						: [];
+					useAppStore.getState().setAvailableCameras(availableCameraKeys);
+					setCameraViewsConfig(cameraViews);
+				} else if (message.type === "robot_config") {
+					const robotSystem = this.world.getSystem(RobotModelSystem);
+					if (robotSystem) {
+						robotSystem.onRobotConfig(message.data);
 					}
 				} else if (message.type === "robot_state") {
 					const robotSystem = this.world.getSystem(RobotModelSystem);
@@ -196,6 +200,7 @@ export class TeleopSystem extends createSystem({}) {
 			this.ws.send(
 				JSON.stringify({
 					type: "xr_state",
+					client_id: this.clientId,
 					data: state,
 				}),
 			);
