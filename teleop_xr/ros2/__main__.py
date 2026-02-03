@@ -1,6 +1,6 @@
 import threading
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Literal
 from dataclasses import dataclass, field, asdict
 import cv2
 import numpy as np
@@ -164,6 +164,9 @@ def build_joy(gamepad):
 
 @dataclass
 class Ros2CLI(CommonCLI):
+    mode: Literal["teleop", "ik"] = "teleop"
+    """Operation mode: 'teleop' for standard ROS2 streaming, 'ik' for IK-based control."""
+
     # Explicit topics
     head_topic: Optional[str] = None
     wrist_left_topic: Optional[str] = None
@@ -185,6 +188,11 @@ def main():
 
     rclpy.init(args=["--ros-args"] + cli.ros_args)
     node = rclpy.create_node("teleop")
+
+    if cli.mode == "ik":
+        node.get_logger().info("ROS2 Node starting in IK mode (placeholder)")
+    else:
+        node.get_logger().info("ROS2 Node starting in Teleop mode")
 
     # Merge topics
     topics = {}
