@@ -1,0 +1,4 @@
+- Fixed RAM xacro patch signature mismatch.
+- Implemented state caching in Teleop for immediate client sync.
+- Updated Franka default pose to a non-singular home position.
+- Removed local URDF assets in favor of RAM-fetched descriptions.
