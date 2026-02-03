@@ -13,7 +13,8 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent, XRButton
-from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.loader import load_robot_class, list_available_robots
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
 import transforms3d as t3d
@@ -103,6 +104,40 @@ def ms_to_time(ms):
     return Time(sec=sec, nanosec=nanosec)
 
 
+def get_urdf_from_topic(node, topic, timeout):
+    node.get_logger().info(f"Fetching URDF from topic {topic} (timeout={timeout}s)...")
+    urdf_str = None
+    event = threading.Event()
+
+    def callback(msg: String):
+        nonlocal urdf_str
+        urdf_str = msg.data
+        event.set()
+
+    sub = node.create_subscription(
+        String,
+        topic,
+        callback,
+        rclpy.qos.QoSProfile(
+            depth=1, durability=rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL
+        ),
+    )
+
+    # Wait for message
+    start_time = time.time()
+    while rclpy.ok() and not event.is_set() and (time.time() - start_time) < timeout:
+        rclpy.spin_once(node, timeout_sec=0.1)
+
+    node.destroy_subscription(sub)
+
+    if urdf_str:
+        node.get_logger().info(f"Successfully fetched URDF ({len(urdf_str)} bytes)")
+    else:
+        node.get_logger().warning("Failed to fetch URDF from topic")
+
+    return urdf_str
+
+
 class ROSImageToVideoSource:
     def __init__(self, node, topic, source: ExternalVideoSource):
         self.node = node
@@ -185,6 +220,20 @@ class Ros2CLI(CommonCLI):
     frame_id: str = "xr_local"
     publish_hand_tf: bool = False
 
+    # Robot Loader args
+    robot_class: Optional[str] = None
+    """Robot class to load (e.g., 'teleop_xr.ik.robots.h1_2:UnitreeH1Robot' or entry point name)."""
+    robot_args: str = "{}"
+    """JSON string of arguments to pass to the robot constructor."""
+    list_robots: bool = False
+    """List available robots and exit."""
+    urdf_topic: str = "/robot_description"
+    """Topic to fetch URDF from."""
+    urdf_timeout: float = 5.0
+    """Timeout for fetching URDF in seconds."""
+    no_urdf_topic: bool = False
+    """Disable fetching URDF from topic."""
+
     # ROS args (passed as remainder, but Tyro can capture list if explicit)
     # We will use this to pass args to rclpy
     ros_args: List[str] = field(default_factory=list)
@@ -200,7 +249,7 @@ class IKWorker(threading.Thread):
     def __init__(
         self,
         controller: IKController,
-        robot: UnitreeH1Robot,
+        robot: BaseRobot,
         publisher: "rclpy.publisher.Publisher",
         state_container: dict,
         node: "rclpy.node.Node",
@@ -255,7 +304,7 @@ class IKWorker(threading.Thread):
                     # Publish to ROS2
                     msg = JointTrajectory()
                     msg.header.stamp = self.node.get_clock().now().to_msg()
-                    msg.joint_names = self.robot.robot.joints.actuated_names
+                    msg.joint_names = self.robot.actuated_joint_names
 
                     point = JointTrajectoryPoint()
                     point.positions = [float(val) for val in new_config]
@@ -272,6 +321,15 @@ def main():
     jax.config.update("jax_platform_name", "cpu")
     cli = tyro.cli(Ros2CLI)
 
+    if cli.list_robots:
+        robots = list_available_robots()
+        print("Available robots (via entry points):")
+        if not robots:
+            print("  None")
+        for name, path in robots.items():
+            print(f"  {name}: {path}")
+        return
+
     rclpy.init(args=["--ros-args"] + cli.ros_args)
     node = rclpy.create_node("teleop")
 
@@ -287,8 +345,20 @@ def main():
     }
 
     if cli.mode == "ik":
-        node.get_logger().info("Initializing Unitree H1 robot and IK solver...")
-        robot = UnitreeH1Robot()
+        robot_cls = load_robot_class(cli.robot_class)
+        robot_args = json.loads(cli.robot_args)
+
+        urdf_string = None
+        if not cli.no_urdf_topic:
+            urdf_string = get_urdf_from_topic(node, cli.urdf_topic, cli.urdf_timeout)
+
+        if urdf_string:
+            robot_args["urdf_string"] = urdf_string
+
+        node.get_logger().info(
+            f"Initializing {robot_cls.__name__} with args: {robot_args}"
+        )
+        robot = robot_cls(**robot_args)
         solver = PyrokiSolver(robot)
         controller = IKController(robot, solver)
         state_container["q"] = np.array(robot.get_default_config())
@@ -301,7 +371,7 @@ def main():
             # For now, we update q if not active to avoid drift before starting
             if not state_container.get("active", False):
                 current_q = state_container["q"].copy()
-                actuated_names = robot.robot.joints.actuated_names
+                actuated_names = robot.actuated_joint_names
                 for i, name in enumerate(actuated_names):
                     if name in msg.name:
                         idx = msg.name.index(name)
