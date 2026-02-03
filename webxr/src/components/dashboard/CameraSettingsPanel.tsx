@@ -11,14 +11,25 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/store";
 
-const CAMERA_KEYS = [
-	{ key: "head", label: "Head Camera" },
-	{ key: "wrist_left", label: "Left Wrist Camera" },
-	{ key: "wrist_right", label: "Right Wrist Camera" },
-];
+const formatCameraLabel = (key: string) => {
+	switch (key) {
+		case "head":
+			return "Head Camera";
+		case "wrist_left":
+			return "Left Wrist Camera";
+		case "wrist_right":
+			return "Right Wrist Camera";
+		default:
+			// Fallback: capitalize words, replace underscores/hyphens with spaces
+			return key
+				.replace(/[_-]/g, " ")
+				.replace(/\b\w/g, (l) => l.toUpperCase());
+	}
+};
 
 export function CameraSettingsPanel() {
-	const getCameraEnabled = useAppStore((state) => state.getCameraEnabled);
+	const availableCameras = useAppStore((state) => state.availableCameras);
+	const cameraConfig = useAppStore((state) => state.cameraConfig);
 	const setCameraEnabled = useAppStore((state) => state.setCameraEnabled);
 
 	return (
@@ -30,15 +41,20 @@ export function CameraSettingsPanel() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				{CAMERA_KEYS.map(({ key, label }) => (
+				{availableCameras.length === 0 && (
+					<div className="text-sm text-muted-foreground">
+						No cameras detected
+					</div>
+				)}
+				{availableCameras.map((key) => (
 					<div
 						key={key}
 						className="flex items-center justify-between space-x-2"
 					>
-						<Label htmlFor={`camera-${key}`}>{label}</Label>
+						<Label htmlFor={`camera-${key}`}>{formatCameraLabel(key)}</Label>
 						<Switch
 							id={`camera-${key}`}
-							checked={getCameraEnabled(key)}
+							checked={cameraConfig[key] !== false}
 							onCheckedChange={(checked) => setCameraEnabled(key, checked)}
 						/>
 					</div>

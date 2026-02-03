@@ -1,17 +1,38 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { WebGLRenderer } from "three";
+import { Button } from "@/components/ui/button";
 import { initWorld } from "@/xr";
 
-export function XRScene({ onExit }: { onExit?: () => void }) {
+type XRSceneProps = {
+	onExitAction: () => void;
+};
+
+type XRWorld = Awaited<ReturnType<typeof initWorld>>;
+
+export function XRScene({ onExitAction }: XRSceneProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const worldRef = useRef<Awaited<ReturnType<typeof initWorld>> | null>(null);
+	const worldRef = useRef<XRWorld | null>(null);
+	const onExitRef = useRef(onExitAction);
+	const exitTriggeredRef = useRef(false);
+
+	useEffect(() => {
+		onExitRef.current = onExitAction;
+	}, [onExitAction]);
+
+	const triggerExit = useCallback(() => {
+		if (exitTriggeredRef.current) return;
+		exitTriggeredRef.current = true;
+		onExitRef.current();
+	}, []);
 
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
 		let isMounted = true;
+		let renderer: unknown = null;
 
 		const setup = async () => {
 			try {
@@ -27,12 +48,11 @@ export function XRScene({ onExit }: { onExit?: () => void }) {
 				}
 
 				worldRef.current = world;
+				renderer = world.renderer;
+				const xrManager = (renderer as WebGLRenderer | null)?.xr;
 
-				if (world.renderer?.xr) {
-					world.renderer.xr.addEventListener("sessionend", () => {
-						console.log("XR Session ended");
-						onExit?.();
-					});
+				if (xrManager?.addEventListener) {
+					xrManager.addEventListener("sessionend", triggerExit);
 				}
 			} catch (err) {
 				console.error("Failed to initialize XR world:", err);
@@ -43,20 +63,29 @@ export function XRScene({ onExit }: { onExit?: () => void }) {
 
 		return () => {
 			isMounted = false;
+			const xrManager = (renderer as WebGLRenderer | null)?.xr;
+			if (xrManager?.removeEventListener) {
+				xrManager.removeEventListener("sessionend", triggerExit);
+			}
+
+			const sessionActive =
+				xrManager?.isPresenting || Boolean(xrManager?.getSession?.());
+			if (sessionActive) {
+				triggerExit();
+			}
+
 			if (worldRef.current) {
 				console.log("Disposing XR world");
 				cleanupWorld(worldRef.current);
 				worldRef.current = null;
 			}
 		};
-	}, [onExit]);
+	}, [triggerExit]);
 
 	return (
-		<div
-			ref={containerRef}
-			className="fixed inset-0 z-50 bg-black"
-			data-testid="xr-scene"
-		/>
+		<div className="fixed inset-0 z-0" data-testid="xr-scene">
+			<div ref={containerRef} className="absolute inset-0" />
+		</div>
 	);
 }
 

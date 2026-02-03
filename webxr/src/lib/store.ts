@@ -19,11 +19,13 @@ export type ConnectionStatus = "connected" | "disconnected" | "connecting";
 
 export type AppState = {
 	cameraConfig: CameraConfig;
+	availableCameras: string[];
 	teleopSettings: TeleopSettings;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
-	getCameraEnabled: (key: CameraViewKey) => boolean;
-	setCameraEnabled: (key: CameraViewKey, enabled: boolean) => void;
+	getCameraEnabled: (key: string) => boolean;
+	setCameraEnabled: (key: string, enabled: boolean) => void;
+	setAvailableCameras: (keys: string[]) => void;
 	setTeleopSettings: (settings: Partial<TeleopSettings>) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
@@ -42,6 +44,7 @@ const defaultTeleopTelemetry: TeleopTelemetry = {
 
 export const useAppStore = create<AppState>((set, get) => ({
 	cameraConfig: {},
+	availableCameras: [],
 	teleopSettings: defaultTeleopSettings,
 	teleopTelemetry: defaultTeleopTelemetry,
 	connectionStatus: "disconnected",
@@ -50,6 +53,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 		set((state) => ({
 			cameraConfig: { ...state.cameraConfig, [key]: enabled },
 		}));
+	},
+	setAvailableCameras: (keys) => {
+		set({ availableCameras: keys });
 	},
 	setTeleopSettings: (settings) => {
 		set((state) => ({

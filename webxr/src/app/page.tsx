@@ -16,9 +16,9 @@ export default function Home() {
 	const [isXRActive, setIsXRActive] = useState(false);
 
 	return (
-		<main className="min-h-screen bg-background p-8">
-			{isXRActive && <XRScene onExit={() => setIsXRActive(false)} />}
-			<div className="mx-auto max-w-5xl space-y-8">
+		<main className="min-h-screen bg-transparent p-8">
+			{isXRActive && <XRScene onExitAction={() => setIsXRActive(false)} />}
+			<div className="relative z-10 mx-auto max-w-5xl space-y-8">
 				<header className="flex items-center justify-between border-b pb-6">
 					<div>
 						<h1 className="text-3xl font-bold tracking-tight">TeleopXR</h1>
@@ -29,10 +29,11 @@ export default function Home() {
 					<Button
 						size="lg"
 						className="gap-2"
-						onClick={() => setIsXRActive(true)}
+						onClick={() => setIsXRActive(!isXRActive)}
+						variant={isXRActive ? "destructive" : "default"}
 					>
 						<Rocket className="h-4 w-4" />
-						{isXRActive ? "XR Active" : "Launch XR"}
+						{isXRActive ? "Exit XR" : "Launch XR"}
 					</Button>
 				</header>
 
