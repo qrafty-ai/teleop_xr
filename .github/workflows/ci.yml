@@ -47,21 +47,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
       - name: Run pytest with coverage
-        run: uv run pytest
-      - name: Generate coverage summary
-        uses: irongut/CodeCoverageSummary@v1.3.0
+        run: uv run pytest --cov --cov-branch --cov-report=xml
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          filename: coverage.xml
-          badge: true
-          format: markdown
-          output: both
-      - name: Add coverage to job summary
-        run: |
-          if [ -f code-coverage-results.md ]; then
-            cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Coverage summary file not found" >> $GITHUB_STEP_SUMMARY
-          fi
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: qrafty-ai/teleop_xr
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
