@@ -77,7 +77,9 @@ def test_get_asset_not_found(client):
 def test_frontend_config(test_app, mock_config):
     module = RobotVisModule(test_app, mock_config)
     config = module.get_frontend_config()
-    assert config == {"urdf_url": "/robot_assets/robot.urdf"}
+    assert config["urdf_url"] == "/robot_assets/robot.urdf"
+    assert config["model_scale"] == 1.0
+    assert config["initial_rotation_euler"] == [0.0, 0.0, 0.0]
 
 
 @pytest.mark.anyio
