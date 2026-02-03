@@ -43,7 +43,7 @@ The demo supports two operation modes:
 
 ### Usage
 
-1. Open the displayed URL (https://<ip>:4443) in your headset.
+1. Open the displayed URL (`https://<ip>:4443`) in your headset.
 2. Enter VR mode.
 3. Observe the live state data and event logs in your terminal.
 

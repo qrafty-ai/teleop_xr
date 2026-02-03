@@ -116,10 +116,6 @@ If you need to feed frames from ROS topics, file playback, or other sources, sub
 
 The modular IK stack allows you to map 6DoF XR poses directly to robot joint configurations using a JAX-powered optimizer.
 
-## 4. IK / Teleoperation Algorithm
-
-The modular IK stack allows you to map 6DoF XR poses directly to robot joint configurations using a JAX-powered optimizer.
-
 ### Modular Components
 - **`BaseRobot`**: Abstract class where you define your robot's kinematics and cost functions.
 - **`PyrokiSolver`**: High-performance solver that executes the optimization.
