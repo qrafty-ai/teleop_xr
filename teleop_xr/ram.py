@@ -7,10 +7,65 @@ import hashlib
 import re
 from pathlib import Path
 from typing import Optional, Dict
+from contextlib import contextmanager
 
 import git
 import xacro
+import xacro.substitution_args
 from filelock import FileLock
+
+
+# --- Xacro Patching for RAM ---
+_CURRENT_REPO_ROOT: Optional[Path] = None
+
+
+def _resolve_package(package_name: str) -> str:
+    """Resolve a package name to a path within the current RAM repo."""
+    if _CURRENT_REPO_ROOT:
+        # 1. Check root
+        candidate = _CURRENT_REPO_ROOT / package_name
+        if candidate.exists():
+            return str(candidate)
+
+        # 2. Check immediate subdirectories (common for metapackages)
+        for child in _CURRENT_REPO_ROOT.iterdir():
+            if child.is_dir():
+                if child.name == package_name:
+                    return str(child)
+                # Check one level deeper
+                candidate = child / package_name
+                if candidate.exists():
+                    return str(candidate)
+
+    # Fallback: ignore or raise?
+    raise ValueError(
+        f"Package '{package_name}' not found in RAM repo {_CURRENT_REPO_ROOT}"
+    )
+
+
+def _mock_eval_find(package_name):
+    """Mock implementation of $(find pkg) for xacro."""
+    # xacro calls _eval_find(pkg) directly, passing the string.
+    return _resolve_package(package_name)
+
+
+# Apply patch
+xacro.substitution_args._eval_find = _mock_eval_find
+
+
+@contextmanager
+def _ram_repo_context(repo_root: Path):
+    """Context manager to set the current repo root for xacro resolution."""
+    global _CURRENT_REPO_ROOT
+    old_root = _CURRENT_REPO_ROOT
+    _CURRENT_REPO_ROOT = repo_root
+    try:
+        yield
+    finally:
+        _CURRENT_REPO_ROOT = old_root
+
+
+# --- End Patching ---
 
 
 def get_cache_root() -> Path:
@@ -36,8 +91,13 @@ def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
     def resolve_uri(match):
         # match.group(1) is the package name
         sub_path = match.group(2)
-        # Return absolute path to the file in repo_root
-        return str((repo_root / sub_path).absolute())
+        # Try to resolve package path first
+        try:
+            pkg_path = Path(_resolve_package(match.group(1)))
+            return str((pkg_path / sub_path).absolute())
+        except ValueError:
+            # Fallback to simple root join if resolution fails
+            return str((repo_root / sub_path).absolute())
 
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
@@ -78,14 +138,25 @@ def get_repo(
 
 
 def process_xacro(
-    xacro_path: Path, repo_root: Path, mappings: Optional[Dict[str, str]] = None
+    xacro_path: Path,
+    repo_root: Path,
+    mappings: Optional[Dict[str, str]] = None,
+    resolve_packages: bool = True,
 ) -> str:
     """
-    Process a xacro file and return the URDF XML string with package:// URIs resolved.
+    Process a xacro file and return the URDF XML string.
+    If resolve_packages is True, package:// URIs are resolved to absolute paths.
     """
-    doc = xacro.process_file(str(xacro_path), mappings=mappings)
-    urdf_xml = doc.toprettyxml(indent="  ")
-    return _replace_package_uris(urdf_xml, repo_root)
+    # Use context to allow $(find ...) resolution
+    with _ram_repo_context(repo_root):
+        doc = xacro.process_file(str(xacro_path), mappings=mappings)
+        urdf_xml = doc.toprettyxml(indent="  ")
+
+    if resolve_packages:
+        # Also use context here for better package:// resolution
+        with _ram_repo_context(repo_root):
+            return _replace_package_uris(urdf_xml, repo_root)
+    return urdf_xml
 
 
 def get_resource(
@@ -94,6 +165,7 @@ def get_resource(
     branch: Optional[str] = None,
     cache_dir: Optional[Path] = None,
     xacro_args: Optional[Dict[str, str]] = None,
+    resolve_packages: bool = True,
 ) -> Path:
     """
     Main entry point for fetching a robot resource.
@@ -110,22 +182,28 @@ def get_resource(
         )
 
     if file_path.suffix == ".xacro" or ".urdf.xacro" in file_path.name:
-        # Unique name for output based on args
+        # Unique name for output based on args and resolution
         arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
+        arg_str += f"_resolved={resolve_packages}"
         arg_hash = hashlib.sha256(arg_str.encode()).hexdigest()[:6]
         output_urdf_path = file_path.parent / f"{file_path.stem}_{arg_hash}.urdf"
 
         # Process xacro
-        urdf_content = process_xacro(file_path, repo_dir, mappings=xacro_args)
+        urdf_content = process_xacro(
+            file_path, repo_dir, mappings=xacro_args, resolve_packages=resolve_packages
+        )
         output_urdf_path.write_text(urdf_content)
     else:
-        # For plain URDF, if it has package://, we must process it.
-        # Otherwise, we can just return the original file_path.
-        content = file_path.read_text()
-        if "package://" in content:
-            output_urdf_path = file_path.parent / f"{file_path.stem}_processed.urdf"
-            content = _replace_package_uris(content, repo_dir)
-            output_urdf_path.write_text(content)
+        # For plain URDF
+        if resolve_packages:
+            content = file_path.read_text()
+            if "package://" in content:
+                output_urdf_path = file_path.parent / f"{file_path.stem}_processed.urdf"
+                with _ram_repo_context(repo_dir):
+                    content = _replace_package_uris(content, repo_dir)
+                output_urdf_path.write_text(content)
+            else:
+                output_urdf_path = file_path
         else:
             output_urdf_path = file_path
 
