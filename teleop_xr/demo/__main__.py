@@ -303,6 +303,25 @@ def generate_ik_status_table(
     return Panel(table, title="[bold]IK Status[/bold]", border_style="blue")
 
 
+def generate_ik_controls_panel() -> Panel:
+    """Generate a panel showing IK key bindings."""
+    text = Text()
+    text.append("• Hold ", style="dim")
+    text.append("BOTH GRIPS", style="bold yellow")
+    text.append(" to engage IK control\n", style="dim")
+    text.append("• Double-click ", style="dim")
+    text.append("DEADMAN (Grip)", style="bold magenta")
+    text.append(" to reset joints", style="dim")
+
+    return Panel(
+        text,
+        title="[bold blue]IK Key Bindings[/bold blue]",
+        title_align="left",
+        box=box.ROUNDED,
+        padding=(0, 1),
+    )
+
+
 def generate_log_panel(log_queue: Deque[str]) -> Panel:
     return Panel(
         Group(*[str(m) for m in list(log_queue)[-15:]]),
@@ -585,10 +604,12 @@ def main():
     layout = Layout()
 
     if cli.mode == "ik":
-        # Split: Left (State), Right (Top: IK Status, Bottom: Logs)
+        # Split: Left (State), Right (Top: IK Status, Middle: Controls, Bottom: Logs)
         layout.split_row(Layout(name="left", ratio=1), Layout(name="right", ratio=1))
         layout["right"].split_column(
-            Layout(name="status", ratio=1), Layout(name="logs", ratio=1)
+            Layout(name="status", ratio=2),
+            Layout(name="controls", size=5),
+            Layout(name="logs", ratio=3),
         )
     else:
         # Split: Left (State), Right (Top: Events, Bottom: Legend)
@@ -622,6 +643,7 @@ def main():
                             state_container.get("q", np.array([])),
                         )
                     )
+                    layout["controls"].update(generate_ik_controls_panel())
                     layout["logs"].update(generate_log_panel(log_queue))
                 else:
                     layout["events"].update(generate_event_panel(event_log))
