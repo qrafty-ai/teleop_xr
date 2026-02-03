@@ -1,24 +1,31 @@
 import threading
 import json
-from typing import Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Literal
 from dataclasses import dataclass, field, asdict
 import cv2
 import numpy as np
 import tyro
+import jax
 from teleop_xr import Teleop, TF_RUB2FLU
 from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
-from teleop_xr.events import EventProcessor, EventSettings
+from teleop_xr.messages import XRState
+from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent, XRButton
+from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+from teleop_xr.ik.solver import PyrokiSolver
+from teleop_xr.ik.controller import IKController
 import transforms3d as t3d
 
 try:
     import rclpy
     from geometry_msgs.msg import Pose, PoseStamped, PoseArray, TransformStamped
-    from sensor_msgs.msg import Joy, Image, CompressedImage
+    from sensor_msgs.msg import Joy, Image, CompressedImage, JointState
+    from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
     from std_msgs.msg import Float64, String
     from tf2_ros import TransformBroadcaster
-    from builtin_interfaces.msg import Time
+    from builtin_interfaces.msg import Time, Duration
 
     try:
         from cv_bridge import CvBridge
@@ -164,6 +171,9 @@ def build_joy(gamepad):
 
 @dataclass
 class Ros2CLI(CommonCLI):
+    mode: Literal["teleop", "ik"] = "teleop"
+    """Operation mode: 'teleop' for standard ROS2 streaming, 'ik' for IK-based control."""
+
     # Explicit topics
     head_topic: Optional[str] = None
     wrist_left_topic: Optional[str] = None
@@ -180,11 +190,129 @@ class Ros2CLI(CommonCLI):
     ros_args: List[str] = field(default_factory=list)
 
 
+class IKWorker(threading.Thread):
+    """
+    Dedicated worker thread for IK calculations.
+    Consumes the latest available XRState and processes it.
+    Publishes JointTrajectory messages to ROS2.
+    """
+
+    def __init__(
+        self,
+        controller: IKController,
+        robot: UnitreeH1Robot,
+        publisher: "rclpy.publisher.Publisher",
+        state_container: dict,
+        node: "rclpy.node.Node",
+    ):
+        super().__init__(daemon=True)
+        self.controller = controller
+        self.robot = robot
+        self.publisher = publisher
+        self.state_container = state_container
+        self.node = node
+        self.latest_xr_state: Optional[XRState] = None
+        self.new_state_event = threading.Event()
+        self.running = True
+
+    def update_state(self, state: XRState):
+        """Thread-safe update of the latest state."""
+        self.latest_xr_state = state
+        self.new_state_event.set()
+
+    def run(self):
+        while self.running:
+            # Wait for new data
+            if not self.new_state_event.wait(timeout=0.1):
+                continue
+
+            # Clear event immediately so we can detect new updates during processing
+            self.new_state_event.clear()
+
+            # Grab the latest state (atomic assignment in Python)
+            state = self.latest_xr_state
+            if state is None:
+                continue
+
+            try:
+                current_config = self.state_container["q"]
+                was_active = self.controller.active
+
+                t0 = time.perf_counter()
+                new_config = np.array(self.controller.step(state, current_config))
+                dt = time.perf_counter() - t0
+
+                self.state_container["solve_time"] = dt
+                self.state_container["active"] = self.controller.active
+                is_active = self.controller.active
+
+                if not was_active and is_active:
+                    self.node.get_logger().info("IK engagement started")
+
+                if not np.array_equal(new_config, current_config):
+                    self.state_container["q"] = new_config
+
+                    # Publish to ROS2
+                    msg = JointTrajectory()
+                    msg.header.stamp = self.node.get_clock().now().to_msg()
+                    msg.joint_names = self.robot.robot.joints.actuated_names
+
+                    point = JointTrajectoryPoint()
+                    point.positions = [float(val) for val in new_config]
+                    point.time_from_start = Duration(sec=0, nanosec=int(1e7))  # 10ms
+                    msg.points = [point]
+
+                    self.publisher.publish(msg)
+
+            except Exception as e:
+                self.node.get_logger().error(f"Error in IK Worker: {e}")
+
+
 def main():
+    jax.config.update("jax_platform_name", "cpu")
     cli = tyro.cli(Ros2CLI)
 
     rclpy.init(args=["--ros-args"] + cli.ros_args)
     node = rclpy.create_node("teleop")
+
+    # --- Mode Setup ---
+    robot = None
+    solver = None
+    controller = None
+    ik_worker = None
+    state_container: dict[str, Any] = {
+        "active": False,
+        "solve_time": 0.0,
+        "xr_state": None,
+    }
+
+    if cli.mode == "ik":
+        node.get_logger().info("Initializing Unitree H1 robot and IK solver...")
+        robot = UnitreeH1Robot()
+        solver = PyrokiSolver(robot)
+        controller = IKController(robot, solver)
+        state_container["q"] = np.array(robot.get_default_config())
+
+        # ROS2 Pub/Sub for IK
+        ik_pub = node.create_publisher(JointTrajectory, "/joint_trajectory", 10)
+
+        def joint_state_callback(msg: JointState):
+            # Only update q from robot if not actively engaging IK or if we want to follow real robot
+            # For now, we update q if not active to avoid drift before starting
+            if not state_container.get("active", False):
+                current_q = state_container["q"].copy()
+                actuated_names = robot.robot.joints.actuated_names
+                for i, name in enumerate(actuated_names):
+                    if name in msg.name:
+                        idx = msg.name.index(name)
+                        current_q[i] = msg.position[idx]
+                state_container["q"] = current_q
+
+        node.create_subscription(JointState, "/joint_states", joint_state_callback, 10)
+        ik_worker = IKWorker(controller, robot, ik_pub, state_container, node)
+        ik_worker.start()
+    else:
+        node.get_logger().info("ROS2 Node starting in Teleop mode")
 
     # Merge topics
     topics = {}
@@ -205,11 +333,16 @@ def main():
     # Create config dict for camera views
     camera_views = {k: {"device": topic} for k, topic in topics.items()}
 
+    robot_vis = None
+    if cli.mode == "ik" and robot:
+        robot_vis = robot.get_vis_config()
+
     settings = TeleopSettings(
         host=cli.host,
         port=cli.port,
         input_mode=cli.input_mode,
         camera_views=camera_views,
+        robot_vis=robot_vis,
     )
 
     teleop = Teleop(
@@ -289,8 +422,23 @@ def main():
 
     event_processor = EventProcessor(EventSettings())
 
-    def publish_button_event(event):
+    from teleop_xr.events import ButtonEventType
+
+    def publish_button_event(event: ButtonEvent):
         try:
+            # Robot Reset: Double-press on deadman switch (SQUEEZE)
+            if (
+                event.type == ButtonEventType.DOUBLE_PRESS
+                and event.button == XRButton.SQUEEZE
+            ):
+                if cli.mode == "ik" and robot and ik_worker and controller:
+                    default_q = np.array(robot.get_default_config())
+                    state_container["q"] = default_q
+                    controller.reset()
+                    node.get_logger().info(
+                        "Resetting Robot Joint State and IK Snapshots"
+                    )
+
             msg = String()
             msg.data = json.dumps(asdict(event))
             get_publisher(String, f"xr/events/{event.type.value}").publish(msg)
@@ -302,10 +450,19 @@ def main():
     event_processor.on_double_press(callback=publish_button_event)
     event_processor.on_long_press(callback=publish_button_event)
 
-    teleop.subscribe(event_processor.process)
-
     def teleop_xr_state_callback(_pose, xr_state):
         try:
+            # Process events
+            event_processor.process(_pose, xr_state)
+
+            # Parse state for IK and container
+            xr_data = xr_state.get("data", xr_state)
+            state = XRState.model_validate(xr_data)
+            state_container["xr_state"] = state
+
+            if ik_worker:
+                ik_worker.update_state(state)
+
             ms = xr_state.get("timestamp_unix_ms") if xr_state else None
             stamp = (
                 ms_to_time(ms) if ms is not None else node.get_clock().now().to_msg()

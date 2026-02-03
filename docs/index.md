@@ -16,8 +16,8 @@
 3.  **🎥 WebRTC Video Streaming**
     Built-in low-latency WebRTC video streaming for real-time visual feedback from your robot.
 
-4.  **🔌 Generic API & ROS2 Interface**
-    Flexible architecture designed for easy integration. Use the provided ROS2 interface or the generic Python API to connect with your own robot projects.
+4.  **🔌 Modular IK & ROS2 Support**
+    High-performance Inverse Kinematics (IK) solver with native ROS2 integration for seamless robot control.
 
 ## 🚀 Quick Start (Demo)
 
@@ -28,90 +28,70 @@ pip install teleop-xr
 python -m teleop_xr.demo
 ```
 
-This will launch a server (default port 4433) and display a **Rich-based live table** in your terminal.
+### Modes
 
-1. Open the displayed URL (`https://<ip>:4433`) in your headset.
+The demo supports two operation modes:
+
+*   **Teleop Mode (Default)**: Visualizes raw XR state data and button events.
+    ```bash
+    python -m teleop_xr.demo --mode teleop
+    ```
+*   **IK Mode**: Enables the high-performance IK solver (configured for Unitree H1 by default).
+    ```bash
+    python -m teleop_xr.demo --mode ik
+    ```
+
+### Usage
+
+1. Open the displayed URL (https://<ip>:4443) in your headset.
 2. Enter VR mode.
-3. You will see the table update with high-frequency data for Head, Controllers, and Hands (Position, Orientation, Buttons).
+3. Observe the live state data and event logs in your terminal.
 
-## 🤖 ROS2 Integration
+## 📖 Documentation
 
-TeleopXR comes with a fully functional ROS2 node wrapper.
+For detailed guides on integrating TeleopXR into your own projects, including the **Generic Python API** and **ROS2 Interface**, please visit our official documentation website:
 
-### Running the Node
+👉 **[https://qrafty-ai.github.io/teleop_xr/](https://qrafty-ai.github.io/teleop_xr/)**
 
-```bash
-# Source your ROS2 workspace first
-python -m teleop_xr.ros2 --frame-id xr_local
-```
+## Development
 
-### Published Topics
+For developers contributing to TeleopXR or customizing the frontend:
 
-The node publishes state data to the following topics:
+### Prerequisites
+*   [uv](https://github.com/astral-sh/uv) (for Python dependency management)
+*   Node.js & npm (for WebXR frontend)
 
-| Topic | Type | Description |
-| :--- | :--- | :--- |
-| `xr/head/pose` | `PoseStamped` | Headset 6DoF pose |
-| `xr/controller_{L/R}/pose` | `PoseStamped` | Controller grip pose |
-| `xr/controller_{L/R}/joy` | `Joy` | Joystick axes and buttons |
-| `xr/controller_{L/R}/joy_touched` | `Joy` | Touch states (capacitive) |
-| `xr/hand_{L/R}/joints` | `PoseArray` | 25 hand joint poses (if tracking enabled) |
-| `xr/fetch_latency_ms` | `Float64` | Network/Input latency stats |
+### Setup
 
-*Note: All poses are published in the frame specified by `--frame-id` (default: `xr_local`).*
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/qrafty-ai/teleop_xr.git
+    cd teleop_xr
+    ```
 
-### Video Streaming Configuration
+2.  **Install Python dependencies:**
+    ```bash
+    uv sync
+    ```
 
-You can map ROS image topics to the VR headset's views using CLI arguments:
+3.  **Build the WebXR frontend:**
+    ```bash
+    cd webxr
+    npm install
+    npm run build
+    ```
+    *(The build output will be used by the Python server)*
 
-```bash
-python -m teleop_xr.ros2 \
-  --head-topic /camera/head/image_raw \
-  --wrist-left-topic /camera/left/image_raw \
-  --wrist-right-topic /camera/right/image_raw
-```
-
-The node automatically handles image transport and compression (requires `cv_bridge`).
-
-## 🐍 Python API (Custom Integration)
-
-For custom Python projects without ROS, use the `Teleop` class directly.
-
-### Basic Usage
-
-```python
-import numpy as np
-from teleop_xr import Teleop, TeleopSettings
-from teleop_xr.messages import XRState
-
-# 1. Configure Settings
-settings = TeleopSettings(
-    host="0.0.0.0",
-    port=4433,
-    input_mode="controller"  # or "hand", "auto"
-)
-
-# 2. Initialize Teleop
-teleop = Teleop(settings=settings)
-
-# 3. Define a Callback
-def on_xr_update(pose: np.ndarray, xr_state_dict: dict):
-    # 'pose' is the calculated end-effector pose (4x4 matrix) based on input mode
-    # 'xr_state_dict' contains the raw device data
-
-    # Optional: Validate with Pydantic for easier access
-    try:
-        state = XRState.model_validate(xr_state_dict)
-        for device in state.devices:
-            print(f"{device.role}: {device.pose.position}")
-    except Exception:
-        pass
-
-# 4. Subscribe and Run
-teleop.subscribe(on_xr_update)
-teleop.run()
-```
+4.  **Run from source:**
+    ```bash
+    # From the root directory
+    uv run python -m teleop_xr.demo
+    ```
 
 ## Acknowledgments
 
 This project is forked from [SpesRobotics/teleop](https://github.com/SpesRobotics/teleop). We are grateful for their foundational work in creating a WebXR-based teleoperation solution.
+
+## License
+
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/qrafty-ai/teleop_xr/blob/main/LICENSE) file for details.

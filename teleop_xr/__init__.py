@@ -1,8 +1,11 @@
+import asyncio
 import os
 import math
 import socket
+import time
 import logging
-from typing import Callable, List, Optional, Dict
+import json
+from typing import Callable, List, Optional, Dict, Any
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -10,7 +13,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import transforms3d as t3d
 import numpy as np
-import json
 
 from teleop_xr.video_stream import (
     VideoStreamConfig,
@@ -61,7 +63,7 @@ def get_local_ip():
         return f"Error: {e}"
 
 
-def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9):
+def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9) -> bool:
     """
     Check if two transformation matrices are close to each other within specified tolerances.
 
@@ -86,7 +88,7 @@ def are_close(a, b=None, lin_tol=1e-9, ang_tol=1e-9):
     return np.allclose(rpy, np.zeros(3), atol=ang_tol)
 
 
-def slerp(q1, q2, t):
+def slerp(q1, q2, t) -> np.ndarray:
     """Spherical linear interpolation between two quaternions."""
     q1 = q1 / np.linalg.norm(q1)
     q2 = q2 / np.linalg.norm(q2)
@@ -113,7 +115,7 @@ def slerp(q1, q2, t):
     return q1 * np.cos(theta) + q3 * np.sin(theta)
 
 
-def interpolate_transforms(T1, T2, alpha):
+def interpolate_transforms(T1, T2, alpha) -> np.ndarray:
     """
     Interpolate between two 4x4 transformation matrices using SLERP + linear translation.
 
@@ -154,24 +156,36 @@ def interpolate_transforms(T1, T2, alpha):
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+    async def register(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            self.active_connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections)
+
+        broken: list[WebSocket] = []
+        for connection in connections:
             try:
                 await connection.send_text(message)
             except Exception:
-                # Remove broken connections
-                self.active_connections.remove(connection)
+                broken.append(connection)
+
+        if broken:
+            async with self._lock:
+                for connection in broken:
+                    if connection in self.active_connections:
+                        self.active_connections.remove(connection)
 
 
 class Teleop:
@@ -218,6 +232,13 @@ class Teleop:
         )
         self.__manager = ConnectionManager()
 
+        self.__ws_connect_lock = asyncio.Lock()
+        self.__control_lock = asyncio.Lock()
+        self.__controller_client_id: Optional[str] = None
+        self.__controller_ws: Optional[WebSocket] = None
+        self.__controller_last_seen_s: float = 0.0
+        self.__ws_client_ids: dict[WebSocket, str] = {}
+
         self.__video_streams: list[VideoStreamConfig] = []
         self.__video_sources: dict[str, VideoSource] = video_sources or {}
         self.__video_sessions: dict[WebSocket, VideoStreamManager] = {}
@@ -237,6 +258,10 @@ class Teleop:
     def input_mode(self):
         return self.__settings.input_mode
 
+    @property
+    def app(self) -> FastAPI:
+        return self.__app
+
     def set_pose(self, pose: np.ndarray) -> None:
         """
         Set the current pose of the end-effector.
@@ -246,15 +271,15 @@ class Teleop:
         """
         self.__pose = pose
 
-    def subscribe(self, callback: Callable[[np.ndarray, dict], None]) -> None:
+    def subscribe(self, callback: Callable[[np.ndarray, Any], None]) -> None:
         """
         Subscribe to receive updates from the teleop module.
 
         Parameters:
-            callback (Callable[[np.ndarray, dict], None]): A callback function that will be called when pose updates are received.
+            callback (Callable[[np.ndarray, dict[str, Any]], None]): A callback function that will be called when pose updates are received.
                 The callback function should take two arguments:
                     - np.ndarray: A 4x4 transformation matrix representing the end-effector target pose.
-                    - dict: A dictionary containing additional information.
+                    - dict[str, Any]: A dictionary containing additional information.
         """
         self.__callbacks.append(callback)
 
@@ -262,7 +287,7 @@ class Teleop:
         for callback in self.__callbacks:
             callback(pose, message)
 
-    def set_video_streams(self, payload: dict) -> None:
+    def set_video_streams(self, payload: Any) -> None:
         self.__video_streams = parse_video_config(payload)
 
     def clear_video_streams(self) -> None:
@@ -283,7 +308,7 @@ class Teleop:
             websocket,
         )
 
-    async def _handle_video_message(self, websocket: WebSocket, message: dict) -> None:
+    async def _handle_video_message(self, websocket: WebSocket, message: Any) -> None:
         msg_type = message.get("type")
         self.__logger.info(f"Received video message: {msg_type}")
 
@@ -437,50 +462,238 @@ class Teleop:
 
         @self.__app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
-            await self.__manager.connect(websocket)
-            self.__logger.info("Client connected")
+            control_timeout_s = 5.0
 
-            # Send config message on connect
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "config",
-                        "data": self.__settings.model_dump(),
-                    }
-                )
-            )
+            await websocket.accept()
 
-            if self.robot_vis:
+            try:
+                await asyncio.wait_for(self.__ws_connect_lock.acquire(), timeout=0.05)
+            except asyncio.TimeoutError:
                 await websocket.send_text(
                     json.dumps(
                         {
-                            "type": "robot_config",
-                            "data": self.robot_vis.get_frontend_config(),
+                            "type": "connection_error",
+                            "data": {
+                                "reason": "connecting",
+                                "message": "WebSocket busy: another client is connecting.",
+                            },
+                        }
+                    )
+                )
+                await websocket.close()
+                return
+
+            try:
+                await self.__manager.register(websocket)
+
+                # Send config message on connect
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "config",
+                            "data": self.__settings.model_dump(),
                         }
                     )
                 )
 
-            if self.__video_streams:
-                await self.__manager.send_personal_message(
-                    json.dumps(
-                        {
-                            "type": "video_config",
-                            "data": {
-                                "streams": [s.__dict__ for s in self.__video_streams]
-                            },
-                        }
-                    ),
-                    websocket,
-                )
+                if self.robot_vis:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "robot_config",
+                                "data": self.robot_vis.get_frontend_config(),
+                            }
+                        )
+                    )
+
+                if self.__video_streams:
+                    await self.__manager.send_personal_message(
+                        json.dumps(
+                            {
+                                "type": "video_config",
+                                "data": {
+                                    "streams": [
+                                        s.__dict__ for s in self.__video_streams
+                                    ]
+                                },
+                            }
+                        ),
+                        websocket,
+                    )
+            finally:
+                self.__ws_connect_lock.release()
+
+            self.__logger.info("Client connected")
+
+            async def close_video_sessions_for_client_id(
+                client_id_to_close: str,
+            ) -> None:
+                to_close: list[tuple[WebSocket, VideoStreamManager]] = []
+                for ws, session in list(self.__video_sessions.items()):
+                    ws_id = self.__ws_client_ids.get(ws)
+                    if ws_id == client_id_to_close:
+                        to_close.append((ws, session))
+
+                for ws, session in to_close:
+                    await session.close()
+                    self.__video_sessions.pop(ws, None)
+
+            async def close_video_sessions_not_matching(controller_id: str) -> None:
+                to_close: list[tuple[WebSocket, VideoStreamManager]] = []
+                for ws, session in list(self.__video_sessions.items()):
+                    ws_id = self.__ws_client_ids.get(ws)
+                    if ws_id != controller_id:
+                        to_close.append((ws, session))
+
+                for ws, session in to_close:
+                    await session.close()
+                    self.__video_sessions.pop(ws, None)
+
+            async def check_or_claim_control(
+                claimed_client_id: str,
+            ) -> tuple[bool, Optional[str]]:
+                expired_controller: Optional[str] = None
+                newly_claimed: Optional[str] = None
+
+                async with self.__control_lock:
+                    now = time.monotonic()
+                    if (
+                        self.__controller_client_id is not None
+                        and (now - self.__controller_last_seen_s) > control_timeout_s
+                    ):
+                        expired_controller = self.__controller_client_id
+                        self.__controller_client_id = None
+                        self.__controller_ws = None
+                        self.__controller_last_seen_s = 0.0
+
+                    if self.__controller_client_id is None:
+                        self.__controller_client_id = claimed_client_id
+                        newly_claimed = claimed_client_id
+
+                    in_control = self.__controller_client_id == claimed_client_id
+                    if in_control:
+                        self.__controller_ws = websocket
+                        self.__controller_last_seen_s = now
+
+                    controller_id = self.__controller_client_id
+
+                if expired_controller is not None:
+                    await close_video_sessions_for_client_id(expired_controller)
+
+                if newly_claimed is not None:
+                    await close_video_sessions_not_matching(newly_claimed)
+
+                return in_control, controller_id
 
             try:
                 while True:
                     data = await websocket.receive_text()
                     message = json.loads(data)
 
-                    if message.get("type") == "xr_state":
+                    msg_type = message.get("type")
+                    client_id = message.get("client_id")
+                    if isinstance(client_id, str) and client_id:
+                        self.__ws_client_ids[websocket] = client_id
+
+                    if msg_type == "control_check":
+                        if not isinstance(client_id, str) or not client_id:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "control_status",
+                                        "data": {
+                                            "in_control": False,
+                                            "controller_client_id": self.__controller_client_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
+                        in_control, controller_id = await check_or_claim_control(
+                            client_id
+                        )
+
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "control_status",
+                                    "data": {
+                                        "in_control": in_control,
+                                        "controller_client_id": controller_id,
+                                    },
+                                }
+                            )
+                        )
+                        continue
+
+                    if msg_type == "xr_state":
+                        if not isinstance(client_id, str) or not client_id:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "deny",
+                                        "data": {
+                                            "reason": "missing_client_id",
+                                            "controller_client_id": self.__controller_client_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
+                        allowed, controller_id = await check_or_claim_control(client_id)
+                        if not allowed:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "deny",
+                                        "data": {
+                                            "reason": "not_in_control",
+                                            "controller_client_id": controller_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
                         self.__handle_xr_state(message["data"])
-                    elif message.get("type") == "console_log":
+                        continue
+
+                    if msg_type in {"video_request", "video_answer", "video_ice"}:
+                        if not isinstance(client_id, str) or not client_id:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "deny",
+                                        "data": {
+                                            "reason": "missing_client_id",
+                                            "controller_client_id": self.__controller_client_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
+                        allowed, controller_id = await check_or_claim_control(client_id)
+                        if not allowed:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "deny",
+                                        "data": {
+                                            "reason": "not_in_control",
+                                            "controller_client_id": controller_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
+                        await self._handle_video_message(websocket, message)
+                        continue
+
+                    if msg_type == "console_log":
                         # Stream console logs from WebXR to terminal
                         log_data = message.get("data", {})
                         level = log_data.get("level", "log")
@@ -491,18 +704,25 @@ class Teleop:
                             continue
 
                         self.__logger.info(f"[WebXR:{level}] {msg}")
-                    elif message.get("type") in {
-                        "video_request",
-                        "video_answer",
-                        "video_ice",
-                    }:
-                        await self._handle_video_message(websocket, message)
 
             except WebSocketDisconnect:
+                pass
+            finally:
+                disconnected_client_id = self.__ws_client_ids.pop(websocket, None)
+                if disconnected_client_id is not None:
+                    async with self.__control_lock:
+                        if (
+                            self.__controller_ws is websocket
+                            and self.__controller_client_id == disconnected_client_id
+                        ):
+                            self.__controller_client_id = None
+                            self.__controller_ws = None
+                            self.__controller_last_seen_s = 0.0
+
                 session = self.__video_sessions.pop(websocket, None)
                 if session:
                     await session.close()
-                self.__manager.disconnect(websocket)
+                await self.__manager.disconnect(websocket)
                 self.__logger.info("Client disconnected")
 
         self.__app.mount(mount_path, StaticFiles(directory=static_dir), name=mount_name)

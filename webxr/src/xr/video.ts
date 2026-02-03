@@ -1,3 +1,5 @@
+import { getClientId } from "./client_id";
+
 export type VideoStats = {
 	state: string;
 	streams: Array<{
@@ -15,6 +17,10 @@ export class VideoClient {
 	private ws: WebSocket;
 	private pc: RTCPeerConnection | null = null;
 	private statsTimer: number | null = null;
+	private clientId = getClientId();
+	private inControl = false;
+	private controlPollTimer: number | null = null;
+	private waitingForOffer = false;
 
 	constructor(
 		url: string,
@@ -24,12 +30,45 @@ export class VideoClient {
 		this.ws = new WebSocket(url);
 		this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
 		this.ws.onopen = () => {
-			this.ws.send(JSON.stringify({ type: "video_request" }));
+			this.inControl = false;
+			this.waitingForOffer = false;
+			this.sendControlCheck();
+			this.startControlPolling();
 		};
 	}
 
 	private async handleMessage(msg: { type: string; data: unknown }) {
+		if (msg.type === "deny") {
+			this.inControl = false;
+			this.waitingForOffer = false;
+			this.closePeerConnection();
+			this.startControlPolling();
+			return;
+		}
+
+		if (msg.type === "control_status") {
+			// biome-ignore lint/suspicious/noExplicitAny: external message
+			const inControl = Boolean((msg as any).data?.in_control);
+			this.inControl = inControl;
+			if (inControl) {
+				this.stopControlPolling();
+				if (!this.pc && !this.waitingForOffer) {
+					this.waitingForOffer = true;
+					this.ws.send(
+						JSON.stringify({
+							type: "video_request",
+							client_id: this.clientId,
+						}),
+					);
+				}
+			} else {
+				this.startControlPolling();
+			}
+			return;
+		}
+
 		if (msg.type === "video_offer") {
+			this.waitingForOffer = false;
 			this.pc = new RTCPeerConnection();
 			this.pc.ontrack = (event) => {
 				if (this.onTrack && event.track.kind === "video") {
@@ -43,7 +82,11 @@ export class VideoClient {
 			this.pc.onicecandidate = (e) => {
 				if (e.candidate) {
 					this.ws.send(
-						JSON.stringify({ type: "video_ice", data: e.candidate }),
+						JSON.stringify({
+							type: "video_ice",
+							client_id: this.clientId,
+							data: e.candidate,
+						}),
 					);
 				}
 			};
@@ -53,6 +96,7 @@ export class VideoClient {
 			this.ws.send(
 				JSON.stringify({
 					type: "video_answer",
+					client_id: this.clientId,
 					data: this.pc.localDescription,
 				}),
 			);
@@ -60,6 +104,47 @@ export class VideoClient {
 		}
 		if (msg.type === "video_ice" && this.pc) {
 			await this.pc.addIceCandidate(msg.data as RTCIceCandidateInit);
+		}
+	}
+
+	private startControlPolling() {
+		if (this.controlPollTimer !== null) {
+			return;
+		}
+		this.controlPollTimer = window.setInterval(() => {
+			this.sendControlCheck();
+		}, 1000);
+	}
+
+	private stopControlPolling() {
+		if (this.controlPollTimer === null) {
+			return;
+		}
+		window.clearInterval(this.controlPollTimer);
+		this.controlPollTimer = null;
+	}
+
+	private sendControlCheck() {
+		if (this.ws.readyState !== WebSocket.OPEN) {
+			return;
+		}
+		this.ws.send(
+			JSON.stringify({
+				type: "control_check",
+				client_id: this.clientId,
+				data: {},
+			}),
+		);
+	}
+
+	private closePeerConnection() {
+		if (this.statsTimer !== null) {
+			window.clearInterval(this.statsTimer);
+			this.statsTimer = null;
+		}
+		if (this.pc) {
+			this.pc.close();
+			this.pc = null;
 		}
 	}
 

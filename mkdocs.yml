@@ -57,3 +57,4 @@ nav:
   - Interfaces:
     - Generic Python API: generic.md
     - ROS2 Interface: ros2.md
+  - API Reference: api.md

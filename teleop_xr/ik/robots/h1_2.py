@@ -9,6 +9,7 @@ import pyroki as pk
 import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
+from teleop_xr.config import RobotVisConfig
 
 
 class UnitreeH1Robot(BaseRobot):
@@ -18,19 +19,20 @@ class UnitreeH1Robot(BaseRobot):
 
     def __init__(self) -> None:
         # Load URDF from assets
-        urdf_path = os.path.abspath(
+        self.urdf_path = os.path.abspath(
             os.path.join(
                 os.path.dirname(__file__), "..", "..", "assets", "h1_2", "h1_2.urdf"
             )
         )
-        if not os.path.exists(urdf_path):
+        if not os.path.exists(self.urdf_path):
             # Fallback for different working directories
-            urdf_path = os.path.join("teleop_xr", "assets", "h1_2", "h1_2.urdf")
+            self.urdf_path = os.path.join("teleop_xr", "assets", "h1_2", "h1_2.urdf")
 
-        if not os.path.exists(urdf_path):
-            raise FileNotFoundError(f"H1_2 URDF not found at {urdf_path}")
+        if not os.path.exists(self.urdf_path):
+            raise FileNotFoundError(f"H1_2 URDF not found at {self.urdf_path}")
 
-        urdf = yourdfpy.URDF.load(urdf_path)
+        self.mesh_path = os.path.dirname(self.urdf_path)
+        urdf = yourdfpy.URDF.load(self.urdf_path)
 
         # Identify leg joints names to freeze
         self.leg_joint_names = [
@@ -61,6 +63,14 @@ class UnitreeH1Robot(BaseRobot):
         self.L_ee_link_idx = self.robot.links.names.index(self.L_ee)
         self.R_ee_link_idx = self.robot.links.names.index(self.R_ee)
         self.torso_link_idx = self.robot.links.names.index("torso_link")
+
+    def get_vis_config(self) -> RobotVisConfig:
+        return RobotVisConfig(
+            urdf_path=self.urdf_path,
+            mesh_path=self.mesh_path,
+            model_scale=0.5,
+            initial_rotation_euler=[0.0, 0.0, 1.57079632679],  # Math.PI / 2
+        )
 
     @property
     def joint_var_cls(self) -> Any:

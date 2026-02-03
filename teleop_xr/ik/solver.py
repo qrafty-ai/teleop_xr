@@ -2,17 +2,21 @@ import jax
 import jax.numpy as jnp
 import jaxls
 import jaxlie
-from typing import Any
+from typing import Callable
 from teleop_xr.ik.robot import BaseRobot
 
 
 class PyrokiSolver:
     """
-    IK solver using Pyroki and jaxls.
+    Inverse Kinematics (IK) solver using Pyroki and jaxls.
+
+    This solver uses optimization (Least Squares) to find joint configurations
+    that satisfy target poses for the robot's end-effectors and head.
+    It leverages JAX for high-performance, JIT-compiled solving.
     """
 
     robot: BaseRobot
-    _jit_solve: Any  # Type: Callable[[jaxlie.SE3, jaxlie.SE3, jaxlie.SE3, jnp.ndarray], jnp.ndarray]
+    _jit_solve: Callable[[jaxlie.SE3, jaxlie.SE3, jaxlie.SE3, jnp.ndarray], jnp.ndarray]
 
     def __init__(self, robot: BaseRobot):
         """
@@ -38,6 +42,15 @@ class PyrokiSolver:
     ) -> jnp.ndarray:
         """
         Internal solve function that will be JIT-compiled.
+
+        Args:
+            target_L: Target pose for the left end-effector.
+            target_R: Target pose for the right end-effector.
+            target_Head: Target pose for the head.
+            q_current: Current joint configuration (initial guess).
+
+        Returns:
+            jnp.ndarray: Optimized joint configuration.
         """
         # 1. Build costs from the robot
         costs = self.robot.build_costs(target_L, target_R, target_Head)
@@ -88,11 +101,11 @@ class PyrokiSolver:
             q_current: Current joint configuration (initial guess).
 
         Returns:
-            Optimized joint configuration.
+            jnp.ndarray: Optimized joint configuration.
         """
         return self._jit_solve(target_L, target_R, target_Head, q_current)
 
-    def _warmup(self):
+    def _warmup(self) -> None:
         """
         Triggers JIT compilation by running a solve with dummy data.
         """
