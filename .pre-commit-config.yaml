@@ -13,7 +13,7 @@ repos:
     rev: v18.1.8
     hooks:
     -   id: clang-format
-        exclude: \.(ts|tsx|js|jsx|json)$
+        exclude: \.(ts|tsx|js|jsx|json|mjs|cjs)$
         args: ["--style=file"]
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
