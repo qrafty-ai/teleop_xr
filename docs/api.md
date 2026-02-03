@@ -80,11 +80,6 @@ This page provides a comprehensive reference for all modules in the `teleop_xr` 
     options:
         show_root_heading: true
 
-### teleop_xr.utils.jacobi_robot
-::: teleop_xr.utils.jacobi_robot
-    options:
-        show_root_heading: true
-
 ### teleop_xr.common_cli
 ::: teleop_xr.common_cli
     options:
