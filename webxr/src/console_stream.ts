@@ -1,3 +1,5 @@
+import { getClientId } from "./client_id";
+
 /**
  * Console log streaming utility for Quest VR debugging.
  * Intercepts console.log/warn/error and sends to Python server via WebSocket.
@@ -5,6 +7,7 @@
 
 let ws: WebSocket | null = null;
 let messageQueue: string[] = [];
+const clientId = getClientId();
 const originalConsole = {
 	log: console.log.bind(console),
 	warn: console.warn.bind(console),
@@ -20,6 +23,7 @@ function sendLog(level: string, args: any[]) {
 
 	const payload = JSON.stringify({
 		type: "console_log",
+		client_id: clientId,
 		data: { level, message },
 	});
 

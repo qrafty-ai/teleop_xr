@@ -20,6 +20,7 @@ def test_external_video_source():
 
     ok, read_frame = source.read()
     assert ok
+    assert read_frame is not None
     assert np.array_equal(frame, read_frame)
 
 
@@ -47,6 +48,7 @@ def test_opencv_video_source_mock():
         assert source.grabbed
         ok, read_frame = source.read()
         assert ok
+        assert read_frame is not None
         assert np.array_equal(frame, read_frame)
 
         source.start()
