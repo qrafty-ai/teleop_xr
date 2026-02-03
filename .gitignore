@@ -12,4 +12,5 @@ uv.lock
 teleop_xr/_version.py
 coverage.xml
 .coverage
+.sisyphus/evidence
 htmlcov/
