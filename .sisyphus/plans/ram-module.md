@@ -52,10 +52,10 @@ Enable dynamic fetching and processing of robot descriptions (URDF/Xacro) from g
 - New test file `tests/test_ram.py`.
 
 ### Definition of Done
-- [ ] `ram.get_asset()` successfully clones/fetches a remote repo.
-- [ ] `package://` paths in URDFs are resolved to correct relative paths on disk.
-- [ ] Xacro files are converted to URDF with provided arguments.
-- [ ] Tests pass offline using local fixtures.
+- [x] `ram.get_asset()` successfully clones/fetches a remote repo.
+- [x] `package://` paths in URDFs are resolved to correct relative paths on disk.
+- [x] Xacro files are converted to URDF with provided arguments.
+- [x] Tests pass offline using local fixtures.
 
 ### Must Have
 - Caching mechanism to avoid re-downloading if commit hash/branch hasn't changed (or if TTL is valid).
@@ -131,9 +131,9 @@ Wave 2 (After Wave 1):
   - **Blocks**: Task 3
 
   **Acceptance Criteria**:
-  - [ ] `grep "gitpython" pyproject.toml` returns match
-  - [ ] `grep "xacro" pyproject.toml` returns match
-  - [ ] `uv run python -c "import git; import xacro; print('ok')"` returns "ok"
+  - [x] `grep "gitpython" pyproject.toml` returns match
+  - [x] `grep "xacro" pyproject.toml` returns match
+  - [x] `uv run python -c "import git; import xacro; print('ok')"` returns "ok"
 
 - [x] 2. Create RAM Test Suite (TDD)
 
@@ -157,8 +157,8 @@ Wave 2 (After Wave 1):
   - **Blocks**: Task 3
 
   **Acceptance Criteria**:
-  - [ ] `tests/test_ram.py` exists.
-  - [ ] `uv run pytest tests/test_ram.py` runs (may fail or skip, but files exist).
+  - [x] `tests/test_ram.py` exists.
+  - [x] `uv run pytest tests/test_ram.py` runs (may fail or skip, but files exist).
 
 - [x] 3. Implement RAM Module Core
 
@@ -187,9 +187,9 @@ Wave 2 (After Wave 1):
   - **Blocked By**: Task 1, Task 2
 
   **Acceptance Criteria**:
-  - [ ] `uv run pytest tests/test_ram.py` passes.
-  - [ ] Function `get_resource` returns valid Path object.
-  - [ ] `package://` paths are correctly resolved in output.
+  - [x] `uv run pytest tests/test_ram.py` passes.
+  - [x] Function `get_resource` returns valid Path object.
+  - [x] `package://` paths are correctly resolved in output.
 
 ---
 
@@ -201,6 +201,6 @@ uv run pytest tests/test_ram.py
 ```
 
 ### Final Checklist
-- [ ] `gitpython` and `xacro` installed.
-- [ ] `teleop_xr/ram.py` implements caching and processing.
-- [ ] Tests cover xacro conversion and path replacement.
+- [x] `gitpython` and `xacro` installed.
+- [x] `teleop_xr/ram.py` implements caching and processing.
+- [x] Tests cover xacro conversion and path replacement.

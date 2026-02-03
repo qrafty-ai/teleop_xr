@@ -28,47 +28,25 @@ def _get_repo_dir(repo_url: str, cache_dir: Path) -> Path:
     return cache_dir / "repos" / f"{repo_name}_{url_hash}"
 
 
-def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
-    """Replace package:// URI with relative paths to files in the repo."""
+def _replace_package_uris(urdf_content: str) -> str:
+    """
+    Replace package:// URI with paths relative to the repository root.
+    Currently, we strip the package name and keep the remaining path.
+    """
 
-    # Find all package://<pkg_name>/ sequences
-    # We assume the first part of the path is the package name,
-    # and in RAM context, we map it to the repo root.
-    def replace_match(match):
-        match.group(1)
-        relative_path = match.group(2)
-        # For RAM, we assume the repo root is the package root for all packages in it
-        # or we just strip the package://<pkg_name>/ prefix and use the relative path
-        return relative_path
-
-    # Regex to match package://[anything until next /]/
-
-    # Actually, simpler: just replace package://<any>/ with nothing
-    # so that the remaining path is relative to the URDF file location if URDF is at root,
-    # but URDF might be in a subdir.
-
-    # Better: find absolute path in repo
     def resolve_uri(match):
-        match.group(1)
+        # match.group(1) is the package name
         sub_path = match.group(2)
-        # We assume the repo_root is where we should look for the sub_path
-        # In many ROS repos, the repo contains multiple packages.
-        # For now, we'll just return the sub_path and assume the consumer knows how to handle it
-        # relative to the repo root.
         return sub_path
 
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
 
-def get_asset(
-    repo_url: str,
-    path_inside_repo: str,
-    branch: Optional[str] = None,
-    cache_dir: Optional[Path] = None,
-    xacro_args: Optional[Dict[str, str]] = None,
+def get_repo(
+    repo_url: str, branch: Optional[str] = None, cache_dir: Optional[Path] = None
 ) -> Path:
     """
-    Fetch a robot asset from a git repository and return its path.
+    Fetch a git repository into the cache and return its local path.
     """
     if cache_dir is None:
         cache_dir = get_cache_root()
@@ -88,52 +66,68 @@ def get_asset(
             # Update repo
             repo = git.Repo(repo_dir)
             if branch:
-                repo.git.checkout(branch)
+                try:
+                    repo.git.checkout(branch)
+                except git.exc.GitCommandError:
+                    # If checkout fails, try fetching first
+                    repo.remotes.origin.fetch()
+                    repo.git.checkout(branch)
             repo.remotes.origin.pull()
 
-    # Resolve file path
+    return repo_dir
+
+
+def process_xacro(xacro_path: Path, mappings: Optional[Dict[str, str]] = None) -> str:
+    """
+    Process a xacro file and return the URDF XML string with package:// URIs resolved.
+    """
+    doc = xacro.process_file(str(xacro_path), mappings=mappings)
+    urdf_xml = doc.toprettyxml(indent="  ")
+    return _replace_package_uris(urdf_xml)
+
+
+def get_resource(
+    repo_url: str,
+    path_inside_repo: str,
+    branch: Optional[str] = None,
+    cache_dir: Optional[Path] = None,
+    xacro_args: Optional[Dict[str, str]] = None,
+) -> Path:
+    """
+    Main entry point for fetching a robot resource.
+    """
+    if cache_dir is None:
+        cache_dir = get_cache_root()
+
+    repo_dir = get_repo(repo_url, branch=branch, cache_dir=cache_dir)
     file_path = repo_dir / path_inside_repo
+
     if not file_path.exists():
         raise FileNotFoundError(
             f"Asset {path_inside_repo} not found in repo {repo_url}"
         )
 
-    output_urdf_path = file_path
+    processed_dir = cache_dir / "processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # Handle Xacro
+    # Unique name for output based on repo URL, path and args
+    arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
+    content_hash = hashlib.sha256(
+        (repo_url + path_inside_repo + arg_str).encode()
+    ).hexdigest()[:12]
+    output_urdf_path = processed_dir / f"{file_path.stem}_{content_hash}.urdf"
+
     if file_path.suffix == ".xacro" or ".urdf.xacro" in file_path.name:
-        processed_dir = cache_dir / "processed"
-        processed_dir.mkdir(parents=True, exist_ok=True)
-
-        # Unique name for output based on repo URL, path and args
-        arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
-        content_hash = hashlib.sha256(
-            (repo_url + path_inside_repo + arg_str).encode()
-        ).hexdigest()[:12]
-        output_urdf_path = processed_dir / f"{file_path.stem}_{content_hash}.urdf"
-
-        # Process xacro
-        doc = xacro.process_file(str(file_path), mappings=xacro_args)
-        urdf_xml = doc.toprettyxml(indent="  ")
-
-        # Replace package:// URIs
-        urdf_xml = _replace_package_uris(urdf_xml, repo_dir)
-
-        output_urdf_path.write_text(urdf_xml)
+        urdf_content = process_xacro(file_path, mappings=xacro_args)
+        output_urdf_path.write_text(urdf_content)
     else:
-        # For plain URDF, we might still want to replace package:// URIs
-        # but we don't want to modify the original file in the repo.
-        # We'll copy it to processed dir.
-        processed_dir = cache_dir / "processed"
-        processed_dir.mkdir(parents=True, exist_ok=True)
-
-        content_hash = hashlib.sha256(
-            (repo_url + path_inside_repo).encode()
-        ).hexdigest()[:12]
-        output_urdf_path = processed_dir / f"{file_path.stem}_{content_hash}.urdf"
-
+        # For plain URDF
         content = file_path.read_text()
-        content = _replace_package_uris(content, repo_dir)
+        content = _replace_package_uris(content)
         output_urdf_path.write_text(content)
 
     return output_urdf_path
+
+
+# Alias get_asset to get_resource for backward compatibility if any
+get_asset = get_resource
