@@ -197,16 +197,27 @@ export class RobotModelSystem extends createSystem({}) {
 
 					for (const m of mats) {
 						// Ensure texture encoding is correct for standard materials
-						// biome-ignore lint/suspicious/noExplicitAny: Check for map property safely
-						if ((m as any).map && (m as any).map instanceof Texture) {
-							(m as any).map.colorSpace = SRGBColorSpace;
-							(m as any).map.needsUpdate = true;
+						const textureMap = this.getTextureMap(m);
+						if (textureMap) {
+							textureMap.colorSpace = SRGBColorSpace;
+							textureMap.needsUpdate = true;
 						}
 						m.needsUpdate = true;
 					}
 				}
 			}
 		});
+	}
+
+	private getTextureMap(material: unknown): Texture | null {
+		if (typeof material !== "object" || material === null) {
+			return null;
+		}
+		if (!("map" in material)) {
+			return null;
+		}
+		const map = (material as { map?: unknown }).map;
+		return map instanceof Texture ? map : null;
 	}
 
 	onRobotState(data: { joints: Record<string, number> }) {
