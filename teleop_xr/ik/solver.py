@@ -16,7 +16,10 @@ class PyrokiSolver:
     """
 
     robot: BaseRobot
-    _jit_solve: Callable[[jaxlie.SE3, jaxlie.SE3, jaxlie.SE3, jnp.ndarray], jnp.ndarray]
+    _jit_solve: Callable[
+        [jaxlie.SE3 | None, jaxlie.SE3 | None, jaxlie.SE3 | None, jnp.ndarray],
+        jnp.ndarray,
+    ]
 
     def __init__(self, robot: BaseRobot):
         """
@@ -35,9 +38,9 @@ class PyrokiSolver:
 
     def _solve_internal(
         self,
-        target_L: jaxlie.SE3,
-        target_R: jaxlie.SE3,
-        target_Head: jaxlie.SE3,
+        target_L: jaxlie.SE3 | None,
+        target_R: jaxlie.SE3 | None,
+        target_Head: jaxlie.SE3 | None,
         q_current: jnp.ndarray,
     ) -> jnp.ndarray:
         """
@@ -86,9 +89,9 @@ class PyrokiSolver:
 
     def solve(
         self,
-        target_L: jaxlie.SE3,
-        target_R: jaxlie.SE3,
-        target_Head: jaxlie.SE3,
+        target_L: jaxlie.SE3 | None,
+        target_R: jaxlie.SE3 | None,
+        target_Head: jaxlie.SE3 | None,
         q_current: jnp.ndarray,
     ) -> jnp.ndarray:
         """
@@ -110,14 +113,14 @@ class PyrokiSolver:
         Triggers JIT compilation by running a solve with dummy data.
         """
         try:
-            # Use default config as initial guess
             q_dummy = self.robot.get_default_config()
-
-            # Use identity poses as dummy targets
             target_dummy = jaxlie.SE3.identity()
 
-            # Run solve to trigger JIT
             self.solve(target_dummy, target_dummy, target_dummy, q_dummy)
+
+            self.solve(target_dummy, None, None, q_dummy)
+            self.solve(None, target_dummy, None, q_dummy)
+            self.solve(None, None, target_dummy, q_dummy)
         except Exception:
             # Warmup might fail if robot is a mock or not fully implemented yet.
             # We don't want to crash during initialization in that case.

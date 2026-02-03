@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import io
 import os
 from typing import Any
 
@@ -17,22 +18,29 @@ class UnitreeH1Robot(BaseRobot):
     Unitree H1_2 robot implementation for IK.
     """
 
-    def __init__(self) -> None:
-        # Load URDF from assets
-        self.urdf_path = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "..", "assets", "h1_2", "h1_2.urdf"
+    def __init__(self, urdf_string: str | None = None) -> None:
+        if urdf_string:
+            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
+            self.urdf_path = ""
+            self.mesh_path = ""
+        else:
+            # Load URDF from assets
+            self.urdf_path = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), "..", "..", "assets", "h1_2", "h1_2.urdf"
+                )
             )
-        )
-        if not os.path.exists(self.urdf_path):
-            # Fallback for different working directories
-            self.urdf_path = os.path.join("teleop_xr", "assets", "h1_2", "h1_2.urdf")
+            if not os.path.exists(self.urdf_path):
+                # Fallback for different working directories
+                self.urdf_path = os.path.join(
+                    "teleop_xr", "assets", "h1_2", "h1_2.urdf"
+                )
 
-        if not os.path.exists(self.urdf_path):
-            raise FileNotFoundError(f"H1_2 URDF not found at {self.urdf_path}")
+            if not os.path.exists(self.urdf_path):
+                raise FileNotFoundError(f"H1_2 URDF not found at {self.urdf_path}")
 
-        self.mesh_path = os.path.dirname(self.urdf_path)
-        urdf = yourdfpy.URDF.load(self.urdf_path)
+            self.mesh_path = os.path.dirname(self.urdf_path)
+            urdf = yourdfpy.URDF.load(self.urdf_path)
 
         # Identify leg joints names to freeze
         self.leg_joint_names = [
@@ -64,7 +72,9 @@ class UnitreeH1Robot(BaseRobot):
         self.R_ee_link_idx = self.robot.links.names.index(self.R_ee)
         self.torso_link_idx = self.robot.links.names.index("torso_link")
 
-    def get_vis_config(self) -> RobotVisConfig:
+    def get_vis_config(self) -> RobotVisConfig | None:
+        if not self.urdf_path:
+            return None
         return RobotVisConfig(
             urdf_path=self.urdf_path,
             mesh_path=self.mesh_path,
@@ -78,6 +88,10 @@ class UnitreeH1Robot(BaseRobot):
         The jaxls.Var class used for joint configurations.
         """
         return self.robot.joint_var_cls
+
+    @property
+    def actuated_joint_names(self) -> list[str]:
+        return list(self.robot.joints.actuated_names)
 
     def forward_kinematics(self, config: jax.Array) -> dict[str, jaxlie.SE3]:
         """
@@ -94,7 +108,10 @@ class UnitreeH1Robot(BaseRobot):
         return jnp.zeros_like(self.robot.joints.lower_limits)
 
     def build_costs(
-        self, target_L: jaxlie.SE3, target_R: jaxlie.SE3, target_Head: jaxlie.SE3
+        self,
+        target_L: jaxlie.SE3 | None,
+        target_R: jaxlie.SE3 | None,
+        target_Head: jaxlie.SE3 | None,
     ) -> list[Cost]:
         """
         Build a list of Pyroki cost objects.
@@ -104,27 +121,29 @@ class UnitreeH1Robot(BaseRobot):
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency
-        costs.append(
-            pk.costs.pose_cost_analytic_jac(
-                self.robot,
-                JointVar(0),
-                target_L,
-                jnp.array(self.L_ee_link_idx, dtype=jnp.int32),
-                pos_weight=50.0,
-                ori_weight=10.0,
+        if target_L is not None:
+            costs.append(
+                pk.costs.pose_cost_analytic_jac(
+                    self.robot,
+                    JointVar(0),
+                    target_L,
+                    jnp.array(self.L_ee_link_idx, dtype=jnp.int32),
+                    pos_weight=50.0,
+                    ori_weight=10.0,
+                )
             )
-        )
 
-        costs.append(
-            pk.costs.pose_cost_analytic_jac(
-                self.robot,
-                JointVar(0),
-                target_R,
-                jnp.array(self.R_ee_link_idx, dtype=jnp.int32),
-                pos_weight=50.0,
-                ori_weight=10.0,
+        if target_R is not None:
+            costs.append(
+                pk.costs.pose_cost_analytic_jac(
+                    self.robot,
+                    JointVar(0),
+                    target_R,
+                    jnp.array(self.R_ee_link_idx, dtype=jnp.int32),
+                    pos_weight=50.0,
+                    ori_weight=10.0,
+                )
             )
-        )
 
         costs.append(
             pk.costs.limit_cost(  # pyright: ignore[reportCallIssue]
@@ -132,15 +151,16 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        costs.append(
-            pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
-                robot=self.robot,
-                joint_var=JointVar(0),
-                target_pose=target_Head,
-                target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
-                pos_weight=0.0,
-                ori_weight=jnp.array([0.0, 0.0, 20.0]),
+        if target_Head is not None:
+            costs.append(
+                pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
+                    robot=self.robot,
+                    joint_var=JointVar(0),
+                    target_pose=target_Head,
+                    target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
+                    pos_weight=0.0,
+                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
+                )
             )
-        )
 
         return costs
