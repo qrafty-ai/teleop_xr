@@ -10,6 +10,7 @@ import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
+from teleop_xr import ram
 
 
 class UnitreeH1Robot(BaseRobot):
@@ -18,19 +19,13 @@ class UnitreeH1Robot(BaseRobot):
     """
 
     def __init__(self) -> None:
-        # Load URDF from assets
-        self.urdf_path = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "..", "assets", "h1_2", "h1_2.urdf"
+        # Load URDF from external repository via RAM
+        self.urdf_path = str(
+            ram.get_resource(
+                repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
+                path_inside_repo="assets/h1_2/h1_2.urdf",
             )
         )
-        if not os.path.exists(self.urdf_path):
-            # Fallback for different working directories
-            self.urdf_path = os.path.join("teleop_xr", "assets", "h1_2", "h1_2.urdf")
-
-        if not os.path.exists(self.urdf_path):
-            raise FileNotFoundError(f"H1_2 URDF not found at {self.urdf_path}")
-
         self.mesh_path = os.path.dirname(self.urdf_path)
         urdf = yourdfpy.URDF.load(self.urdf_path)
 
