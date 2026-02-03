@@ -92,6 +92,30 @@ teleop = Teleop(settings=settings)
 teleop.run()
 ```
 
+## 4. Camera & Video Streaming
+
+TeleopXR can transmit live camera streams from your robot or workstation into the WebXR scene. Define `VideoStreamConfig` objects for each camera and pass them inside `TeleopSettings.video_config` so the frontend automatically subscribes to the tracks.
+
+```python
+from teleop_xr import Teleop, TeleopSettings
+from teleop_xr.video_stream import VideoStreamConfig
+
+stream_configs = [
+    VideoStreamConfig(id="head", device=0, width=1280, height=720, fps=30),
+    VideoStreamConfig(id="hand", device=1, width=1280, height=720, fps=30),
+]
+
+settings = TeleopSettings(video_config={"streams": [cfg.model_dump() for cfg in stream_configs]})
+teleop = Teleop(settings=settings)
+teleop.run()
+```
+
+If you need to feed frames from ROS topics, file playback, or other sources, subclass `ExternalVideoSource` or call `put_frame` on it directly to inject numpy arrays into the stream manager.
+
+## 5. IK / Teleoperation Algorithm
+
+The modular IK stack allows you to map 6DoF XR poses directly to robot joint configurations using a JAX-powered optimizer.
+
 ## 4. IK / Teleoperation Algorithm
 
 The modular IK stack allows you to map 6DoF XR poses directly to robot joint configurations using a JAX-powered optimizer.
