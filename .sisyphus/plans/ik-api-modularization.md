@@ -61,10 +61,10 @@ Create a clean, well-documented IK API that users can easily import and integrat
 - Type hints and docstrings on all public interfaces
 
 ### Definition of Done
-- [ ] `python -c "from teleop_xr.ik import BaseRobot, PyrokiSolver, IKController; print('ok')"` outputs "ok"
-- [ ] `pytest tests/test_ik_*.py` passes with new tests
-- [ ] `python -m teleop_xr.ros2 --help` shows `--mode` option
-- [ ] Existing demo functionality unchanged: `python -m teleop_xr.demo --mode ik` works
+- [x] `python -c "from teleop_xr.ik import BaseRobot, PyrokiSolver, IKController; print('ok')"` outputs "ok"
+- [x] `pytest tests/test_ik_*.py` passes with new tests
+- [x] `python -m teleop_xr.ros2 --help` shows `--mode` option
+- [x] Existing demo functionality unchanged: `python -m teleop_xr.demo --mode ik` works
 
 ### Must Have
 - Clean imports: `from teleop_xr.ik import BaseRobot, PyrokiSolver, IKController`
@@ -160,7 +160,7 @@ Wave 3 (After Wave 2):
 
 ## TODOs
 
-- [ ] 1. Create IK Module Public API Exports
+- [x] 1. Create IK Module Public API Exports
 
   **What to do**:
   - Update `teleop_xr/ik/__init__.py` to export: `BaseRobot`, `PyrokiSolver`, `IKController`
@@ -310,7 +310,7 @@ Wave 3 (After Wave 2):
 
 ---
 
-- [ ] 4. Add ROS2 --mode ik Flag
+- [x] 4. Add ROS2 --mode ik Flag
 
   **What to do**:
   - Add `mode: Literal["teleop", "ik"]` field to `Ros2CLI` dataclass in `teleop_xr/ros2/__main__.py`
@@ -358,7 +358,7 @@ Wave 3 (After Wave 2):
 
 ---
 
-- [ ] 5. Implement ROS2 IK Worker with JointState/JointTrajectory
+- [x] 5. Implement ROS2 IK Worker with JointState/JointTrajectory
 
   **What to do**:
   - Import IK components: `UnitreeH1Robot`, `PyrokiSolver`, `IKController`
@@ -453,17 +453,17 @@ python -m teleop_xr.demo --help
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present:
-  - [ ] Clean imports from teleop_xr.ik
-  - [ ] ROS2 --mode ik flag
-  - [ ] JointState subscriber
-  - [ ] JointTrajectory publisher
-  - [ ] Backward compatibility with demo
-- [ ] All "Must NOT Have" absent:
-  - [ ] No Pinocchio/JacobiRobot exports
-  - [ ] No new robot implementations
-  - [ ] No optional target handling
-  - [ ] No breaking changes to demo teleop mode
-  - [ ] No ROS2 automated tests
-  - [ ] No custom ROS2 message types
-- [ ] All tests pass
+- [x] All "Must Have" present:
+- [x] Clean imports from teleop_xr.ik
+- [x] ROS2 --mode ik flag
+- [x] JointState subscriber
+- [x] JointTrajectory publisher
+- [x] Backward compatibility with demo
+- [x] All "Must NOT Have" absent:
+- [x] No Pinocchio/JacobiRobot exports
+- [x] No new robot implementations
+- [x] No optional target handling
+- [x] No breaking changes to demo teleop mode
+- [x] No ROS2 automated tests
+- [x] No custom ROS2 message types
+- [x] All tests pass
