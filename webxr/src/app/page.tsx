@@ -27,6 +27,32 @@ export default function Home() {
 	);
 	const xrActions = useAppStore((state) => state.xrActions);
 
+	const handlePassthroughChange = useCallback(
+		async (enabled: boolean) => {
+			setIsPassthroughEnabled(enabled);
+			if (!isImmersiveActive || xrBusy) return;
+			if (!xrActions) {
+				setXrError("XR controls are not ready yet");
+				return;
+			}
+			setXrError(null);
+			setXrBusy(true);
+			try {
+				await xrActions.enterXR({ passthrough: enabled });
+			} catch (err) {
+				setXrError(err instanceof Error ? err.message : "XR action failed");
+			} finally {
+				setXrBusy(false);
+			}
+		},
+		[
+			isImmersiveActive,
+			setIsPassthroughEnabled,
+			xrActions,
+			xrBusy,
+		],
+	);
+
 	const handleXrButtonClick = useCallback(async () => {
 		if (xrBusy) return;
 		setXrError(null);
@@ -66,8 +92,8 @@ export default function Home() {
 							<Switch
 								id="passthrough-mode"
 								checked={isPassthroughEnabled}
-								onCheckedChange={setIsPassthroughEnabled}
-								disabled={xrBusy || isImmersiveActive}
+								onCheckedChange={handlePassthroughChange}
+								disabled={xrBusy}
 							/>
 							<Label htmlFor="passthrough-mode">Passthrough</Label>
 						</div>

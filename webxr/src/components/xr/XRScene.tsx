@@ -28,6 +28,7 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 	const containerRef = useRef<HTMLDivElement>(null);
 	const worldRef = useRef<XRWorld | null>(null);
 	const sessionRef = useRef<XRSession | null>(null);
+	const activeModeRef = useRef<XRSessionMode | null>(null);
 	const onErrorRef = useRef<XRSceneProps["onError"]>(onError);
 	const setIsImmersiveActive = useAppStore(
 		(state) => state.setIsImmersiveActive,
@@ -43,8 +44,12 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 		onErrorRef.current?.(message);
 	}, []);
 
-	const onSessionEnd = useCallback(() => {
+	const onSessionEnd = useCallback((endedSession: XRSession) => {
+		if (sessionRef.current !== endedSession) {
+			return;
+		}
 		sessionRef.current = null;
+		activeModeRef.current = null;
 		setIsImmersiveActive(false);
 	}, [setIsImmersiveActive]);
 
@@ -53,6 +58,7 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 		const session = world?.renderer?.xr?.getSession?.() ?? null;
 		if (!session) {
 			sessionRef.current = null;
+			activeModeRef.current = null;
 			setIsImmersiveActive(false);
 			return;
 		}
@@ -61,7 +67,7 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 			await session.end();
 		} catch (err) {
 			console.warn("[XRScene] Failed to end XR session", err);
-			onSessionEnd();
+			onSessionEnd(session);
 		}
 	}, [onSessionEnd, setIsImmersiveActive]);
 
@@ -88,8 +94,22 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 			const currentSession = world.renderer.xr.getSession();
 			if (currentSession) {
 				sessionRef.current = currentSession;
-				setIsImmersiveActive(true);
-				return;
+				const currentMode =
+					activeModeRef.current ?? inferSessionMode(currentSession);
+				if (currentMode === mode) {
+					activeModeRef.current = currentMode ?? mode;
+					setIsImmersiveActive(true);
+					return;
+				}
+				console.log(
+					`[XRScene] Restarting session to switch mode: ${currentMode ?? "unknown"} -> ${mode}`,
+				);
+				try {
+					await currentSession.end();
+				} catch (err) {
+					console.warn("[XRScene] Failed to end XR session", err);
+					onSessionEnd(currentSession);
+				}
 			}
 
 			const sessionInit: XRSessionInit = {
@@ -105,8 +125,13 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 				const newSession = await xr.requestSession(mode, sessionInit);
 				world.renderer.xr.setSession(newSession);
 				sessionRef.current = newSession;
+				activeModeRef.current = mode;
 				setIsImmersiveActive(true);
-				newSession.addEventListener("end", onSessionEnd, { once: true });
+				newSession.addEventListener(
+					"end",
+					() => onSessionEnd(newSession),
+					{ once: true },
+				);
 			} catch (err) {
 				console.error("[XRScene] Failed to request XR session", {
 					mode,
@@ -246,4 +271,17 @@ function formatError(err: unknown): { name?: string; message: string } {
 		return { name: err.name, message: err.message };
 	}
 	return { message: String(err) };
+}
+
+function inferSessionMode(session: XRSession): XRSessionMode | null {
+	if (session.environmentBlendMode === "opaque") {
+		return "immersive-vr";
+	}
+	if (
+		session.environmentBlendMode === "alpha-blend" ||
+		session.environmentBlendMode === "additive"
+	) {
+		return "immersive-ar";
+	}
+	return null;
 }
