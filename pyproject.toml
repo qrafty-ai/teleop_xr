@@ -62,6 +62,7 @@ utils = ["pin"]
 
 [project.entry-points."teleop_xr.robots"]
 h1 = "teleop_xr.ik.robots.h1_2:UnitreeH1Robot"
+franka = "teleop_xr.ik.robots.franka:FrankaRobot"
 
 [dependency-groups]
 dev = [
