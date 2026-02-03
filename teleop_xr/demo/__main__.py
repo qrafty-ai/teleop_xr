@@ -43,8 +43,8 @@ MAX_EVENT_LOG_SIZE = 10
 class DemoCLI(CommonCLI):
     """CLI options for the unified TeleopXR demo."""
 
-    mode: Literal["teleop", "ik"] = "ik"
-    """Operation mode: 'teleop' for visualization only, 'ik' for H1 robot control."""
+    mode: Literal["teleop", "ik"] = "teleop"
+    """Operation mode: 'teleop' for visualization only, 'ik' for H1 robot control. (default: teleop)"""
 
     # Camera device configuration
     head_device: Union[int, str, None] = None
