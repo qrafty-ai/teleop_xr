@@ -58,6 +58,16 @@ class BaseRobot(ABC):
         """
         return {"left", "right", "head"}
 
+    @property
+    def default_speed_ratio(self) -> float:
+        """
+        Get the default teleop speed ratio for this robot.
+
+        Returns:
+            float: The default speed ratio (e.g., 1.0 for 100%, 1.2 for 120%).
+        """
+        return 1.0
+
     @abstractmethod
     def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
         """

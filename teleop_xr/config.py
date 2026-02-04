@@ -28,6 +28,7 @@ class TeleopSettings(BaseModel):
     port: int = 4443
     robot_vis: Optional[RobotVisConfig] = None
     input_mode: InputMode = InputMode.CONTROLLER
+    speed: float = 1.0
     natural_phone_orientation_euler: List[float] = Field(
         default_factory=lambda: [0.0, -0.7853981633974483, 0.0]
     )

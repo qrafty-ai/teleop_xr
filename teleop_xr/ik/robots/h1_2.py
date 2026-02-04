@@ -81,6 +81,11 @@ class UnitreeH1Robot(BaseRobot):
     def actuated_joint_names(self) -> list[str]:
         return list(self.robot.joints.actuated_names)
 
+    @property
+    def default_speed_ratio(self) -> float:
+        # Unitree H1 often benefits from slightly amplified motion mapping
+        return 1.2
+
     def forward_kinematics(self, config: jax.Array) -> dict[str, jaxlie.SE3]:
         """
         Compute the forward kinematics for the given configuration.
@@ -113,18 +118,18 @@ class UnitreeH1Robot(BaseRobot):
                 pk.costs.rest_cost(
                     JointVar(0),
                     rest_pose=q_current,
-                    weight=1.0,
+                    weight=5.0,
                 )
             )
 
-        # costs.append(
-        #     pk.costs.manipulability_cost(
-        #         self.robot,
-        #         JointVar(0),
-        #         jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
-        #         weight=1.0,
-        #     )
-        # )
+        costs.append(
+            pk.costs.manipulability_cost(
+                self.robot,
+                JointVar(0),
+                jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
+                weight=0.01,
+            )
+        )
 
         # costs.append(
         #     pk.costs.self_collision_cost(

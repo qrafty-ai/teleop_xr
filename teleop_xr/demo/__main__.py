@@ -526,6 +526,7 @@ def main():
         robot_vis=robot_vis,
         input_mode=cli.input_mode,
         camera_views=camera_views,
+        speed=robot.default_speed_ratio if robot else 1.0,
     )
 
     teleop = Teleop(settings=settings)

@@ -57,6 +57,12 @@ export class TeleopSystem extends createSystem({}) {
 					if (message.data?.input_mode) {
 						this.inputMode = message.data.input_mode;
 					}
+					// Apply default speed from server if provided
+					if (typeof message.data?.speed === "number") {
+						useAppStore.getState().setTeleopSettings({
+							speed: message.data.speed,
+						});
+					}
 					const cameraViews = message.data?.camera_views ?? null;
 					const availableCameraKeys = cameraViews
 						? Object.keys(cameraViews)
