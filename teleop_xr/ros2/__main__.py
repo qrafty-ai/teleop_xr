@@ -1,6 +1,7 @@
 import threading
 import json
 import time
+import sys
 from typing import Any, Dict, List, Optional, Literal
 from dataclasses import dataclass, field, asdict
 import cv2
@@ -22,6 +23,7 @@ import transforms3d as t3d
 
 try:
     import rclpy
+    from rclpy.node import Node
     from geometry_msgs.msg import Pose, PoseStamped, PoseArray, TransformStamped
     from sensor_msgs.msg import Joy, Image, CompressedImage, JointState
     from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -39,6 +41,34 @@ except ImportError:
     raise ImportError(
         "ROS2 is not sourced. Please source ROS2 before running this script."
     )
+
+
+class RosBridgeHandler:
+    """
+    Redirects Loguru messages to the ROS 2 logging system.
+    """
+
+    def __init__(self, node: Node):
+        self.ros_logger = node.get_logger()
+
+    def write(self, message):
+        # Extract the log record information
+        record = message.record
+        level = record["level"].name
+        msg = record["message"]
+
+        # Map Loguru levels to ROS 2 logging methods
+        if level == "DEBUG":
+            self.ros_logger.debug(msg)
+        elif level == "INFO":
+            self.ros_logger.info(msg)
+        elif level == "WARNING":
+            self.ros_logger.warn(msg)
+        elif level == "ERROR":
+            self.ros_logger.error(msg)
+        elif level == "CRITICAL":
+            self.ros_logger.fatal(msg)
+
 
 XR_HAND_JOINTS = [
     "wrist",
@@ -333,6 +363,20 @@ def main():
 
     rclpy.init(args=["--ros-args"] + cli.ros_args)
     node = rclpy.create_node("teleop")
+
+    # 1. Remove Loguru's default handler
+    logger.remove()
+
+    # 2. Add the ROS 2 bridge as a sink
+    bridge = RosBridgeHandler(node)
+    logger.add(bridge.write, format="{message}")
+
+    # 3. Add back a styled console sink for local output
+    logger.add(
+        sys.stderr,
+        colorize=True,
+        format="<green>{time}</green> <level>{message}</level>",
+    )
 
     # --- Mode Setup ---
     robot = None
