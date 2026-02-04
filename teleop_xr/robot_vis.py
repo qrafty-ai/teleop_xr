@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from .config import RobotVisConfig
 
 
@@ -26,6 +26,27 @@ class RobotVisModule:
 
             if file_path == "robot.urdf":
                 full_path = self.config.urdf_path
+                # If we have a mesh path (repo root), try to rewrite absolute paths in URDF
+                # to be relative, so the frontend can request them via /robot_assets/
+                if self.config.mesh_path:
+                    try:
+                        with open(full_path, "r") as f:
+                            content = f.read()
+
+                        mesh_path_abs = os.path.abspath(self.config.mesh_path)
+                        if not mesh_path_abs.endswith(os.sep):
+                            mesh_path_abs += os.sep
+
+                        # Simple string replacement of absolute path prefix
+                        if mesh_path_abs in content:
+                            new_content = content.replace(mesh_path_abs, "")
+                            return Response(
+                                content=new_content, media_type="application/xml"
+                            )
+                    except Exception as e:
+                        self.logger.warning(f"Failed to rewrite URDF paths: {e}")
+                        # Fallback to standard file serving
+
             elif "package://" in file_path:
                 clean_path = file_path.split("package://")[-1]
                 if self.config.mesh_path:

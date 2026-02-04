@@ -20,7 +20,6 @@ class FrankaRobot(BaseRobot):
     """
 
     def __init__(self, urdf_string: str | None = None) -> None:
-        self.vis_urdf_path = None
         self.mesh_path = None
 
         if urdf_string:
@@ -33,23 +32,13 @@ class FrankaRobot(BaseRobot):
             # We need hand=true to include the gripper
             xacro_args = {"hand": "true"}
 
-            # 1. Get resolved URDF for IK (absolute paths)
+            # Get resolved URDF for IK (absolute paths)
             self.urdf_path = str(
                 ram.get_resource(
                     repo_url=repo_url,
                     path_inside_repo=xacro_path,
                     xacro_args=xacro_args,
                     resolve_packages=True,
-                )
-            )
-
-            # 2. Get unresolved URDF for Visualization (package:// paths)
-            self.vis_urdf_path = str(
-                ram.get_resource(
-                    repo_url=repo_url,
-                    path_inside_repo=xacro_path,
-                    xacro_args=xacro_args,
-                    resolve_packages=False,
                 )
             )
 
@@ -78,10 +67,10 @@ class FrankaRobot(BaseRobot):
         return {"right"}
 
     def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.vis_urdf_path:
+        if not self.urdf_path:
             return None
         return RobotVisConfig(
-            urdf_path=self.vis_urdf_path,
+            urdf_path=self.urdf_path,
             mesh_path=self.mesh_path,
             model_scale=0.5,
             initial_rotation_euler=[0.0, 0.0, 0.0],

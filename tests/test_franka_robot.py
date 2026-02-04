@@ -64,11 +64,11 @@ def test_franka_init_with_ram(mock_ram, dummy_urdf_file):
     robot = FrankaRobot()
 
     # Check RAM calls
-    assert mock_ram.get_resource.call_count == 2  # Once for IK, once for Vis
+    assert mock_ram.get_resource.call_count == 1  # Once for IK (and Vis uses same)
     assert mock_ram.get_repo.called
 
     assert robot.urdf_path == str(dummy_urdf_file)
-    assert robot.vis_urdf_path == str(dummy_urdf_file)
+    # assert robot.vis_urdf_path == str(dummy_urdf_file) # Removed property
     assert robot.mesh_path == str(dummy_urdf_file.parent)
 
 
