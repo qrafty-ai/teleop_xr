@@ -31,13 +31,13 @@ class UnitreeH1Robot(BaseRobot):
 
         # Identify leg joints names to freeze
         self.leg_joint_names = [
-            "left_hip_yaw_joint",
+            # "left_hip_yaw_joint",
             "left_hip_pitch_joint",
             "left_hip_roll_joint",
             "left_knee_joint",
             "left_ankle_pitch_joint",
             "left_ankle_roll_joint",
-            "right_hip_yaw_joint",
+            # "right_hip_yaw_joint",
             "right_hip_pitch_joint",
             "right_hip_roll_joint",
             "right_knee_joint",
@@ -50,6 +50,7 @@ class UnitreeH1Robot(BaseRobot):
                 urdf.joint_map[joint_name].type = "fixed"
 
         self.robot = pk.Robot.from_urdf(urdf)
+        self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         # End effector and torso link indices
         # We use hand base links as end effectors (L_ee, R_ee frames)
@@ -110,26 +111,27 @@ class UnitreeH1Robot(BaseRobot):
         if q_current is not None:
             costs.append(
                 pk.costs.rest_cost(
-                    self.robot,
                     JointVar(0),
-                    q_current,
+                    rest_pose=q_current,
                     weight=1.0,
                 )
             )
 
-        costs.append(
-            pk.costs.manipulability_cost(
-                self.robot,
-                JointVar(0),
-                jnp.array([self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32),
-                weight=1.0,
-            )
-        )
+        # costs.append(
+        #     pk.costs.manipulability_cost(
+        #         self.robot,
+        #         JointVar(0),
+        #         jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
+        #         weight=1.0,
+        #     )
+        # )
 
         # costs.append(
         #     pk.costs.self_collision_cost(
         #         self.robot,
+        #         self.robot_coll,
         #         JointVar(0),
+        #         margin=0.05,
         #         weight=100.0,
         #     )
         # )
