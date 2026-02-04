@@ -112,7 +112,7 @@ class UnitreeH1Robot(BaseRobot):
                 pk.costs.rest_cost(
                     self.robot,
                     JointVar(0),
-                    target=q_current,
+                    q_current,
                     weight=1.0,
                 )
             )
@@ -121,6 +121,7 @@ class UnitreeH1Robot(BaseRobot):
             pk.costs.manipulability_cost(
                 self.robot,
                 JointVar(0),
+                jnp.array([self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32),
                 weight=1.0,
             )
         )
