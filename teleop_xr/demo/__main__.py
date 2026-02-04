@@ -402,11 +402,11 @@ class IKWorker(threading.Thread):
                 continue
 
             try:
-                current_config = self.state_container["q"]
+                q_current = self.state_container["q"]
                 was_active = self.controller.active
 
                 t0 = time.perf_counter()
-                new_config = np.array(self.controller.step(state, current_config))
+                new_config = np.array(self.controller.step(state, q_current))
                 dt = time.perf_counter() - t0
 
                 self.state_container["solve_time"] = dt
@@ -419,7 +419,7 @@ class IKWorker(threading.Thread):
                         f"Init XR: {list(self.controller.snapshot_xr.keys())}"
                     )
 
-                if not np.array_equal(new_config, current_config):
+                if not np.array_equal(new_config, q_current):
                     self.state_container["q"] = new_config
                     joint_dict = {
                         name: float(val)
