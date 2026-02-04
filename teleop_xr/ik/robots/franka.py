@@ -112,6 +112,7 @@ class FrankaRobot(BaseRobot):
         target_L: jaxlie.SE3 | None,
         target_R: jaxlie.SE3 | None,
         target_Head: jaxlie.SE3 | None,
+        q_current: jnp.ndarray | None = None,
     ) -> list[Cost]:
         costs = []
         JointVar = self.robot.joint_var_cls

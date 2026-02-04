@@ -56,7 +56,7 @@ class PyrokiSolver:
             jnp.ndarray: Optimized joint configuration.
         """
         # 1. Build costs from the robot
-        costs = self.robot.build_costs(target_L, target_R, target_Head)
+        costs = self.robot.build_costs(target_L, target_R, target_Head, q_current)
 
         # 2. Get the joint variable (assuming single timestep index 0)
         # The robot is expected to have joint_var_cls.
