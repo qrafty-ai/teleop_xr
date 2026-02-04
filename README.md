@@ -41,12 +41,6 @@ The demo supports two operation modes:
     python -m teleop_xr.demo --mode ik
     ```
 
-### Custom Robot Support
-
-TeleopXR supports dynamic loading of custom robot models via the Robot Asset Manager (RAM).
-
-For detailed information on how to add your own robot, please see the [Custom Robot Support documentation](https://qrafty-ai.github.io/teleop_xr/custom_robots/).
-
 ### Usage
 
 1. Open the displayed URL (`https://<ip>:4443`) in your headset.
