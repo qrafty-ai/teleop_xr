@@ -50,6 +50,7 @@ class UnitreeH1Robot(BaseRobot):
                 urdf.joint_map[joint_name].type = "fixed"
 
         self.robot = pk.Robot.from_urdf(urdf)
+        self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         # End effector and torso link indices
         # We use hand base links as end effectors (L_ee, R_ee frames)
@@ -99,12 +100,41 @@ class UnitreeH1Robot(BaseRobot):
         target_L: jaxlie.SE3 | None,
         target_R: jaxlie.SE3 | None,
         target_Head: jaxlie.SE3 | None,
+        q_current: jnp.ndarray | None = None,
     ) -> list[Cost]:
         """
         Build a list of Pyroki cost objects.
         """
         costs = []
         JointVar = self.robot.joint_var_cls
+
+        if q_current is not None:
+            costs.append(
+                pk.costs.rest_cost(
+                    JointVar(0),
+                    rest_pose=q_current,
+                    weight=1.0,
+                )
+            )
+
+        # costs.append(
+        #     pk.costs.manipulability_cost(
+        #         self.robot,
+        #         JointVar(0),
+        #         jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
+        #         weight=1.0,
+        #     )
+        # )
+
+        # costs.append(
+        #     pk.costs.self_collision_cost(
+        #         self.robot,
+        #         self.robot_coll,
+        #         JointVar(0),
+        #         margin=0.05,
+        #         weight=100.0,
+        #     )
+        # )
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency

@@ -170,13 +170,13 @@ class IKController:
             self.filter.reset()
         print("[IKController] Reset triggered")
 
-    def step(self, state: XRState, current_config: np.ndarray) -> np.ndarray:
+    def step(self, state: XRState, q_current: np.ndarray) -> np.ndarray:
         """
         Execute one control step: update targets and solve for new joint configuration.
 
         Args:
             state: The current XR state from the headset.
-            current_config: The current joint configuration of the robot.
+            q_current: The current joint configuration of the robot.
 
         Returns:
             np.ndarray: The new (possibly filtered) joint configuration.
@@ -195,12 +195,12 @@ class IKController:
                 self.snapshot_xr = curr_xr_poses
 
                 # Get initial robot FK poses
-                # Cast current_config to jnp.ndarray for JAX-based robot models
-                fk_poses = self.robot.forward_kinematics(jnp.asarray(current_config))
+                # Cast q_current to jnp.ndarray for JAX-based robot models
+                fk_poses = self.robot.forward_kinematics(jnp.asarray(q_current))
                 self.snapshot_robot = {k: fk_poses[k] for k in required_keys}
 
                 print(f"[IKController] Initial Robot FK: {self.snapshot_robot}")
-                return current_config
+                return q_current
 
             # Active control
             target_L: jaxlie.SE3 | None = None
@@ -233,7 +233,7 @@ class IKController:
                     target_L,
                     target_R,
                     target_Head,
-                    jnp.asarray(current_config),
+                    jnp.asarray(q_current),
                 )
                 new_config = np.array(new_config_jax)
 
@@ -244,11 +244,11 @@ class IKController:
 
                 return new_config
 
-            return current_config
+            return q_current
         else:
             if self.active:
                 # Disengagement transition
                 self.active = False
                 if self.filter is not None:
                     self.filter.reset()
-            return current_config
+            return q_current

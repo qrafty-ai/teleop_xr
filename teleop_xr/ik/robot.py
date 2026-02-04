@@ -88,6 +88,7 @@ class BaseRobot(ABC):
         target_L: jaxlie.SE3 | None,
         target_R: jaxlie.SE3 | None,
         target_Head: jaxlie.SE3 | None,
+        q_current: jnp.ndarray | None = None,
     ) -> list[Cost]:
         """
         Build a list of costs for the robot-specific formulation.
@@ -96,6 +97,7 @@ class BaseRobot(ABC):
             target_L: Target pose for the left end-effector.
             target_R: Target pose for the right end-effector.
             target_Head: Target pose for the head.
+            q_current: Current joint configuration (initial guess).
 
         Returns:
             list[Cost]: A list of jaxls Cost objects representing the optimization objectives.
