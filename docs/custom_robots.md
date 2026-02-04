@@ -4,7 +4,7 @@ TeleopXR supports dynamic loading of custom robot models. For robust management 
 
 ## 1. Robot Asset Manager (RAM)
 
-RAM simplifies robot integration by automatically cloning repositories, processing Xacro files, and resolving asset paths. It ensures that the IK solver has absolute paths to meshes while the WebXR frontend receives the standard `package://` URIs.
+RAM simplifies robot integration by automatically cloning repositories, processing Xacro files, and resolving asset paths. It ensures that the IK solver has absolute paths to meshes while the WebXR frontend receives relative paths dynamically rewritten by the visualization server.
 
 **Example: Implementation using RAM**
 The `FrankaRobot` implementation uses RAM to fetch the official description:
@@ -15,6 +15,7 @@ from teleop_xr.ik.robot import BaseRobot, RobotVisConfig
 
 class FrankaRobot(BaseRobot):
     def __init__(self, urdf_string: str | None = None):
+        self.mesh_path = None
         if urdf_string:
             # Initialize from ROS2 provided string
             ...
@@ -22,7 +23,8 @@ class FrankaRobot(BaseRobot):
             repo_url = "https://github.com/frankarobotics/franka_ros.git"
             xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
 
-            # 1. Get resolved URDF for local IK (absolute mesh paths)
+            # Get resolved URDF for local IK (absolute mesh paths)
+            # WebXR visualization automatically rewrites these to relative paths
             self.urdf_path = ram.get_resource(
                 repo_url=repo_url,
                 path_inside_repo=xacro_path,
@@ -30,20 +32,12 @@ class FrankaRobot(BaseRobot):
                 resolve_packages=True
             )
 
-            # 2. Get unresolved URDF for WebXR (package:// paths)
-            self.vis_urdf_path = ram.get_resource(
-                repo_url=repo_url,
-                path_inside_repo=xacro_path,
-                xacro_args={"hand": "true"},
-                resolve_packages=False
-            )
-
-            # 3. Get repo root to serve meshes
+            # Get repo root to serve meshes
             self.mesh_path = ram.get_repo(repo_url)
 
     def get_vis_config(self):
         return RobotVisConfig(
-            urdf_path=self.vis_urdf_path,
+            urdf_path=self.urdf_path,
             mesh_path=self.mesh_path
         )
 ```
