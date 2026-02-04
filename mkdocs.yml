@@ -53,8 +53,9 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Home: index.md
+  - Home: README.md
   - Interfaces:
     - Generic Python API: generic.md
     - ROS2 Interface: ros2.md
+    - Custom Robots: custom_robots.md
   - API Reference: api.md

@@ -28,6 +28,17 @@ class BaseRobot(ABC):
 
     @property
     @abstractmethod
+    def actuated_joint_names(self) -> list[str]:
+        """
+        Get the names of the actuated joints.
+
+        Returns:
+            list[str]: A list of joint names.
+        """
+        pass
+
+    @property
+    @abstractmethod
     def joint_var_cls(self) -> Any:
         """
         The jaxls.Var class used for joint configurations.
@@ -36,6 +47,16 @@ class BaseRobot(ABC):
             Type[jaxls.Var]: The variable class to use for optimization.
         """
         pass
+
+    @property
+    def supported_frames(self) -> set[str]:
+        """
+        Get the set of supported frames for this robot.
+
+        Returns:
+            set[str]: A set of frame names (e.g., {"left", "right", "head"}).
+        """
+        return {"left", "right", "head"}
 
     @abstractmethod
     def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
@@ -63,7 +84,10 @@ class BaseRobot(ABC):
 
     @abstractmethod
     def build_costs(
-        self, target_L: jaxlie.SE3, target_R: jaxlie.SE3, target_Head: jaxlie.SE3
+        self,
+        target_L: jaxlie.SE3 | None,
+        target_R: jaxlie.SE3 | None,
+        target_Head: jaxlie.SE3 | None,
     ) -> list[Cost]:
         """
         Build a list of costs for the robot-specific formulation.

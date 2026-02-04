@@ -50,6 +50,9 @@ dependencies = [
   "jax>=0.6.2",
   "spatialmath-python>=1.1.15",
   "pyroki",
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
 ]
 
 [project.urls]
@@ -59,6 +62,10 @@ Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 
 [project.optional-dependencies]
 utils = ["pin"]
+
+[project.entry-points."teleop_xr.robots"]
+h1 = "teleop_xr.ik.robots.h1_2:UnitreeH1Robot"
+franka = "teleop_xr.ik.robots.franka:FrankaRobot"
 
 [dependency-groups]
 dev = [

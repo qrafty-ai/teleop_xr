@@ -22,6 +22,7 @@ def test_base_robot_is_abc():
         "forward_kinematics",
         "get_default_config",
         "build_costs",
+        "actuated_joint_names",
     }
     assert expected_methods.issubset(abstract_methods)
 
@@ -42,9 +43,16 @@ def test_pyroki_solver_instantiation():
             return jnp.zeros(1)
 
         def build_costs(
-            self, target_L: jaxlie.SE3, target_R: jaxlie.SE3, target_Head: jaxlie.SE3
+            self,
+            target_L: jaxlie.SE3 | None,
+            target_R: jaxlie.SE3 | None,
+            target_Head: jaxlie.SE3 | None,
         ) -> List[Any]:
             return []
+
+        @property
+        def actuated_joint_names(self) -> List[str]:
+            return ["joint1"]
 
     robot = MockRobot()
     solver = PyrokiSolver(robot)
@@ -68,6 +76,10 @@ def test_ik_controller_instantiation():
 
         def build_costs(self, target_L, target_R, target_Head):
             return []
+
+        @property
+        def actuated_joint_names(self) -> List[str]:
+            return ["joint1", "joint2"]
 
     robot = MockRobot()
     controller = IKController(robot=robot)
@@ -93,6 +105,10 @@ def test_ik_controller_with_filter():
 
         def build_costs(self, target_L, target_R, target_Head):
             return []
+
+        @property
+        def actuated_joint_names(self) -> List[str]:
+            return ["joint1", "joint2"]
 
     robot = MockRobot()
     filter_weights = np.array([0.5, 0.5])

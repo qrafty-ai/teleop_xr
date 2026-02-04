@@ -22,6 +22,7 @@ class IKController:
     snapshot_xr: dict[str, jaxlie.SE3]
     snapshot_robot: dict[str, jaxlie.SE3]
     filter: WeightedMovingFilter | None
+    _warned_unsupported: set[str]
 
     def __init__(
         self,
@@ -40,6 +41,7 @@ class IKController:
         self.robot = robot
         self.solver = solver
         self.active = False
+        self._warned_unsupported = set()
 
         # Snapshots
         self.snapshot_xr = {}
@@ -113,14 +115,29 @@ class IKController:
         Extract poses for relevant XR devices from the current state.
         """
         poses = {}
+        supported = self.robot.supported_frames
         for device in state.devices:
+            frame_name = None
+            pose_data = None
             if device.role == XRDeviceRole.CONTROLLER:
                 if device.handedness == XRHandedness.LEFT and device.gripPose:
-                    poses["left"] = self.xr_pose_to_se3(device.gripPose)
+                    frame_name = "left"
+                    pose_data = device.gripPose
                 elif device.handedness == XRHandedness.RIGHT and device.gripPose:
-                    poses["right"] = self.xr_pose_to_se3(device.gripPose)
+                    frame_name = "right"
+                    pose_data = device.gripPose
             elif device.role == XRDeviceRole.HEAD and device.pose:
-                poses["head"] = self.xr_pose_to_se3(device.pose)
+                frame_name = "head"
+                pose_data = device.pose
+
+            if frame_name and pose_data is not None:
+                if frame_name in supported:
+                    poses[frame_name] = self.xr_pose_to_se3(pose_data)
+                elif frame_name not in self._warned_unsupported:
+                    print(
+                        f"[IKController] Warning: Frame '{frame_name}' is available in XRState but not supported by robot. Skipping."
+                    )
+                    self._warned_unsupported.add(frame_name)
         return poses
 
     def _check_deadman(self, state: XRState) -> bool:
@@ -168,7 +185,7 @@ class IKController:
         curr_xr_poses = self._get_device_poses(state)
 
         # Check if we have all necessary poses
-        required_keys = ["left", "right", "head"]
+        required_keys = self.robot.supported_frames
         has_all_poses = all(k in curr_xr_poses for k in required_keys)
 
         if is_deadman_active and has_all_poses:
@@ -180,38 +197,43 @@ class IKController:
                 # Get initial robot FK poses
                 # Cast current_config to jnp.ndarray for JAX-based robot models
                 fk_poses = self.robot.forward_kinematics(jnp.asarray(current_config))
-                # We expect fk_poses to be a dict with "left", "right", "head" keys
-                self.snapshot_robot = {
-                    "left": fk_poses["left"],
-                    "right": fk_poses["right"],
-                    "head": fk_poses["head"],
-                }
+                self.snapshot_robot = {k: fk_poses[k] for k in required_keys}
 
                 print(f"[IKController] Initial Robot FK: {self.snapshot_robot}")
                 return current_config
 
             # Active control
-            target_L = self.compute_teleop_transform(
-                curr_xr_poses["left"],
-                self.snapshot_xr["left"],
-                self.snapshot_robot["left"],
-            )
-            target_R = self.compute_teleop_transform(
-                curr_xr_poses["right"],
-                self.snapshot_xr["right"],
-                self.snapshot_robot["right"],
-            )
-            target_Head = self.compute_teleop_transform(
-                curr_xr_poses["head"],
-                self.snapshot_xr["head"],
-                self.snapshot_robot["head"],
-            )
+            target_L: jaxlie.SE3 | None = None
+            target_R: jaxlie.SE3 | None = None
+            target_Head: jaxlie.SE3 | None = None
+
+            if "left" in required_keys:
+                target_L = self.compute_teleop_transform(
+                    curr_xr_poses["left"],
+                    self.snapshot_xr["left"],
+                    self.snapshot_robot["left"],
+                )
+            if "right" in required_keys:
+                target_R = self.compute_teleop_transform(
+                    curr_xr_poses["right"],
+                    self.snapshot_xr["right"],
+                    self.snapshot_robot["right"],
+                )
+            if "head" in required_keys:
+                target_Head = self.compute_teleop_transform(
+                    curr_xr_poses["head"],
+                    self.snapshot_xr["head"],
+                    self.snapshot_robot["head"],
+                )
 
             if self.solver is not None:
                 # Solve for new configuration using target poses and current config
                 # Cast inputs to JAX arrays and output back to numpy
                 new_config_jax = self.solver.solve(
-                    target_L, target_R, target_Head, jnp.asarray(current_config)
+                    target_L,
+                    target_R,
+                    target_Head,
+                    jnp.asarray(current_config),
                 )
                 new_config = np.array(new_config_jax)
 
