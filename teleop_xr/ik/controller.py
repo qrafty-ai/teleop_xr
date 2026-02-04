@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import jaxlie
 import numpy as np
+from loguru import logger
 from teleop_xr.utils.filter import WeightedMovingFilter
 from teleop_xr.messages import XRState, XRDeviceRole, XRHandedness, XRPose
 from teleop_xr.ik.robot import BaseRobot
@@ -134,7 +135,7 @@ class IKController:
                 if frame_name in supported:
                     poses[frame_name] = self.xr_pose_to_se3(pose_data)
                 elif frame_name not in self._warned_unsupported:
-                    print(
+                    logger.warning(
                         f"[IKController] Warning: Frame '{frame_name}' is available in XRState but not supported by robot. Skipping."
                     )
                     self._warned_unsupported.add(frame_name)
@@ -168,7 +169,7 @@ class IKController:
         self.snapshot_robot = {}
         if self.filter is not None:
             self.filter.reset()
-        print("[IKController] Reset triggered")
+        logger.info("[IKController] Reset triggered")
 
     def step(self, state: XRState, q_current: np.ndarray) -> np.ndarray:
         """
@@ -199,7 +200,7 @@ class IKController:
                 fk_poses = self.robot.forward_kinematics(jnp.asarray(q_current))
                 self.snapshot_robot = {k: fk_poses[k] for k in required_keys}
 
-                print(f"[IKController] Initial Robot FK: {self.snapshot_robot}")
+                logger.info(f"[IKController] Initial Robot FK: {self.snapshot_robot}")
                 return q_current
 
             # Active control

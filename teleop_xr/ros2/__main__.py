@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import tyro
 import jax
+from loguru import logger
 from teleop_xr import Teleop, TF_RUB2FLU
 from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
@@ -323,11 +324,11 @@ def main():
 
     if cli.list_robots:
         robots = list_available_robots()
-        print("Available robots (via entry points):")
+        logger.info("Available robots (via entry points):")
         if not robots:
-            print("  None")
+            logger.info("  None")
         for name, path in robots.items():
-            print(f"  {name}: {path}")
+            logger.info(f"  {name}: {path}")
         return
 
     rclpy.init(args=["--ros-args"] + cli.ros_args)

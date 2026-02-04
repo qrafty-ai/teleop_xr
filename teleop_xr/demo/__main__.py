@@ -7,6 +7,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import tyro
+from loguru import logger as loguru_logger
 from dataclasses import dataclass, field
 from typing import Any, Deque, Optional, Union, Dict, Literal
 from collections import deque
@@ -445,11 +446,11 @@ def main():
 
     if cli.list_robots:
         robots = list_available_robots()
-        print("Available robots (via entry points):")
+        loguru_logger.info("Available robots (via entry points):")
         if not robots:
-            print("  None")
+            loguru_logger.info("  None")
         for name, path in robots.items():
-            print(f"  {name}: {path}")
+            loguru_logger.info(f"  {name}: {path}")
         return
 
     # Backward compatibility: default to head on device 0 if no flags provided
@@ -619,7 +620,7 @@ def main():
     teleop.subscribe(on_xr_update)
 
     if cli.no_tui:
-        print("TUI Disabled. Running in headless mode.")
+        loguru_logger.info("TUI Disabled. Running in headless mode.")
         try:
             teleop.run()
         except KeyboardInterrupt:

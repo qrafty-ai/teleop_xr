@@ -1,4 +1,5 @@
 import numpy as np
+from loguru import logger
 from transforms3d.quaternions import mat2quat, quat2mat
 from transforms3d.quaternions import axangle2quat, quat2axangle
 
@@ -98,4 +99,4 @@ if __name__ == "__main__":
         max_ang_acc=np.radians(30),  # rad/s²
     )
 
-    print("New transform at t+1 (clamped):\n", T_tp1_clamped)
+    logger.info("New transform at t+1 (clamped):\n{}", T_tp1_clamped)
