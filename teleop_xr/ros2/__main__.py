@@ -369,13 +369,14 @@ def main():
 
     # 2. Add the ROS 2 bridge as a sink
     bridge = RosBridgeHandler(node)
-    logger.add(bridge.write, format="{message}")
+    logger.add(bridge.write, format="{message}", level="INFO")
 
     # 3. Add back a styled console sink for local output
     logger.add(
         sys.stderr,
         colorize=True,
         format="<green>{time}</green> <level>{message}</level>",
+        level="INFO",
     )
 
     # --- Mode Setup ---

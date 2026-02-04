@@ -3,6 +3,7 @@ import time
 import asyncio
 import threading
 import json
+import sys
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -453,15 +454,6 @@ def main():
             loguru_logger.info(f"  {name}: {path}")
         return
 
-    # Backward compatibility: default to head on device 0 if no flags provided
-    if (
-        cli.head_device is None
-        and cli.wrist_left_device is None
-        and cli.wrist_right_device is None
-        and not cli.camera
-    ):
-        cli.head_device = 0  # Default to index 0
-
     log_queue: Deque[str] = deque(maxlen=50)
     event_log: deque[ButtonEvent] = deque(maxlen=MAX_EVENT_LOG_SIZE)
 
@@ -474,6 +466,20 @@ def main():
 
     logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
     logging.getLogger("jaxls").setLevel(logging.WARNING)
+
+    # Configure Loguru
+    loguru_logger.remove()
+    if not cli.no_tui:
+
+        def tui_sink(message):
+            log_queue.append(message)
+
+        loguru_logger.add(
+            tui_sink, level="INFO", format="<green>{time:HH:mm:ss}</green> - {message}"
+        )
+    else:
+        loguru_logger.add(sys.stderr, level="INFO")
+
     # Silence uvicorn access logs when TUI is active to prevent spam
     if not cli.no_tui:
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
