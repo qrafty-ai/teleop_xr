@@ -243,6 +243,7 @@ class IKController:
                     if self.filter.data_ready():
                         return self.filter.filtered_data
 
+                logger.debug(f"[IKController] New Config: {new_config}")
                 return new_config
 
             return q_current

@@ -117,6 +117,24 @@ class FrankaRobot(BaseRobot):
         costs = []
         JointVar = self.robot.joint_var_cls
 
+        if q_current is not None:
+            costs.append(
+                pk.costs.rest_cost(
+                    JointVar(0),
+                    rest_pose=q_current,
+                    weight=1.0,
+                )
+            )
+
+        costs.append(
+            pk.costs.manipulability_cost(
+                self.robot,
+                JointVar(0),
+                jnp.array([self.ee_link_idx], dtype=jnp.int32),
+                weight=0.001,
+            )
+        )
+
         if target_R is not None:
             costs.append(
                 pk.costs.pose_cost_analytic_jac(
