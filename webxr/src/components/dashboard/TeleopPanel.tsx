@@ -47,7 +47,7 @@ export function TeleopPanel() {
 					<Slider
 						id="speed-slider"
 						min={0}
-						max={1}
+						max={2}
 						step={0.01}
 						value={[teleopSettings.speed]}
 						onValueChange={handleSpeedChange}
