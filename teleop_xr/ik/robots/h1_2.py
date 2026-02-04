@@ -125,13 +125,13 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        costs.append(
-            pk.costs.self_collision_cost(
-                self.robot,
-                JointVar(0),
-                weight=100.0,
-            )
-        )
+        # costs.append(
+        #     pk.costs.self_collision_cost(
+        #         self.robot,
+        #         JointVar(0),
+        #         weight=100.0,
+        #     )
+        # )
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency
