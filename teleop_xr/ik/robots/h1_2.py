@@ -99,12 +99,39 @@ class UnitreeH1Robot(BaseRobot):
         target_L: jaxlie.SE3 | None,
         target_R: jaxlie.SE3 | None,
         target_Head: jaxlie.SE3 | None,
+        q_current: jnp.ndarray | None = None,
     ) -> list[Cost]:
         """
         Build a list of Pyroki cost objects.
         """
         costs = []
         JointVar = self.robot.joint_var_cls
+
+        if q_current is not None:
+            costs.append(
+                pk.costs.rest_cost(
+                    self.robot,
+                    JointVar(0),
+                    target=q_current,
+                    weight=1.0,
+                )
+            )
+
+        costs.append(
+            pk.costs.manipulability_cost(
+                self.robot,
+                JointVar(0),
+                weight=1.0,
+            )
+        )
+
+        costs.append(
+            pk.costs.self_collision_cost(
+                self.robot,
+                JointVar(0),
+                weight=100.0,
+            )
+        )
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency
