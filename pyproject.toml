@@ -47,7 +47,6 @@ dependencies = [
   "rich>=13.0.0",
   "tyro>=0.8.0",
   "pydantic>=2.0.0",
-  "jax>=0.6.2",
   "spatialmath-python>=1.1.15",
   "pyroki",
   "gitpython>=3.1.46",
@@ -61,7 +60,9 @@ Source = "https://github.com/qrafty-ai/teleop_xr"
 Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 
 [project.optional-dependencies]
-utils = ["pin"]
+cuda = [
+  "jax[cuda12]>=0.6.2",
+]
 
 [project.entry-points."teleop_xr.robots"]
 h1 = "teleop_xr.ik.robots.h1_2:UnitreeH1Robot"
@@ -73,6 +74,7 @@ dev = [
   "mkdocs-material",
   "mkdocstrings[python]",
   "pytest-cov>=6.0.0",
+  "pin",
 ]
 
 [tool.pytest.ini_options]
