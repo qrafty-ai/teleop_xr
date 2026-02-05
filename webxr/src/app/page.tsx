@@ -3,6 +3,7 @@
 import { Glasses, Monitor, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
+import { AdvancedSettingsPanel } from "@/components/dashboard/AdvancedSettingsPanel";
 import { CameraSettingsPanel } from "@/components/dashboard/CameraSettingsPanel";
 import { TeleopPanel } from "@/components/dashboard/TeleopPanel";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ export default function Home() {
 					</div>
 					<div className="space-y-6">
 						<CameraSettingsPanel />
+						<AdvancedSettingsPanel />
 					</div>
 				</div>
 			</div>

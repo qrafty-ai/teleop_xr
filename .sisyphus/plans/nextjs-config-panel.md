@@ -100,7 +100,7 @@ Wave 2 (After Wave 1):
 
 ## TODOs
 
-- [ ] 1. Update Store & Implement Logic Utilities (TDD)
+- [x] 1. Update Store & Implement Logic Utilities (TDD)
 
   **What to do**:
   - Create `webxr/src/test/settings.test.ts` to test store defaults and persistence.
@@ -130,7 +130,7 @@ Wave 2 (After Wave 1):
   - [ ] `store.ts` exports typed `advancedSettings`.
   - [ ] `robotResetTrigger` updates when action called.
 
-- [ ] 2. Create AdvancedSettingsPanel UI
+- [x] 2. Create AdvancedSettingsPanel UI
 
   **What to do**:
   - Create `webxr/src/components/dashboard/AdvancedSettingsPanel.tsx`.
