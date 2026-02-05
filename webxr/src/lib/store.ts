@@ -13,6 +13,7 @@ export type AdvancedSettings = {
 	updateRate: number;
 	logLevel: "info" | "warn" | "error";
 	robotVisible: boolean;
+	showAxes: boolean;
 	spawnDistance: number;
 	spawnHeight: number;
 };
@@ -53,6 +54,7 @@ const defaultAdvancedSettings: AdvancedSettings = {
 	updateRate: 100,
 	logLevel: "info",
 	robotVisible: true,
+	showAxes: false,
 	spawnDistance: 1.0,
 	spawnHeight: -0.3,
 };

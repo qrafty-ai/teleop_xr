@@ -26,8 +26,14 @@ export function AdvancedSettingsPanel() {
 	);
 
 	// Settings values from store
-	const { updateRate, logLevel, robotVisible, spawnDistance, spawnHeight } =
-		advancedSettings;
+	const {
+		updateRate,
+		logLevel,
+		robotVisible,
+		showAxes,
+		spawnDistance,
+		spawnHeight,
+	} = advancedSettings;
 
 	const handleUpdateRateChange = (value: number[]) => {
 		setAdvancedSettings({ updateRate: value[0] });
@@ -40,6 +46,10 @@ export function AdvancedSettingsPanel() {
 
 	const handleRobotVisibilityChange = (checked: boolean) => {
 		setAdvancedSettings({ robotVisible: checked });
+	};
+
+	const handleShowAxesChange = (checked: boolean) => {
+		setAdvancedSettings({ showAxes: checked });
 	};
 
 	const handleSpawnDistanceChange = (value: number[]) => {
@@ -137,6 +147,15 @@ export function AdvancedSettingsPanel() {
 								id="robot-visible"
 								checked={robotVisible}
 								onCheckedChange={handleRobotVisibilityChange}
+							/>
+						</div>
+
+						<div className="flex items-center justify-between space-x-2">
+							<Label htmlFor="show-axes">Show Axes</Label>
+							<Switch
+								id="show-axes"
+								checked={showAxes}
+								onCheckedChange={handleShowAxesChange}
 							/>
 						</div>
 
