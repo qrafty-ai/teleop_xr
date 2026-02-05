@@ -1,58 +1,47 @@
 "use client";
 
-import { Rocket } from "lucide-react";
+import { Glasses, Monitor, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
+import { AdvancedSettingsPanel } from "@/components/dashboard/AdvancedSettingsPanel";
 import { CameraSettingsPanel } from "@/components/dashboard/CameraSettingsPanel";
 import { TeleopPanel } from "@/components/dashboard/TeleopPanel";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useAppStore } from "@/lib/store";
 
 const XRScene = dynamic(
 	() => import("@/components/xr/XRScene").then((mod) => mod.XRScene),
 	{ ssr: false },
 );
 
+export type XRMode = "vr" | "passthrough" | null;
+
 export default function Home() {
 	const [xrError, setXrError] = useState<string | null>(null);
-	const [xrBusy, setXrBusy] = useState(false);
-	const isPassthroughEnabled = useAppStore(
-		(state) => state.isPassthroughEnabled,
-	);
-	const isImmersiveActive = useAppStore((state) => state.isImmersiveActive);
-	const setIsPassthroughEnabled = useAppStore(
-		(state) => state.setIsPassthroughEnabled,
-	);
-	const xrActions = useAppStore((state) => state.xrActions);
+	const [selectedMode, setSelectedMode] = useState<XRMode>(null);
 
-	const handleXrButtonClick = useCallback(async () => {
-		if (xrBusy) return;
+	const handleEnterVR = useCallback(() => {
 		setXrError(null);
-		setXrBusy(true);
-		try {
-			if (isImmersiveActive) {
-				if (!xrActions) {
-					throw new Error("XR controls are not ready yet");
-				}
-				await xrActions.exitXR();
-			} else {
-				if (!xrActions) {
-					throw new Error("XR controls are not ready yet");
-				}
-				await xrActions.enterXR({ passthrough: isPassthroughEnabled });
-			}
-		} catch (err) {
-			setXrError(err instanceof Error ? err.message : "XR action failed");
-		} finally {
-			setXrBusy(false);
-		}
-	}, [isImmersiveActive, isPassthroughEnabled, xrActions, xrBusy]);
+		setSelectedMode("vr");
+	}, []);
+
+	const handleEnterPassthrough = useCallback(() => {
+		setXrError(null);
+		setSelectedMode("passthrough");
+	}, []);
+
+	const handleExit = useCallback(() => {
+		setSelectedMode(null);
+	}, []);
 
 	return (
 		<main className="min-h-screen bg-transparent p-8">
-			<XRScene onError={(message) => setXrError(message)} />
+			{selectedMode && (
+				<XRScene
+					mode={selectedMode}
+					onError={(message) => setXrError(message)}
+					onExit={handleExit}
+				/>
+			)}
 			<div className="relative z-10 mx-auto max-w-5xl space-y-8">
 				<header className="flex items-center justify-between rounded-xl border bg-background/60 px-6 py-5 backdrop-blur">
 					<div>
@@ -61,26 +50,39 @@ export default function Home() {
 							Robot Teleoperation Dashboard
 						</p>
 					</div>
-					<div className="flex items-center gap-4">
-						<div className="flex items-center space-x-2">
-							<Switch
-								id="passthrough-mode"
-								checked={isPassthroughEnabled}
-								onCheckedChange={setIsPassthroughEnabled}
-								disabled={xrBusy || isImmersiveActive}
-							/>
-							<Label htmlFor="passthrough-mode">Passthrough</Label>
-						</div>
-						<Button
-							size="lg"
-							className="gap-2"
-							onClick={handleXrButtonClick}
-							variant={isImmersiveActive ? "destructive" : "default"}
-							disabled={xrBusy}
-						>
-							<Rocket className="h-4 w-4" />
-							{isImmersiveActive ? "Exit XR" : "Enter XR"}
-						</Button>
+					<div className="flex items-center gap-3">
+						{selectedMode === null ? (
+							<>
+								<Button
+									size="lg"
+									className="gap-2"
+									onClick={handleEnterVR}
+									variant="default"
+								>
+									<Monitor className="h-4 w-4" />
+									VR Mode
+								</Button>
+								<Button
+									size="lg"
+									className="gap-2"
+									onClick={handleEnterPassthrough}
+									variant="secondary"
+								>
+									<Glasses className="h-4 w-4" />
+									Passthrough
+								</Button>
+							</>
+						) : (
+							<Button
+								size="lg"
+								className="gap-2"
+								onClick={handleExit}
+								variant="destructive"
+							>
+								<X className="h-4 w-4" />
+								Exit XR
+							</Button>
+						)}
 					</div>
 				</header>
 
@@ -96,6 +98,7 @@ export default function Home() {
 					</div>
 					<div className="space-y-6">
 						<CameraSettingsPanel />
+						<AdvancedSettingsPanel />
 					</div>
 				</div>
 			</div>

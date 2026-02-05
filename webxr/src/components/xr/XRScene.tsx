@@ -1,166 +1,116 @@
 "use client";
 
-import {
-	forwardRef,
-	useCallback,
-	useEffect,
-	useImperativeHandle,
-	useRef,
-} from "react";
-import { useAppStore } from "@/lib/store";
+import { ReferenceSpaceType, SessionMode } from "@iwsdk/core";
+import { useCallback, useEffect, useRef } from "react";
+import type { XRMode } from "@/app/page";
 import { initWorld } from "@/xr";
 
-export type XRSceneHandle = {
-	enterXR: (options: { passthrough: boolean }) => Promise<void>;
-	exitXR: () => Promise<void>;
-};
-
 type XRSceneProps = {
+	mode: XRMode;
 	onError?: (message: string) => void;
+	onExit?: () => void;
 };
 
 type XRWorld = Awaited<ReturnType<typeof initWorld>>;
 
-export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
-	{ onError },
-	ref,
-) {
+export function XRScene({ mode, onError, onExit }: XRSceneProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const worldRef = useRef<XRWorld | null>(null);
 	const sessionRef = useRef<XRSession | null>(null);
 	const onErrorRef = useRef<XRSceneProps["onError"]>(onError);
-	const setIsImmersiveActive = useAppStore(
-		(state) => state.setIsImmersiveActive,
-	);
-	const setXrActions = useAppStore((state) => state.setXrActions);
+	const onExitRef = useRef<XRSceneProps["onExit"]>(onExit);
 
 	useEffect(() => {
 		onErrorRef.current = onError;
-	}, [onError]);
+		onExitRef.current = onExit;
+	}, [onError, onExit]);
 
 	const reportError = useCallback((message: string) => {
 		console.error(`[XRScene] ${message}`);
 		onErrorRef.current?.(message);
 	}, []);
 
-	const onSessionEnd = useCallback(() => {
-		sessionRef.current = null;
-		setIsImmersiveActive(false);
-	}, [setIsImmersiveActive]);
-
-	const exitXR = useCallback(async () => {
+	const cleanupAndExit = useCallback(() => {
 		const world = worldRef.current;
-		const session = world?.renderer?.xr?.getSession?.() ?? null;
-		if (!session) {
-			sessionRef.current = null;
-			setIsImmersiveActive(false);
-			return;
+		if (world) {
+			cleanupWorld(world);
+			worldRef.current = null;
 		}
-
-		try {
-			await session.end();
-		} catch (err) {
-			console.warn("[XRScene] Failed to end XR session", err);
-			onSessionEnd();
-		}
-	}, [onSessionEnd, setIsImmersiveActive]);
-
-	const enterXR = useCallback(
-		async ({ passthrough }: { passthrough: boolean }) => {
-			const world = worldRef.current;
-			if (!world?.renderer?.xr) {
-				const msg = "XR world is not initialized yet";
-				reportError(msg);
-				throw new Error(msg);
-			}
-
-			const mode: XRSessionMode = passthrough ? "immersive-ar" : "immersive-vr";
-			console.log(
-				`[XRScene] enterXR requested: ${mode} (passthrough: ${passthrough})`,
-			);
-
-			const xr = navigator.xr;
-			if (!xr?.requestSession) {
-				const msg = `WebXR is not available (navigator.xr missing) - requested ${mode}`;
-				reportError(msg);
-				throw new Error(msg);
-			}
-			const currentSession = world.renderer.xr.getSession();
-			if (currentSession) {
-				sessionRef.current = currentSession;
-				setIsImmersiveActive(true);
-				return;
-			}
-
-			const sessionInit: XRSessionInit = {
-				// Keep this list minimal to maximize cross-device stability.
-				optionalFeatures: ["local-floor", "dom-overlay", "hand-tracking"],
-				domOverlay: { root: document.body },
-			};
-
-			try {
-				console.log(
-					`[XRScene] Requesting session mode: ${mode} (passthrough: ${passthrough})`,
-				);
-				const newSession = await xr.requestSession(mode, sessionInit);
-				world.renderer.xr.setSession(newSession);
-				sessionRef.current = newSession;
-				setIsImmersiveActive(true);
-				newSession.addEventListener("end", onSessionEnd, { once: true });
-			} catch (err) {
-				console.error("[XRScene] Failed to request XR session", {
-					mode,
-					passthrough,
-					optionalFeatures: sessionInit.optionalFeatures ?? [],
-					error: formatError(err),
-				});
-				sessionRef.current = null;
-				setIsImmersiveActive(false);
-				if (err instanceof DOMException) {
-					throw new Error(`${err.name}: ${err.message}`);
-				}
-				throw err instanceof Error
-					? err
-					: new Error("Failed to start XR session");
-			}
-		},
-		[onSessionEnd, reportError, setIsImmersiveActive],
-	);
-
-	useImperativeHandle(
-		ref,
-		() => ({
-			enterXR,
-			exitXR,
-		}),
-		[enterXR, exitXR],
-	);
-
-	useEffect(() => {
-		setXrActions({ enterXR, exitXR });
-		return () => setXrActions(null);
-	}, [enterXR, exitXR, setXrActions]);
+		sessionRef.current = null;
+		onExitRef.current?.();
+	}, []);
 
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!container) return;
+		if (!container || !mode) return;
 
 		let isMounted = true;
 
 		const setup = async () => {
 			try {
-				if (worldRef.current) return;
-				const world = await initWorld(container);
+				const isPassthrough = mode === "passthrough";
+				console.log(
+					`[XRScene] Initializing world with mode: ${mode} (passthrough: ${isPassthrough})`,
+				);
+
+				const world = await initWorld(container, isPassthrough);
 				if (!isMounted) {
 					cleanupWorld(world);
 					return;
 				}
 				worldRef.current = world;
-			} catch (err) {
-				console.error("Failed to initialize XR world:", err);
-				reportError(
-					err instanceof Error ? err.message : "Failed to initialize XR world",
+
+				// Always use immersive-ar to ensure stability and consistent reference space
+				// We simulate VR by adding a skybox in initWorld if passthrough is false
+				const sessionMode = SessionMode.ImmersiveAR;
+				const optionalFeatures = [
+					"local-floor",
+					"hand-tracking",
+					"anchors",
+					"layers",
+					"dom-overlay",
+				];
+				const sessionInit: XRSessionInit = {
+					optionalFeatures,
+					domOverlay: { root: document.body },
+				};
+
+				console.log(`[XRScene] Requesting session: ${sessionMode}`);
+				const xr = navigator.xr;
+				if (!xr) {
+					throw new Error("WebXR not available");
+				}
+
+				const session = await xr.requestSession(sessionMode, sessionInit);
+				if (!isMounted) {
+					await session.end();
+					return;
+				}
+
+				sessionRef.current = session;
+				// Always use LocalFloor for AR-based session
+				world.renderer.xr.setReferenceSpaceType(ReferenceSpaceType.LocalFloor);
+				await world.renderer.xr.setSession(session);
+				world.session = session;
+
+				session.addEventListener(
+					"end",
+					() => {
+						console.log("[XRScene] XR session ended");
+						if (isMounted) {
+							cleanupAndExit();
+						}
+					},
+					{ once: true },
 				);
+
+				console.log(`[XRScene] Session started: ${sessionMode}`);
+			} catch (err) {
+				console.error("[XRScene] Failed to initialize:", err);
+				reportError(
+					err instanceof Error ? err.message : "Failed to initialize XR",
+				);
+				cleanupAndExit();
 			}
 		};
 
@@ -168,20 +118,23 @@ export const XRScene = forwardRef<XRSceneHandle, XRSceneProps>(function XRScene(
 
 		return () => {
 			isMounted = false;
-			void exitXR();
+			const session = sessionRef.current;
+			if (session) {
+				session.end().catch(() => {});
+			}
 			if (worldRef.current) {
 				cleanupWorld(worldRef.current);
 				worldRef.current = null;
 			}
 		};
-	}, [exitXR, reportError]);
+	}, [mode, reportError, cleanupAndExit]);
 
 	return (
 		<div className="fixed inset-0 z-0" data-testid="xr-scene">
 			<div ref={containerRef} className="absolute inset-0" />
 		</div>
 	);
-});
+}
 
 function cleanupWorld(world: unknown) {
 	try {
@@ -199,7 +152,7 @@ function cleanupWorld(world: unknown) {
 			world.exitXR();
 		}
 	} catch (err) {
-		console.warn("Error during world cleanup:", err);
+		console.warn("[XRScene] Error during world cleanup:", err);
 	}
 }
 
@@ -236,14 +189,4 @@ function hasExitXR(value: unknown): value is { exitXR: () => void } {
 		"exitXR" in value &&
 		typeof (value as { exitXR?: unknown }).exitXR === "function"
 	);
-}
-
-function formatError(err: unknown): { name?: string; message: string } {
-	if (err instanceof DOMException) {
-		return { name: err.name, message: err.message };
-	}
-	if (err instanceof Error) {
-		return { name: err.name, message: err.message };
-	}
-	return { message: String(err) };
 }

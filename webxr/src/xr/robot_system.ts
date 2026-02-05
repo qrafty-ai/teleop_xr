@@ -16,6 +16,7 @@ import {
 	Vector3,
 } from "three";
 import URDFLoader from "urdf-loader";
+import { useAppStore } from "../lib/store";
 import type { Entity } from "./panels";
 
 interface URDFRobot extends Object3D {
@@ -30,6 +31,28 @@ export class RobotModelSystem extends createSystem({}) {
 	init() {
 		this.loader = new URDFLoader();
 		this.loader.packages = (pkg: string) => `/robot_assets/${pkg}`;
+
+		let lastRobotVisible = useAppStore.getState().advancedSettings.robotVisible;
+		let lastResetTrigger = useAppStore.getState().robotResetTrigger;
+
+		useAppStore.subscribe((state) => {
+			if (state.advancedSettings.robotVisible !== lastRobotVisible) {
+				lastRobotVisible = state.advancedSettings.robotVisible;
+				if (this.robotEntity?.object3D) {
+					this.robotEntity.object3D.visible = lastRobotVisible;
+				}
+			}
+
+			if (state.robotResetTrigger !== lastResetTrigger) {
+				lastResetTrigger = state.robotResetTrigger;
+				if (this.robotEntity?.object3D) {
+					this.positionRobotInFront(
+						this.robotEntity.object3D,
+						this.world.camera,
+					);
+				}
+			}
+		});
 	}
 
 	async onRobotConfig(data: {
@@ -125,6 +148,12 @@ export class RobotModelSystem extends createSystem({}) {
 				.addComponent(DistanceGrabbable, {
 					movementMode: MovementMode.MoveFromTarget,
 				});
+
+			if (this.robotEntity?.object3D) {
+				this.robotEntity.object3D.visible =
+					useAppStore.getState().advancedSettings.robotVisible;
+			}
+
 			const robotObject = this.robotEntity?.object3D;
 			if (!robotObject) {
 				console.warn("[RobotModelSystem] Robot entity has no object3D");
@@ -166,14 +195,15 @@ export class RobotModelSystem extends createSystem({}) {
 		if (!camera || !camera.position) {
 			return;
 		}
+		const { spawnDistance, spawnHeight } =
+			useAppStore.getState().advancedSettings;
 		const cameraPosition = camera.position;
 		const forward = new Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
 		forward.y = 0; // Keep horizontal
 		forward.normalize();
-		const spawnDist = 1.0; // 1 meter in front
 		const spawnPos = cameraPosition
 			.clone()
-			.add(forward.multiplyScalar(spawnDist));
+			.add(forward.multiplyScalar(spawnDistance));
 		if (!robotObject.position || !robotObject.lookAt) {
 			return;
 		}
@@ -181,7 +211,7 @@ export class RobotModelSystem extends createSystem({}) {
 		// If we assume floor is 0, maybe fixed height?
 		// But user might be sitting/standing. Let's use camera height minus a bit, or just keep camera height.
 		// Let's drop it slightly below eye level (e.g. 30cm down) so it's comfortable to look at
-		spawnPos.y = Math.max(0.5, cameraPosition.y - 0.3);
+		spawnPos.y = Math.max(0.5, cameraPosition.y + spawnHeight);
 		robotObject.position.copy(spawnPos);
 		robotObject.lookAt(cameraPosition.x, spawnPos.y, cameraPosition.z);
 	}

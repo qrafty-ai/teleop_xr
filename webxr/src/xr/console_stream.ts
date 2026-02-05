@@ -1,4 +1,5 @@
 import { getClientId } from "../client_id";
+import { useAppStore } from "../lib/store";
 
 /**
  * Console log streaming utility for Quest VR debugging.
@@ -7,6 +8,21 @@ import { getClientId } from "../client_id";
 
 let ws: WebSocket | null = null;
 let messageQueue: string[] = [];
+let currentLogLevel: "info" | "warn" | "error" = "info";
+
+const LOG_LEVEL_PRIORITY: Record<string, number> = {
+	log: 0,
+	info: 0,
+	warn: 1,
+	error: 2,
+};
+
+const LOG_THRESHOLD: Record<string, number> = {
+	info: 0,
+	warn: 1,
+	error: 2,
+};
+
 const clientId = getClientId();
 const originalConsole = {
 	log: console.log.bind(console),
@@ -17,6 +33,13 @@ const originalConsole = {
 
 // biome-ignore lint/suspicious/noExplicitAny: Console args are any
 function sendLog(level: string, args: any[]) {
+	const levelPriority = LOG_LEVEL_PRIORITY[level] ?? 0;
+	const threshold = LOG_THRESHOLD[currentLogLevel] ?? 0;
+
+	if (levelPriority < threshold) {
+		return;
+	}
+
 	const message = args
 		.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg)))
 		.join(" ");
@@ -36,6 +59,11 @@ function sendLog(level: string, args: any[]) {
 }
 
 export function initConsoleStream() {
+	useAppStore.subscribe((state) => {
+		currentLogLevel = state.advancedSettings.logLevel;
+	});
+	currentLogLevel = useAppStore.getState().advancedSettings.logLevel;
+
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const wsUrl = `${protocol}//${window.location.host}/ws`;
 

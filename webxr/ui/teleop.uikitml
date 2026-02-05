@@ -49,17 +49,11 @@
         </ButtonIcon>
         <Text style="font-size: 28; font-weight: bold; color: #18181b;" text="Toggle Cameras" />
       </Button>
-      <Button id="camera-settings-btn" width="100%" padding="24" background-color="#e4e4e7" border-radius="16" flex-direction="row" align-items="center" justify-content="center" gap="16">
-        <ButtonIcon color="#18181b" width="28" height="28">
-          <SettingsIcon />
-        </ButtonIcon>
-        <Text style="font-size: 28; font-weight: bold; color: #18181b;" text="Camera Settings" />
-      </Button>
-      <Button id="xr-button" width="100%" padding="24" background-color="#e4e4e7" border-radius="16" flex-direction="row" align-items="center" justify-content="center" gap="16">
-        <ButtonIcon color="#18181b" width="28" height="28">
+      <Button id="exit-xr-button" width="100%" padding="24" background-color="#dc2626" border-radius="16" flex-direction="row" align-items="center" justify-content="center" gap="16">
+        <ButtonIcon color="#ffffff" width="28" height="28">
           <XIcon />
         </ButtonIcon>
-        <Text id="xr-button-text" style="font-size: 28; font-weight: bold; color: #18181b;" text="Enter XR" />
+        <Text style="font-size: 28; font-weight: bold; color: #ffffff;" text="Exit XR" />
       </Button>
     </Container>
   </Container>
