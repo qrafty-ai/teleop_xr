@@ -30,8 +30,9 @@
 - This allows the robot to be discovered by the teleop system using the `--robot teaarm` flag (or equivalent configuration).
 
 ## WebXR Frontend
-- Updated `webxr/src/xr/robot_system.ts` to support GLB/GLTF, STL, and Collada meshes via `meshLoader` callback on `URDFLoader`.
-- This is required for `teaarm` which uses GLB meshes.
-- Used `GLTFLoader`, `STLLoader`, and `ColladaLoader` from `three-stdlib`.
+- Updated `webxr/src/xr/robot_system.ts` to support GLB/GLTF, STL, and Collada meshes via `loadMeshCb` callback on `URDFLoader`.
+- Renamed from `meshLoader` to `loadMeshCb` as per `urdf-loader` API documentation.
+- Extracted extension from path since `loadMeshCb` does not provide it directly.
+- Implemented fallback to `defaultMeshLoader` for standard extensions.
 - Rebuilt the frontend using `npm run build` to apply the fixes.
 - Verified that `.glb` files are correctly served by the backend and handled by the frontend.

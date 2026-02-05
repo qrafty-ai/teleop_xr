@@ -51,6 +51,7 @@ Enable local robot description loading in `ram` and integrate `TeaArmRobot`.
 - [x] `TeaArmRobot` loads successfully from local path.
 - [x] `teleop_xr.demo --list-robots` shows `teaarm`.
 - [x] `TeaArmRobot` forward kinematics returns poses for both left and right EEs.
+- [x] WebXR frontend supports GLB meshes via `loadMeshCb`.
 
 ### Must Have
 - Support for `with_obstacles=false`, `visual_mesh_ext=glb` xacro args.

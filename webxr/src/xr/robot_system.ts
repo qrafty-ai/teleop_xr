@@ -33,35 +33,40 @@ export class RobotModelSystem extends createSystem({}) {
 		this.loader = new URDFLoader();
 		this.loader.packages = (pkg: string) => `/robot_assets/${pkg}`;
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(this.loader as any).meshLoader = (
+		(this.loader as any).loadMeshCb = (
 			path: string,
-			ext: string,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			manager: LoadingManager,
 			done: (mesh: Object3D | null, err?: any) => void,
 		) => {
+			const ext = path.split(".").pop()?.toLowerCase();
 			if (ext === "glb" || ext === "gltf") {
-				new GLTFLoader().load(
+				new GLTFLoader(manager).load(
 					path,
 					(gltf) => done(gltf.scene),
 					undefined,
 					(err) => done(null, err),
 				);
 			} else if (ext === "stl") {
-				new STLLoader().load(
+				new STLLoader(manager).load(
 					path,
 					(geom) => done(new Mesh(geom)),
 					undefined,
 					(err) => done(null, err),
 				);
 			} else if (ext === "dae") {
-				new ColladaLoader().load(
+				new ColladaLoader(manager).load(
 					path,
 					(collada) => done(collada.scene),
 					undefined,
 					(err) => done(null, err),
 				);
 			} else {
-				done(null, new Error(`No loader available for extension "${ext}"`));
+				const loader = this.loader as any;
+				if (loader.defaultMeshLoader) {
+					loader.defaultMeshLoader(path, manager, done);
+				} else {
+					done(null, new Error(`No loader available for extension "${ext}"`));
+				}
 			}
 		};
 
