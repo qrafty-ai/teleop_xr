@@ -155,7 +155,7 @@ Wave 3 (Verification):
   - [x] `pytest tests/test_ram_local.py` PASS.
   - [x] Existing `pytest tests/test_ram.py` PASS.
 
-- [ ] 2. Create TeaArmRobot Class
+- [x] 2. Create TeaArmRobot Class
 
   **What to do**:
   - Create `teleop_xr/ik/robots/teaarm.py`.
@@ -182,10 +182,10 @@ Wave 3 (Verification):
   - `teleop_xr/ik/robot.py` - Base class definition.
 
   **Acceptance Criteria**:
-  - [ ] File exists: `teleop_xr/ik/robots/teaarm.py`.
-  - [ ] Class `TeaArmRobot` is importable.
+  - [x] File exists: `teleop_xr/ik/robots/teaarm.py`.
+  - [x] Class `TeaArmRobot` is importable.
 
-- [ ] 3. Register TeaArm Robot
+- [x] 3. Register TeaArm Robot
 
   **What to do**:
   - Edit `pyproject.toml`: Add `teaarm = "teleop_xr.ik.robots.teaarm:TeaArmRobot"` to `[project.entry-points."teleop_xr.robots"]`.
@@ -198,7 +198,7 @@ Wave 3 (Verification):
   - **Blocked By**: Task 2
 
   **Acceptance Criteria**:
-  - [ ] `grep "teaarm =" pyproject.toml` returns match.
+  - [x] `grep "teaarm =" pyproject.toml` returns match.
 
 - [ ] 4. Verification & Cleanup
 
