@@ -62,7 +62,7 @@ class TeaArmRobot(BaseRobot):
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
-        return jaxlie.SO3.identity()
+        return jaxlie.SO3.from_rpy_radians(0.0, 0.0, -1.57079632679)
 
     @property
     @override

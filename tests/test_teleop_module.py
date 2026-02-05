@@ -188,7 +188,8 @@ def test_teleop_handle_xr_state_uses_controller_then_head(
     handle = getattr(t, "_Teleop__handle_xr_state")
     handle(message)
     assert len(calls) == 1
-    assert calls[0][0]["x"] == 1.0
+    assert calls[0][0]["x"] == 0.0
+    assert calls[0][0]["y"] == -1.0
 
     calls.clear()
     message2 = {

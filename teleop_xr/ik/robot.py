@@ -19,9 +19,19 @@ class BaseRobot(ABC):
     @property
     def orientation(self) -> jaxlie.SO3:
         """
-        Rotation from the canonical ROS2 frame (X-forward, Z-up) to the robot's base frame.
+        Rotation from the robot's base frame to the canonical ROS2 frame (X-forward, Z-up).
         """
         return jaxlie.SO3.identity()
+
+    @property
+    def base_to_ros(self) -> jaxlie.SO3:
+        """Rotation from the robot base frame to the canonical ROS2 frame."""
+        return self.orientation
+
+    @property
+    def ros_to_base(self) -> jaxlie.SO3:
+        """Rotation from the canonical ROS2 frame to the robot base frame."""
+        return self.orientation.inverse()
 
     @abstractmethod
     def get_vis_config(self) -> RobotVisConfig | None:

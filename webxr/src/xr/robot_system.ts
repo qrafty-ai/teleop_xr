@@ -9,6 +9,7 @@ import {
 	AmbientLight,
 	AxesHelper,
 	DirectionalLight,
+	Group,
 	LoadingManager,
 	Mesh,
 	type Object3D,
@@ -172,20 +173,25 @@ export class RobotModelSystem extends createSystem({}) {
 				this.robotModel = null;
 			}
 
-			robot.rotation.x = -Math.PI / 2;
-
+			const tiltNode = new Group();
+			tiltNode.rotation.x = -Math.PI / 2;
+			tiltNode.rotation.z = Math.PI / 2;
+			let rx = 0;
+			let ry = 0;
+			let rz = 0;
 			if (
 				data.initial_rotation_euler &&
 				data.initial_rotation_euler.length === 3
 			) {
-				const [rx, ry, rz] = data.initial_rotation_euler;
-				robot.rotation.x += rx;
-				robot.rotation.y += ry;
-				robot.rotation.z += rz;
+				[rx, ry, rz] = data.initial_rotation_euler;
+				// Apply rotation to the robot itself (in Z-up space)
+				robot.rotation.set(rx, ry, rz);
 			}
 
 			const scale = data.model_scale || 1.0;
 			robot.scale.set(scale, scale, scale);
+
+			tiltNode.add(robot);
 
 			this.robotModel = robot;
 
@@ -208,12 +214,12 @@ export class RobotModelSystem extends createSystem({}) {
 				return;
 			}
 			const robotObject3D: Object3D = robotObject;
-			robotObject3D.add(robot);
+			robotObject3D.add(tiltNode);
 
 			this.axesHelper = new AxesHelper(1.0);
 			this.axesHelper.visible =
 				useAppStore.getState().advancedSettings.showAxes;
-			robotObject3D.add(this.axesHelper);
+			tiltNode.add(this.axesHelper);
 
 			// Add lights to ensure textures are visible
 			const ambientLight = new AmbientLight(0xffffff, 0.6);
@@ -266,7 +272,7 @@ export class RobotModelSystem extends createSystem({}) {
 		// Let's drop it slightly below eye level (e.g. 30cm down) so it's comfortable to look at
 		spawnPos.y = Math.max(0.5, cameraPosition.y + spawnHeight);
 		robotObject.position.copy(spawnPos);
-		robotObject.lookAt(cameraPosition.x, spawnPos.y, cameraPosition.z);
+		robotObject.rotation.set(0, 0, 0);
 	}
 
 	private processRobotMaterials(robot: Object3D) {

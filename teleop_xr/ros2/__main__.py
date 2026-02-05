@@ -9,7 +9,7 @@ import numpy as np
 import tyro
 import jax
 from loguru import logger
-from teleop_xr import Teleop, TF_RUB2FLU
+from teleop_xr import Teleop
 from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
@@ -104,12 +104,11 @@ def pose_dict_to_matrix(pose):
         return None
     pos = pose["position"]
     quat = pose["orientation"]
-    mat = t3d.affines.compose(
+    return t3d.affines.compose(
         [pos["x"], pos["y"], pos["z"]],
         t3d.quaternions.quat2mat([quat["w"], quat["x"], quat["y"], quat["z"]]),
         [1.0, 1.0, 1.0],
     )
-    return TF_RUB2FLU @ mat
 
 
 def matrix_to_pose_msg(mat):

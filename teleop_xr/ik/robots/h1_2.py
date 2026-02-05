@@ -63,7 +63,7 @@ class UnitreeH1Robot(BaseRobot):
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
-        return jaxlie.SO3.from_rpy_radians(0.0, 0.0, -1.57079632679)
+        return jaxlie.SO3.identity()
 
     @override
     def get_vis_config(self) -> RobotVisConfig | None:

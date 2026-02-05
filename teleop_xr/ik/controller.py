@@ -96,15 +96,11 @@ class IKController:
         Returns:
             jaxlie.SE3: The calculated target pose for the robot end-effector.
         """
-        R_xr_to_robot = jaxlie.SO3.from_matrix(
-            jnp.array([[0.0, 0.0, -1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-        )
+        t_delta_ros = t_ctrl_curr.translation() - t_ctrl_init.translation()
+        t_delta_robot = self.robot.ros_to_base @ t_delta_ros
 
-        t_delta_xr = t_ctrl_curr.translation() - t_ctrl_init.translation()
-        t_delta_robot = R_xr_to_robot @ t_delta_xr
-
-        q_delta_xr = t_ctrl_curr.rotation() @ t_ctrl_init.rotation().inverse()
-        q_delta_robot = R_xr_to_robot @ q_delta_xr @ R_xr_to_robot.inverse()
+        q_delta_ros = t_ctrl_curr.rotation() @ t_ctrl_init.rotation().inverse()
+        q_delta_robot = self.robot.ros_to_base @ q_delta_ros @ self.robot.base_to_ros
 
         t_new = t_ee_init.translation() + t_delta_robot
         q_new = q_delta_robot @ t_ee_init.rotation()

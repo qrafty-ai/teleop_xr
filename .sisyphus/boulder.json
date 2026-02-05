@@ -1,6 +1,6 @@
 {
-	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/robot_vis_axis.md",
-	"started_at": "2026-02-05T04:30:00.000Z",
+	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/teleop_transform_fix.md",
+	"started_at": "2026-02-05T05:50:00.000Z",
 	"session_ids": [],
-	"plan_name": "robot_vis_axis"
+	"plan_name": "teleop_transform_fix"
 }

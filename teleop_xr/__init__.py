@@ -27,6 +27,8 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.robot_vis import RobotVisModule
 
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+TF_RUB2FLU_ROT = TF_RUB2FLU[:3, :3]
+TF_RUB2FLU_ROT_INV = np.linalg.inv(TF_RUB2FLU_ROT)
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 try:
@@ -272,6 +274,53 @@ class Teleop:
         """
         self.__pose = pose
 
+    def __convert_pose_to_ros(self, pose: dict[str, Any] | None) -> None:
+        if not pose or "position" not in pose or "orientation" not in pose:
+            return
+
+        position = pose["position"]
+        orientation = pose["orientation"]
+        position_arr = np.array([position["x"], position["y"], position["z"]])
+        quat = np.array(
+            [
+                orientation["w"],
+                orientation["x"],
+                orientation["y"],
+                orientation["z"],
+            ]
+        )
+
+        pose_rub = t3d.affines.compose(
+            position_arr, t3d.quaternions.quat2mat(quat), [1, 1, 1]
+        )
+        pose_flu = TF_RUB2FLU @ pose_rub
+        pose_flu[:3, :3] = pose_flu[:3, :3] @ TF_RUB2FLU_ROT_INV
+
+        position_flu = pose_flu[:3, 3]
+        quat_flu = t3d.quaternions.mat2quat(pose_flu[:3, :3])
+
+        pose["position"] = {
+            "x": float(position_flu[0]),
+            "y": float(position_flu[1]),
+            "z": float(position_flu[2]),
+        }
+        pose["orientation"] = {
+            "w": float(quat_flu[0]),
+            "x": float(quat_flu[1]),
+            "y": float(quat_flu[2]),
+            "z": float(quat_flu[3]),
+        }
+
+    def __convert_devices_to_ros(self, devices: list[dict[str, Any]]) -> None:
+        for device in devices:
+            self.__convert_pose_to_ros(device.get("pose"))
+            self.__convert_pose_to_ros(device.get("gripPose"))
+
+            joints = device.get("joints")
+            if isinstance(joints, dict):
+                for joint_pose in joints.values():
+                    self.__convert_pose_to_ros(joint_pose)
+
     def subscribe(self, callback: Callable[[np.ndarray, Any], None]) -> None:
         """
         Subscribe to receive updates from the teleop module.
@@ -342,12 +391,8 @@ class Teleop:
             self.__notify_subscribers(self.__pose, info)
             return
 
-        received_pose_rub = t3d.affines.compose(
+        received_pose = t3d.affines.compose(
             position_arr, t3d.quaternions.quat2mat(quat), [1, 1, 1]
-        )
-        received_pose = TF_RUB2FLU @ received_pose_rub
-        received_pose[:3, :3] = received_pose[:3, :3] @ np.linalg.inv(
-            TF_RUB2FLU[:3, :3]
         )
         received_pose = received_pose @ self.__natural_phone_pose
 
@@ -396,6 +441,8 @@ class Teleop:
     def __handle_xr_state(self, message):
         input_mode = self.__settings.input_mode
         devices = message.get("devices", [])
+
+        self.__convert_devices_to_ros(devices)
 
         # Log fetch latency if present
         fetch_latency = message.get("fetch_latency_ms")
