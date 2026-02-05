@@ -18,3 +18,13 @@
 - Implemented unique caching for local resources in `~/.cache/ram/processed` using SHA256 hashes of absolute path, relative path, and xacro arguments. This prevents polluting the local workspace and handles collisions between different local repositories.
 - Enforced relative paths for `path_inside_repo` to maintain consistency with the `repo_root` / `repo_url` logic.
 - Ensured mutual exclusivity between `repo_url` and `repo_root`.
+- Created TeaArmRobot class in teleop_xr/ik/robots/teaarm.py.
+- Implemented dual-arm IK support (left/right frames).
+- Used ram.get_resource with local repo_root for URDF loading.
+- Robot EE link names: frame_left_arm_ee, frame_right_arm_ee.
+- Supported frames set to {"left", "right"}.
+
+## TeaArm Robot Registration
+- Registered `teaarm` robot in `pyproject.toml` under `[project.entry-points."teleop_xr.robots"]`.
+- The entry point points to `teleop_xr.ik.robots.teaarm:TeaArmRobot`.
+- This allows the robot to be discovered by the teleop system using the `--robot teaarm` flag (or equivalent configuration).
