@@ -7,6 +7,7 @@ import {
 } from "@iwsdk/core";
 import {
 	AmbientLight,
+	AxesHelper,
 	DirectionalLight,
 	LoadingManager,
 	Mesh,
@@ -28,6 +29,7 @@ export class RobotModelSystem extends createSystem({}) {
 	private loader!: URDFLoader;
 	private robotEntity: Entity | null = null;
 	private robotModel: Object3D | null = null;
+	private axesHelper: AxesHelper | null = null;
 
 	init() {
 		this.loader = new URDFLoader();
@@ -71,6 +73,7 @@ export class RobotModelSystem extends createSystem({}) {
 		};
 
 		let lastRobotVisible = useAppStore.getState().advancedSettings.robotVisible;
+		let lastShowAxes = useAppStore.getState().advancedSettings.showAxes;
 		let lastResetTrigger = useAppStore.getState().robotResetTrigger;
 
 		useAppStore.subscribe((state) => {
@@ -78,6 +81,13 @@ export class RobotModelSystem extends createSystem({}) {
 				lastRobotVisible = state.advancedSettings.robotVisible;
 				if (this.robotEntity?.object3D) {
 					this.robotEntity.object3D.visible = lastRobotVisible;
+				}
+			}
+
+			if (state.advancedSettings.showAxes !== lastShowAxes) {
+				lastShowAxes = state.advancedSettings.showAxes;
+				if (this.axesHelper) {
+					this.axesHelper.visible = lastShowAxes;
 				}
 			}
 
@@ -199,6 +209,11 @@ export class RobotModelSystem extends createSystem({}) {
 			}
 			const robotObject3D: Object3D = robotObject;
 			robotObject3D.add(robot);
+
+			this.axesHelper = new AxesHelper(1.0);
+			this.axesHelper.visible =
+				useAppStore.getState().advancedSettings.showAxes;
+			robotObject3D.add(this.axesHelper);
 
 			// Add lights to ensure textures are visible
 			const ambientLight = new AmbientLight(0xffffff, 0.6);
