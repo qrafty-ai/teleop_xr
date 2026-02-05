@@ -14,16 +14,16 @@ The user identified two key issues:
 3.  **Fix Visualization**: Update `webxr/src/xr/robot_system.ts` to correctly apply the RPY rotation. Since the model is pre-tilted by -90° X, applying RPY blindly is incorrect.
 
 ## Steps
-- [ ] 1. **IK Controller Fix**: Modify `compute_teleop_transform` in `teleop_xr/ik/controller.py`.
+- [x] 1. **IK Controller Fix**: Modify `compute_teleop_transform` in `teleop_xr/ik/controller.py`.
     *   Current: `t_delta_robot = R_xr_to_robot @ t_delta_xr`
     *   New: `t_delta_robot = self.robot.orientation.inverse() @ (R_xr_to_canonical @ t_delta_xr)`
     *   Wait, `R_xr_to_robot` *is* `R_xr_to_canonical` (maps XR -Z to X).
     *   So: `t_delta_robot = self.robot.orientation.inverse() @ R_xr_to_robot @ t_delta_xr`.
-- [ ] 2. **Robot Standardization**:
+- [x] 2. **Robot Standardization**:
     *   `teleop_xr/ik/robots/franka.py`: Override `orientation` with `rpy(0, 0, -1.57)`.
     *   `teleop_xr/ik/robots/h1_2.py`: Change `orientation` to `identity()` (0).
     *   `teleop_xr/ik/robots/teaarm.py`: Change `orientation` to `rpy(0, 0, 3.14)`.
-- [ ] 3. **Visualization Fix**:
+- [x] 3. **Visualization Fix**:
     *   Modify `webxr/src/xr/robot_system.ts`.
     *   Instead of setting `rotation.x/y/z` directly from RPY, create a Quaternion from the RPY, then multiply the object's quaternion by it (or apply to a wrapper).
     *   Actually, simpler: `robotObject3D.rotation.set(-Math.PI / 2, 0, 0);` is the base.
