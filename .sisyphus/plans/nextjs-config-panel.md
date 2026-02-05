@@ -54,10 +54,10 @@ Empower users to tune WebXR teleoperation performance and visualization via a pe
 - `webxr/src/test/advanced_settings.test.ts`: Unit tests for logic.
 
 ### Definition of Done
-- [ ] `npm run build` in `webxr` passes.
-- [ ] `npm run test` in `webxr` passes (including new tests).
-- [ ] Settings persist across page reloads.
-- [ ] Default values match previous hardcoded constants exactly.
+- [x] `npm run build` in `webxr` passes.
+- [x] `npm run test` in `webxr` passes (including new tests).
+- [x] Settings persist across page reloads.
+- [x] Default values match previous hardcoded constants exactly.
 
 ### Must Have
 - **Exact Defaults**: 100Hz, 1.0m spawn, -0.3m height.
