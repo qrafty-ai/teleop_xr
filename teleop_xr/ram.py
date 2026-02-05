@@ -160,8 +160,9 @@ def process_xacro(
 
 
 def get_resource(
-    repo_url: str,
-    path_inside_repo: str,
+    repo_url: Optional[str] = None,
+    path_inside_repo: str = "",
+    repo_root: Optional[Path] = None,
     branch: Optional[str] = None,
     cache_dir: Optional[Path] = None,
     xacro_args: Optional[Dict[str, str]] = None,
@@ -170,23 +171,51 @@ def get_resource(
     """
     Main entry point for fetching a robot resource.
     """
+    if not repo_url and not repo_root:
+        raise ValueError("Either repo_url or repo_root must be provided")
+    if repo_url and repo_root:
+        raise ValueError("Only one of repo_url or repo_root can be provided")
+
+    if Path(path_inside_repo).is_absolute():
+        raise ValueError("path_inside_repo must be relative")
+
     if cache_dir is None:
         cache_dir = get_cache_root()
 
-    repo_dir = get_repo(repo_url, branch=branch, cache_dir=cache_dir)
+    if repo_root:
+        repo_dir = Path(repo_root)
+    else:
+        repo_dir = get_repo(repo_url, branch=branch, cache_dir=cache_dir)
+
     file_path = repo_dir / path_inside_repo
 
     if not file_path.exists():
-        raise FileNotFoundError(
-            f"Asset {path_inside_repo} not found in repo {repo_url}"
-        )
+        msg = f"Asset {path_inside_repo} not found in "
+        msg += f"local path {repo_root}" if repo_root else f"repo {repo_url}"
+        raise FileNotFoundError(msg)
 
-    if file_path.suffix == ".xacro" or ".urdf.xacro" in file_path.name:
+    is_xacro = file_path.suffix == ".xacro" or ".urdf.xacro" in file_path.name
+
+    if is_xacro:
         # Unique name for output based on args and resolution
         arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
         arg_str += f"_resolved={resolve_packages}"
-        arg_hash = hashlib.sha256(arg_str.encode()).hexdigest()[:6]
-        output_urdf_path = file_path.parent / f"{file_path.stem}_{arg_hash}.urdf"
+
+        if repo_root:
+            # Hash includes absolute repo path to avoid collisions
+            arg_str += f"_root={repo_dir.absolute()}"
+            arg_str += f"_path={path_inside_repo}"
+
+        arg_hash = hashlib.sha256(arg_str.encode()).hexdigest()[:12]
+
+        if repo_root:
+            output_dir = cache_dir / "processed"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_urdf_path = output_dir / f"{file_path.stem}_{arg_hash}.urdf"
+        else:
+            output_urdf_path = (
+                file_path.parent / f"{file_path.stem}_{arg_hash[:6]}.urdf"
+            )
 
         # Process xacro
         urdf_content = process_xacro(
@@ -198,7 +227,20 @@ def get_resource(
         if resolve_packages:
             content = file_path.read_text()
             if "package://" in content:
-                output_urdf_path = file_path.parent / f"{file_path.stem}_processed.urdf"
+                if repo_root:
+                    # Create a processed version in cache for local repos too
+                    output_dir = cache_dir / "processed"
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    # Use a hash to avoid collisions
+                    path_hash = hashlib.sha256(
+                        f"{repo_dir.absolute()}:{path_inside_repo}".encode()
+                    ).hexdigest()[:12]
+                    output_urdf_path = output_dir / f"{file_path.stem}_{path_hash}.urdf"
+                else:
+                    output_urdf_path = (
+                        file_path.parent / f"{file_path.stem}_processed.urdf"
+                    )
+
                 with _ram_repo_context(repo_dir):
                     content = _replace_package_uris(content, repo_dir)
                 output_urdf_path.write_text(content)
