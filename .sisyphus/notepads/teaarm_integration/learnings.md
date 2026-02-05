@@ -28,3 +28,10 @@
 - Registered `teaarm` robot in `pyproject.toml` under `[project.entry-points."teleop_xr.robots"]`.
 - The entry point points to `teleop_xr.ik.robots.teaarm:TeaArmRobot`.
 - This allows the robot to be discovered by the teleop system using the `--robot teaarm` flag (or equivalent configuration).
+
+## WebXR Frontend
+- Updated `webxr/src/xr/robot_system.ts` to support GLB/GLTF, STL, and Collada meshes via `meshLoader` callback on `URDFLoader`.
+- This is required for `teaarm` which uses GLB meshes.
+- Used `GLTFLoader`, `STLLoader`, and `ColladaLoader` from `three-stdlib`.
+- Rebuilt the frontend using `npm run build` to apply the fixes.
+- Verified that `.glb` files are correctly served by the backend and handled by the frontend.

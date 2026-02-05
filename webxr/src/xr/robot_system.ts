@@ -15,6 +15,7 @@ import {
 	Texture,
 	Vector3,
 } from "three";
+import { ColladaLoader, GLTFLoader, STLLoader } from "three-stdlib";
 import URDFLoader from "urdf-loader";
 import { useAppStore } from "../lib/store";
 import type { Entity } from "./panels";
@@ -31,6 +32,38 @@ export class RobotModelSystem extends createSystem({}) {
 	init() {
 		this.loader = new URDFLoader();
 		this.loader.packages = (pkg: string) => `/robot_assets/${pkg}`;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(this.loader as any).meshLoader = (
+			path: string,
+			ext: string,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			done: (mesh: Object3D | null, err?: any) => void,
+		) => {
+			if (ext === "glb" || ext === "gltf") {
+				new GLTFLoader().load(
+					path,
+					(gltf) => done(gltf.scene),
+					undefined,
+					(err) => done(null, err),
+				);
+			} else if (ext === "stl") {
+				new STLLoader().load(
+					path,
+					(geom) => done(new Mesh(geom)),
+					undefined,
+					(err) => done(null, err),
+				);
+			} else if (ext === "dae") {
+				new ColladaLoader().load(
+					path,
+					(collada) => done(collada.scene),
+					undefined,
+					(err) => done(null, err),
+				);
+			} else {
+				done(null, new Error(`No loader available for extension "${ext}"`));
+			}
+		};
 
 		let lastRobotVisible = useAppStore.getState().advancedSettings.robotVisible;
 		let lastResetTrigger = useAppStore.getState().robotResetTrigger;
