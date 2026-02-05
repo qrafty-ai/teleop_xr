@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export type CameraConfig = Record<string, boolean>;
 
@@ -6,6 +7,14 @@ export type TeleopSettings = {
 	speed: number;
 	turnSpeed: number;
 	precisionMode: boolean;
+};
+
+export type AdvancedSettings = {
+	updateRate: number;
+	logLevel: "info" | "warn" | "error";
+	robotVisible: boolean;
+	spawnDistance: number;
+	spawnHeight: number;
 };
 
 export type TeleopTelemetry = {
@@ -19,6 +28,8 @@ export type AppState = {
 	cameraConfig: CameraConfig;
 	availableCameras: string[];
 	teleopSettings: TeleopSettings;
+	advancedSettings: AdvancedSettings;
+	robotResetTrigger: number;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
 	getCameraEnabled: (key: string) => boolean;
@@ -26,6 +37,8 @@ export type AppState = {
 	toggleAllCameras: (enabled: boolean) => void;
 	setAvailableCameras: (keys: string[]) => void;
 	setTeleopSettings: (settings: Partial<TeleopSettings>) => void;
+	setAdvancedSettings: (settings: Partial<AdvancedSettings>) => void;
+	setRobotResetTrigger: (trigger: number) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
 };
@@ -36,43 +49,74 @@ const defaultTeleopSettings: TeleopSettings = {
 	precisionMode: false,
 };
 
+const defaultAdvancedSettings: AdvancedSettings = {
+	updateRate: 100,
+	logLevel: "info",
+	robotVisible: true,
+	spawnDistance: 1.0,
+	spawnHeight: -0.3,
+};
+
 const defaultTeleopTelemetry: TeleopTelemetry = {
 	fps: 0,
 	latencyMs: 0,
 };
 
-export const useAppStore = create<AppState>((set, get) => ({
-	cameraConfig: {},
-	availableCameras: [],
-	teleopSettings: defaultTeleopSettings,
-	teleopTelemetry: defaultTeleopTelemetry,
-	connectionStatus: "disconnected",
-	getCameraEnabled: (key) => get().cameraConfig[key] !== false,
-	setCameraEnabled: (key, enabled) => {
-		set((state) => ({
-			cameraConfig: { ...state.cameraConfig, [key]: enabled },
-		}));
-	},
-	toggleAllCameras: (enabled) => {
-		const { availableCameras } = get();
-		const newConfig: CameraConfig = {};
-		for (const key of availableCameras) {
-			newConfig[key] = enabled;
-		}
-		set({ cameraConfig: newConfig });
-	},
-	setAvailableCameras: (keys) => {
-		set({ availableCameras: keys });
-	},
-	setTeleopSettings: (settings) => {
-		set((state) => ({
-			teleopSettings: { ...state.teleopSettings, ...settings },
-		}));
-	},
-	setTeleopTelemetry: (telemetry) => {
-		set({ teleopTelemetry: telemetry });
-	},
-	setConnectionStatus: (status) => {
-		set({ connectionStatus: status });
-	},
-}));
+export const useAppStore = create<AppState>()(
+	persist(
+		(set, get) => ({
+			cameraConfig: {},
+			availableCameras: [],
+			teleopSettings: defaultTeleopSettings,
+			advancedSettings: defaultAdvancedSettings,
+			robotResetTrigger: 0,
+			teleopTelemetry: defaultTeleopTelemetry,
+			connectionStatus: "disconnected",
+			getCameraEnabled: (key) => get().cameraConfig[key] !== false,
+			setCameraEnabled: (key, enabled) => {
+				set((state) => ({
+					cameraConfig: { ...state.cameraConfig, [key]: enabled },
+				}));
+			},
+			toggleAllCameras: (enabled) => {
+				const { availableCameras } = get();
+				const newConfig: CameraConfig = {};
+				for (const key of availableCameras) {
+					newConfig[key] = enabled;
+				}
+				set({ cameraConfig: newConfig });
+			},
+			setAvailableCameras: (keys) => {
+				set({ availableCameras: keys });
+			},
+			setTeleopSettings: (settings) => {
+				set((state) => ({
+					teleopSettings: { ...state.teleopSettings, ...settings },
+				}));
+			},
+			setAdvancedSettings: (settings) => {
+				set((state) => ({
+					advancedSettings: { ...state.advancedSettings, ...settings },
+				}));
+			},
+			setRobotResetTrigger: (trigger) => {
+				set({ robotResetTrigger: trigger });
+			},
+			setTeleopTelemetry: (telemetry) => {
+				set({ teleopTelemetry: telemetry });
+			},
+			setConnectionStatus: (status) => {
+				set({ connectionStatus: status });
+			},
+		}),
+		{
+			name: "teleop-xr-store",
+			storage: createJSONStorage(() => localStorage),
+			partialize: (state) => ({
+				cameraConfig: state.cameraConfig,
+				teleopSettings: state.teleopSettings,
+				advancedSettings: state.advancedSettings,
+			}),
+		},
+	),
+);
