@@ -16,6 +16,13 @@ class BaseRobot(ABC):
     to compute kinematics and optimization costs.
     """
 
+    @property
+    def orientation(self) -> jaxlie.SO3:
+        """
+        Rotation from the canonical ROS2 frame (X-forward, Z-up) to the robot's base frame.
+        """
+        return jaxlie.SO3.identity()
+
     @abstractmethod
     def get_vis_config(self) -> RobotVisConfig | None:
         """
@@ -23,6 +30,10 @@ class BaseRobot(ABC):
 
         Returns:
             RobotVisConfig | None: Configuration for rendering the robot, or None if not supported.
+
+        Note:
+            Subclasses should use `self.orientation` to populate
+            `RobotVisConfig.initial_rotation_euler`.
         """
         pass
 

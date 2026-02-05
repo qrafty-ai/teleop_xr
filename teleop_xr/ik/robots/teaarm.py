@@ -61,6 +61,11 @@ class TeaArmRobot(BaseRobot):
 
     @property
     @override
+    def orientation(self) -> jaxlie.SO3:
+        return jaxlie.SO3.from_rpy_radians(0.0, 0.0, 1.57079632679)
+
+    @property
+    @override
     def supported_frames(self) -> set[str]:
         return {"left", "right"}
 
@@ -72,7 +77,9 @@ class TeaArmRobot(BaseRobot):
             urdf_path=self.urdf_path,
             mesh_path=self.mesh_path,
             model_scale=1.0,
-            initial_rotation_euler=[0.0, 0.0, 0.0],
+            initial_rotation_euler=[
+                float(x) for x in self.orientation.as_rpy_radians()
+            ],
         )
 
     @property

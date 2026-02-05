@@ -1,6 +1,6 @@
 # pyright: reportCallIssue=false
 import os
-from typing import Any
+from typing import Any, override
 
 import jax
 import jax.numpy as jnp
@@ -60,6 +60,12 @@ class UnitreeH1Robot(BaseRobot):
         self.R_ee_link_idx = self.robot.links.names.index(self.R_ee)
         self.torso_link_idx = self.robot.links.names.index("torso_link")
 
+    @property
+    @override
+    def orientation(self) -> jaxlie.SO3:
+        return jaxlie.SO3.from_rpy_radians(0.0, 0.0, 1.57079632679)
+
+    @override
     def get_vis_config(self) -> RobotVisConfig | None:
         if not self.urdf_path:
             return None
@@ -67,7 +73,9 @@ class UnitreeH1Robot(BaseRobot):
             urdf_path=self.urdf_path,
             mesh_path=self.mesh_path,
             model_scale=0.5,
-            initial_rotation_euler=[0.0, 0.0, 1.57079632679],  # Math.PI / 2
+            initial_rotation_euler=[
+                float(x) for x in self.orientation.as_rpy_radians()
+            ],
         )
 
     @property
