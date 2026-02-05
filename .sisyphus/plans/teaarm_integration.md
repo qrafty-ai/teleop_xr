@@ -200,7 +200,7 @@ Wave 3 (Verification):
   **Acceptance Criteria**:
   - [x] `grep "teaarm =" pyproject.toml` returns match.
 
-- [ ] 4. Verification & Cleanup
+- [x] 4. Verification & Cleanup
 
   **What to do**:
   - Run `pip install -e .` to register entry points.
@@ -211,8 +211,8 @@ Wave 3 (Verification):
   - **Category**: `quick`
 
   **Acceptance Criteria**:
-  - [ ] All tests pass.
-  - [ ] Verification script prints success keys.
+  - [x] All tests pass.
+  - [x] Verification script prints success keys.
 
 ---
 
