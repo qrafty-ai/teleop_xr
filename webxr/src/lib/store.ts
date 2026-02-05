@@ -15,20 +15,12 @@ export type TeleopTelemetry = {
 
 export type ConnectionStatus = "connected" | "disconnected" | "connecting";
 
-export type XRActions = {
-	enterXR: (options: { passthrough: boolean }) => Promise<void>;
-	exitXR: () => Promise<void>;
-};
-
 export type AppState = {
 	cameraConfig: CameraConfig;
 	availableCameras: string[];
 	teleopSettings: TeleopSettings;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
-	isPassthroughEnabled: boolean;
-	isImmersiveActive: boolean;
-	xrActions: XRActions | null;
 	getCameraEnabled: (key: string) => boolean;
 	setCameraEnabled: (key: string, enabled: boolean) => void;
 	toggleAllCameras: (enabled: boolean) => void;
@@ -36,9 +28,6 @@ export type AppState = {
 	setTeleopSettings: (settings: Partial<TeleopSettings>) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
-	setIsPassthroughEnabled: (enabled: boolean) => void;
-	setIsImmersiveActive: (active: boolean) => void;
-	setXrActions: (actions: XRActions | null) => void;
 };
 
 const defaultTeleopSettings: TeleopSettings = {
@@ -58,9 +47,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 	teleopSettings: defaultTeleopSettings,
 	teleopTelemetry: defaultTeleopTelemetry,
 	connectionStatus: "disconnected",
-	isPassthroughEnabled: true,
-	isImmersiveActive: false,
-	xrActions: null,
 	getCameraEnabled: (key) => get().cameraConfig[key] !== false,
 	setCameraEnabled: (key, enabled) => {
 		set((state) => ({
@@ -88,14 +74,5 @@ export const useAppStore = create<AppState>((set, get) => ({
 	},
 	setConnectionStatus: (status) => {
 		set({ connectionStatus: status });
-	},
-	setIsPassthroughEnabled: (enabled) => {
-		set({ isPassthroughEnabled: enabled });
-	},
-	setIsImmersiveActive: (active) => {
-		set({ isImmersiveActive: active });
-	},
-	setXrActions: (actions) => {
-		set({ xrActions: actions });
 	},
 }));

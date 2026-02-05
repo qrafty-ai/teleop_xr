@@ -1,4 +1,12 @@
-import { type AssetManifest, AssetType, SessionMode, World } from "@iwsdk/core";
+import {
+	type AssetManifest,
+	AssetType,
+	type Camera,
+	createSystem,
+	type Object3D,
+	SessionMode,
+	World,
+} from "@iwsdk/core";
 import { Container, Content, Image, Text } from "@pmndrs/uikit";
 import * as horizonKit from "@pmndrs/uikit-horizon";
 import {
@@ -10,6 +18,13 @@ import {
 	VideoIcon,
 	XIcon,
 } from "@pmndrs/uikit-lucide";
+import {
+	BackSide,
+	Euler,
+	Mesh,
+	MeshBasicMaterial,
+	SphereGeometry,
+} from "three";
 import { getCameraEnabled, onCameraConfigChanged } from "./camera_config";
 import { CameraSettingsSystem } from "./camera_settings_system";
 import {
@@ -42,15 +57,40 @@ const assets: AssetManifest = {
 	},
 };
 
-export const initWorld = async (container: HTMLElement) => {
-	// Initialize console streaming for Quest VR debugging
+const placeRelative = (
+	obj: Object3D,
+	cam: Camera,
+	x: number,
+	y: number,
+	z: number,
+) => {
+	const yaw = new Euler().setFromQuaternion(cam.quaternion, "YXZ").y;
+	obj.position.copy(cam.position);
+	obj.rotation.set(0, yaw, 0);
+	obj.translateX(x);
+	obj.translateY(y); // relative to eye level
+	obj.translateZ(z);
+};
+
+export const initWorld = async (
+	container: HTMLElement,
+	initialPassthrough = true,
+) => {
 	initConsoleStream();
+
+	// Always initialize as AR to support consistent session features
+	// We simulate VR by adding an opaque background if passthrough is disabled
+	const initialMode = SessionMode.ImmersiveAR;
+
+	console.log(
+		`[initWorld] Creating world with sessionMode: ${initialMode} (passthrough: ${initialPassthrough})`,
+	);
 
 	const world = await World.create(container as HTMLDivElement, {
 		assets,
 		xr: {
-			sessionMode: SessionMode.ImmersiveAR,
-			offer: "always",
+			sessionMode: initialMode,
+			offer: "none",
 			// Optional structured features; layers/local-floor are offered by default
 			features: {
 				handTracking: true,
@@ -62,7 +102,7 @@ export const initWorld = async (container: HTMLElement) => {
 			},
 		},
 		features: {
-			locomotion: false,
+			locomotion: true, // Enable locomotion to ensure Player rig is initialized
 			grabbing: true,
 			physics: false,
 			sceneUnderstanding: true,
@@ -88,6 +128,22 @@ export const initWorld = async (container: HTMLElement) => {
 	});
 
 	const { camera } = world;
+
+	// If in "VR Mode" (passthrough disabled), add a skybox to hide the real world
+	// This allows us to use immersive-ar consistently while simulating VR
+	if (!initialPassthrough) {
+		const skyGeo = new SphereGeometry(100, 32, 32);
+		const skyMat = new MeshBasicMaterial({
+			color: 0x101010, // Dark grey background
+			side: BackSide,
+			depthWrite: false,
+		});
+		const sky = new Mesh(skyGeo, skyMat);
+		const skyEntity = world.createTransformEntity();
+		if (skyEntity.object3D) {
+			skyEntity.object3D.add(sky);
+		}
+	}
 
 	camera.position.set(0, 1, 0.5);
 
@@ -227,12 +283,21 @@ export const initWorld = async (container: HTMLElement) => {
 
 				panel.setLabel(`CAMERA: ${key.toUpperCase()}`);
 
-				const x = 1.2 + index * 0.9;
-				if (panel && typeof panel.setPosition === "function") {
-					panel.setPosition(x, 1.3, -1.5);
+				// Calculate offset in arc or line
+				const spacing = 0.9;
+				const totalWidth = (floatingKeys.length - 1) * spacing;
+				const startX = -totalWidth / 2;
+				const xOffset = startX + index * spacing;
+
+				if (panel.entity.object3D) {
+					const cam = world.camera;
+					// Place relative to current camera
+					placeRelative(panel.entity.object3D, cam, xOffset, 0, -1.5);
 					panel.faceUser();
 				} else {
-					console.error(`[Video] panel.setPosition is missing for key: ${key}`);
+					console.error(
+						`[Video] panel entity/object3D missing for key: ${key}`,
+					);
 				}
 			});
 

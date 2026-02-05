@@ -5,7 +5,6 @@ import {
 	PanelUI,
 	type UIKit,
 	type UIKitDocument,
-	VisibilityState,
 } from "@iwsdk/core";
 
 export class PanelSystem extends createSystem({
@@ -23,26 +22,15 @@ export class PanelSystem extends createSystem({
 				return;
 			}
 
-			const xrButton = document.getElementById(
-				"xr-button",
+			const exitButton = document.getElementById(
+				"exit-xr-button",
 			) as UIKit.Text | null;
-			if (!xrButton) {
-				return;
-			}
-			xrButton.addEventListener("click", () => {
-				if (this.world.visibilityState.value === VisibilityState.NonImmersive) {
-					this.world.launchXR();
-				} else {
+			if (exitButton) {
+				exitButton.addEventListener("click", () => {
+					console.log("[PanelSystem] Exit XR button clicked");
 					this.world.exitXR();
-				}
-			});
-			this.world.visibilityState.subscribe((visibilityState) => {
-				if (visibilityState === VisibilityState.NonImmersive) {
-					xrButton.setProperties({ text: "Enter XR" });
-				} else {
-					xrButton.setProperties({ text: "Exit to Browser" });
-				}
-			});
+				});
+			}
 		});
 	}
 }

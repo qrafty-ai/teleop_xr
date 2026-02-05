@@ -95,19 +95,10 @@ export class DraggablePanel {
 		});
 
 		// 2. Create Panel (Child) - Interactable but NOT Grabbable
-		this.panelEntity = world
-			.createTransformEntity()
-			.addComponent(PanelUI, {
-				config: configPath,
-				...options,
-			})
-			// Stop grab event bubbling by consuming it with a locked DistanceGrabbable
-			.addComponent(DistanceGrabbable, {
-				movementMode: MovementMode.MoveFromTarget,
-				translate: false,
-				rotate: false,
-				scale: false,
-			});
+		this.panelEntity = world.createTransformEntity().addComponent(PanelUI, {
+			config: configPath,
+			...options,
+		});
 
 		// Parent Panel to Handle
 		if (this.entity.object3D && this.panelEntity.object3D) {
