@@ -20,6 +20,7 @@ export class TeleopSystem extends createSystem({}) {
 	private lastFpsTime = 0;
 	private currentFps = 0;
 	private lastSendTime = 0;
+	private updateInterval = 0.01;
 	private tempPosition = new Vector3();
 	private tempQuaternion = new Quaternion();
 	private menuButtonState = false;
@@ -28,6 +29,12 @@ export class TeleopSystem extends createSystem({}) {
 
 	init() {
 		this.connectWS();
+
+		useAppStore.subscribe((state) => {
+			this.updateInterval = 1 / state.advancedSettings.updateRate;
+		});
+		this.updateInterval =
+			1 / useAppStore.getState().advancedSettings.updateRate;
 	}
 
 	connectWS() {
@@ -167,7 +174,7 @@ export class TeleopSystem extends createSystem({}) {
 			this.lastFpsTime = time;
 		}
 
-		if (time - this.lastSendTime <= 0.01) {
+		if (time - this.lastSendTime <= this.updateInterval) {
 			return;
 		}
 		this.lastSendTime = time;

@@ -158,7 +158,7 @@ Wave 2 (After Wave 1):
   - [ ] Compiles without TS errors.
   - [ ] `npm run lint` passes.
 
-- [ ] 3. Integrate Systems & Final Verification
+- [x] 3. Integrate Systems & Final Verification
 
   **What to do**:
   - **TeleopSystem** (`webxr/src/xr/teleop_system.ts`):

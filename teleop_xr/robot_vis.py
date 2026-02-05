@@ -89,6 +89,10 @@ class RobotVisModule:
                 media_type = "text/plain"
             elif ext == ".urdf":
                 media_type = "application/xml"
+            elif ext == ".glb":
+                media_type = "model/gltf-binary"
+            elif ext == ".gltf":
+                media_type = "model/gltf+json"
 
             return FileResponse(full_path, media_type=media_type)
 
