@@ -47,10 +47,10 @@ Enable local robot description loading in `ram` and integrate `TeaArmRobot`.
 - `tests/test_ram_local.py` (new)
 
 ### Definition of Done
-- [ ] `ram.get_resource` accepts `repo_root` and skips git if set.
-- [ ] `TeaArmRobot` loads successfully from local path.
-- [ ] `teleop_xr.demo --list-robots` shows `teaarm`.
-- [ ] `TeaArmRobot` forward kinematics returns poses for both left and right EEs.
+- [x] `ram.get_resource` accepts `repo_root` and skips git if set.
+- [x] `TeaArmRobot` loads successfully from local path.
+- [x] `teleop_xr.demo --list-robots` shows `teaarm`.
+- [x] `TeaArmRobot` forward kinematics returns poses for both left and right EEs.
 
 ### Must Have
 - Support for `with_obstacles=false`, `visual_mesh_ext=glb` xacro args.
@@ -225,6 +225,6 @@ python -m teleop_xr.demo --list-robots  # Must show teaarm
 ```
 
 ### Final Checklist
-- [ ] `ram.py` handles local paths safely.
-- [ ] `TeaArmRobot` works with local xacro.
-- [ ] No pollution of `/home/cc/codes/tea/...` directory.
+- [x] `ram.py` handles local paths safely.
+- [x] `TeaArmRobot` works with local xacro.
+- [x] No pollution of `/home/cc/codes/tea/...` directory.
