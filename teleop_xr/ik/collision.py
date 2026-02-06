@@ -212,6 +212,45 @@ def build_multi_sphere_collision(
             if isinstance(mesh, trimesh.Trimesh) and mesh.vertices is not None
             else onp.zeros((0, 3), dtype=onp.float32)
         )
+        coverage_points = vertices
+        if isinstance(mesh, trimesh.Trimesh) and mesh.faces is not None:
+            faces = onp.asarray(mesh.faces, dtype=onp.int32)
+            if faces.shape[0] > 0:
+                v0 = vertices[faces[:, 0]]
+                v1 = vertices[faces[:, 1]]
+                v2 = vertices[faces[:, 2]]
+                edge_midpoints = onp.concatenate(
+                    [0.5 * (v0 + v1), 0.5 * (v1 + v2), 0.5 * (v2 + v0)],
+                    axis=0,
+                )
+                coverage_points = onp.concatenate(
+                    [coverage_points, edge_midpoints], axis=0
+                )
+            face_centers = onp.asarray(mesh.triangles_center, dtype=onp.float32)
+            if face_centers.shape[0] > 0:
+                coverage_points = onp.concatenate(
+                    [coverage_points, face_centers], axis=0
+                )
+            if faces.shape[0] > 0:
+                random_state = onp.random.get_state()
+                onp.random.seed(0)
+                surface_samples = onp.asarray(
+                    trimesh.sample.sample_surface(mesh, 512)[0], dtype=onp.float32
+                )
+                try:
+                    volume_samples = trimesh.sample.volume_mesh(mesh, 512)
+                except Exception:
+                    volume_samples = onp.zeros((0, 3), dtype=onp.float32)
+                finally:
+                    onp.random.set_state(random_state)
+                if surface_samples.shape[0] > 0:
+                    coverage_points = onp.concatenate(
+                        [coverage_points, surface_samples], axis=0
+                    )
+                if volume_samples.shape[0] > 0:
+                    coverage_points = onp.concatenate(
+                        [coverage_points, volume_samples.astype(onp.float32)], axis=0
+                    )
 
         child_origins = child_joint_origins.get(link_name, [])
         link_centers: list[onp.ndarray] = []
@@ -272,21 +311,33 @@ def build_multi_sphere_collision(
                     link_centers.append(center.astype(onp.float32))
                     link_radii.append(radius)
 
-        if vertices.shape[0] > 0:
-            covered = _points_covered_by_spheres(vertices, link_centers, link_radii)
-            if not bool(onp.all(covered)):
-                uncovered_vertices = vertices[~covered]
-                fallback_center = onp.zeros(3, dtype=onp.float32)
-                fallback_radius = (
+        if coverage_points.shape[0] > 0:
+            covered = _points_covered_by_spheres(
+                coverage_points, link_centers, link_radii
+            )
+            max_patch_spheres = 3
+            max_patch_radius = (
+                0.15
+                if ("_arm_l" in link_name or "_arm_r" in link_name)
+                else float("inf")
+            )
+            patch_count = 0
+            while not bool(onp.all(covered)) and patch_count < max_patch_spheres:
+                uncovered_vertices = coverage_points[~covered]
+                patch_center = onp.mean(uncovered_vertices, axis=0).astype(onp.float32)
+                patch_radius = min(
+                    max_patch_radius,
                     float(
-                        onp.linalg.norm(
-                            uncovered_vertices - fallback_center, axis=1
-                        ).max()
+                        onp.linalg.norm(uncovered_vertices - patch_center, axis=1).max()
                     )
-                    + radius_margin
+                    + radius_margin,
                 )
-                link_centers.append(fallback_center)
-                link_radii.append(max(min_radius, fallback_radius))
+                link_centers.append(patch_center)
+                link_radii.append(max(min_radius, patch_radius))
+                patch_count += 1
+                covered = _points_covered_by_spheres(
+                    coverage_points, link_centers, link_radii
+                )
 
         for center, radius in zip(link_centers, link_radii):
             all_centers.append(center.astype(onp.float32))

@@ -59,7 +59,7 @@ Ensure high-fidelity self-collision detection where arm end-effectors are consis
 
 - [x] 1.1 Symmetrize default spheres for _arm_r
 - [x] 1.2 Refine _fit_radii_along_centerline empty fallback
-- [ ] 1.3 Replace origin-fallback with local patch spheres
+- [x] 1.3 Replace origin-fallback with local patch spheres
 
 - [ ] 2. Implement N-th order adjacency ignore logic
 
