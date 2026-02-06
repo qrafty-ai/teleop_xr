@@ -86,6 +86,7 @@ def test_teaarm_robot(tmp_path):
     q = robot.get_default_config()
     fk = robot.forward_kinematics(q)
     assert "left" in fk
+    assert hasattr(robot, "robot_coll")
     costs = robot.build_costs(
         jaxlie.SE3.identity(), jaxlie.SE3.identity(), jaxlie.SE3.identity(), q_current=q
     )
@@ -136,6 +137,7 @@ def test_h1_robot(tmp_path):
         assert len(robot.actuated_joint_names) > 0
         fk = robot.forward_kinematics(q)
         assert "left" in fk
+        assert hasattr(robot, "robot_coll")
         costs = robot.build_costs(
             jaxlie.SE3.identity(),
             jaxlie.SE3.identity(),
