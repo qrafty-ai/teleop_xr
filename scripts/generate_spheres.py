@@ -603,7 +603,7 @@ def main(
         logger.error(f"Failed to load robot: {e}")
         return
 
-    robot_name = robot_inst.name
+    robot_name = getattr(robot_inst, "name", robot_class)
     vis_config = robot_inst.get_vis_config()
     if vis_config is None:
         logger.error(

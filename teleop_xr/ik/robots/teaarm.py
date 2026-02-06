@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import json
 import os
 from pathlib import Path
 from typing import Any, override
@@ -15,13 +16,7 @@ from teleop_xr import ram
 
 
 class TeaArmRobot(BaseRobot):
-    @property
-    @override
-    def name(self) -> str:
-        return "teaarm"
-
     def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
-        super().__init__()
         self.urdf_path: str
         self.mesh_path: str | None
         if urdf_string:
@@ -53,19 +48,15 @@ class TeaArmRobot(BaseRobot):
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
-        if self.sphere_decomposition:
+        sphere_decomposition = self._load_sphere_decomposition()
+        if sphere_decomposition:
             self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
-                self.sphere_decomposition,
+                sphere_decomposition,
                 urdf,
                 ignore_immediate_adjacents=True,
-                user_ignore_pairs=self.collision_ignore_pairs,
             )
         else:
-            self.robot_coll = pk.collision.RobotCollision.from_urdf(
-                urdf,
-                ignore_immediate_adjacents=True,
-                user_ignore_pairs=self.collision_ignore_pairs,
-            )
+            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"
@@ -82,15 +73,27 @@ class TeaArmRobot(BaseRobot):
 
         self.waist_link_idx: int = self.robot.links.names.index("waist_link")
 
+    @staticmethod
+    def _load_sphere_decomposition() -> dict[str, Any] | None:
+        """Load the sphere decomposition for TeaArm from assets."""
+        asset_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "assets",
+            "teaarm",
+            "sphere.json",
+        )
+        if not os.path.exists(asset_path):
+            return None
+        try:
+            with open(asset_path, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
+
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
         return jaxlie.SO3.from_rpy_radians(0.0, 0.0, -1.57079632679)
-
-    @property
-    @override
-    def collision_ignore_pairs(self) -> tuple[tuple[str, str], ...]:
-        return ()
 
     @property
     @override

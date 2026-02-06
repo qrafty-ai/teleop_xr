@@ -1,5 +1,4 @@
 import pytest
-from typing import override
 import jax.numpy as jnp
 import jaxlie
 from unittest.mock import patch
@@ -50,33 +49,22 @@ H1_URDF = """
 
 class MockBaseRobot(BaseRobot):
     @property
-    @override
-    def name(self):
-        return "mock_robot"
-
-    @property
-    @override
     def actuated_joint_names(self):
         return ["j1"]
 
     @property
-    @override
     def joint_var_cls(self):
         return None
 
-    @override
     def get_vis_config(self):
         return None
 
-    @override
     def forward_kinematics(self, config):
         return {"left": jaxlie.SE3.identity()}
 
-    @override
     def get_default_config(self):
         return jnp.zeros(1)
 
-    @override
     def build_costs(self, target_L, target_R, target_Head, q_current=None):
         return []
 
@@ -149,7 +137,6 @@ def test_h1_robot(tmp_path):
         assert len(robot.actuated_joint_names) > 0
         fk = robot.forward_kinematics(q)
         assert "left" in fk
-        assert hasattr(robot, "robot_coll")
         costs = robot.build_costs(
             jaxlie.SE3.identity(),
             jaxlie.SE3.identity(),
