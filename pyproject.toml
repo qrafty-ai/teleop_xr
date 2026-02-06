@@ -89,7 +89,7 @@ addopts = "--cov=teleop_xr --cov-report=xml --cov-report=term-missing"
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["teleop_xr"]
+source = ["teleop_xr", "scripts"]
 omit = ["teleop_xr/_version.py"]
 
 [tool.coverage.report]
