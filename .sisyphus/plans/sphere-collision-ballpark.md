@@ -623,7 +623,7 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
 
 ---
 
-- [ ] 6. Refactor, parameter pinning, and full-suite verification
+- [x] 6. Refactor, parameter pinning, and full-suite verification
 
   **What to do**:
   - Refactor decomposition/caching code for clarity without behavior changes.
