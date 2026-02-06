@@ -12,7 +12,11 @@ import yourdfpy
 from pyroki.collision._collision import colldist_from_sdf
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.ik.collision import build_multi_sphere_collision, parse_srdf_ignore_pairs
+from teleop_xr.ik.collision import (
+    build_multi_sphere_collision,
+    parse_srdf_ignore_pairs,
+    MultiSphereCollision,
+)
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
@@ -67,11 +71,25 @@ class TeaArmRobot(BaseRobot):
             "/home/cc/codes/tea/ros2_wksp/src/tea-ros2/tea_bringup/config/teaarm.srdf"
         )
         srdf_pairs = parse_srdf_ignore_pairs(srdf_path)
+        srdf_pairs = parse_srdf_ignore_pairs(srdf_path)
         self.multi_sphere_coll = build_multi_sphere_collision(
             urdf,
             radius_margin=0.005,
             user_ignore_pairs=srdf_pairs,
-            ignore_adj_order=2,
+            ignore_adj_order=4,
+        )
+
+        # Auto-ignore pairs that are colliding at zero pose
+        auto_ignore_pairs = self._collect_zero_pose_ignore_pairs(
+            self.robot, self.multi_sphere_coll, distance_threshold=0.001
+        )
+
+        # Re-build with auto-ignore pairs added
+        self.multi_sphere_coll = build_multi_sphere_collision(
+            urdf,
+            radius_margin=0.005,
+            user_ignore_pairs=srdf_pairs + auto_ignore_pairs,
+            ignore_adj_order=4,
         )
 
         self.L_ee: str = "frame_left_arm_ee"
@@ -88,6 +106,53 @@ class TeaArmRobot(BaseRobot):
             raise ValueError(f"Link {self.R_ee} not found in URDF")
 
         self.waist_link_idx: int = self.robot.links.names.index("waist_link")
+
+    def _collect_zero_pose_ignore_pairs(
+        self,
+        robot: pk.Robot,
+        multi_sphere_coll: MultiSphereCollision,
+        distance_threshold: float = 0.001,
+    ) -> tuple[tuple[str, str], ...]:
+        q_zero = jnp.zeros(len(robot.joints.actuated_names))
+        distances = multi_sphere_coll.compute_self_collision_distance(robot, q_zero)
+
+        ignore_pairs = []
+        link_names = multi_sphere_coll.link_names
+        sphere_link_indices = multi_sphere_coll.sphere_link_indices
+
+        for k, dist in enumerate(distances):
+            if dist < distance_threshold:
+                idx_i = multi_sphere_coll.pair_i[k]
+                idx_j = multi_sphere_coll.pair_j[k]
+
+                link_i_idx = sphere_link_indices[idx_i]
+                link_j_idx = sphere_link_indices[idx_j]
+
+                link_i = link_names[link_i_idx]
+                link_j = link_names[link_j_idx]
+
+                # Check for EE vs torso_link exemption
+                # EE: name contains "ee" or starts with "frame_"
+                is_ee_i = (
+                    link_i.startswith("frame_")
+                    or "ee" in link_i
+                    or link_i.endswith("_l7")
+                )
+                is_ee_j = (
+                    link_j.startswith("frame_")
+                    or "ee" in link_j
+                    or link_j.endswith("_l7")
+                )
+                is_torso_i = link_i == "torso_link"
+                is_torso_j = link_j == "torso_link"
+
+                if (is_ee_i and is_torso_j) or (is_ee_j and is_torso_i):
+                    continue
+
+                pair = tuple(sorted((link_i, link_j)))
+                ignore_pairs.append(pair)
+
+        return tuple(sorted(set(ignore_pairs)))
 
     @property
     @override

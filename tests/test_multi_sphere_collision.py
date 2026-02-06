@@ -71,7 +71,27 @@ def test_default_pose_no_penetration(
     q0 = teaarm_robot.get_default_config()
     robot_model = cast(RobotLike, teaarm_robot.robot)
     distances = multi_sphere_coll.compute_self_collision_distance(robot_model, q0)
-    assert float(jnp.min(distances)) > -0.005
+    assert float(jnp.min(distances)) > -0.001
+
+
+def test_ee_torso_collision_not_ignored(
+    multi_sphere_coll: MultiSphereCollision,
+) -> None:
+    coll = multi_sphere_coll
+    link_names = coll.link_names
+
+    # Check left_arm_l7 vs torso_link
+    idx_l7 = link_names.index("left_arm_l7")
+    idx_torso = link_names.index("torso_link")
+
+    pair_link_i = coll.sphere_link_indices[coll.pair_i]
+    pair_link_j = coll.sphere_link_indices[coll.pair_j]
+
+    mask = ((pair_link_i == idx_l7) & (pair_link_j == idx_torso)) | (
+        (pair_link_i == idx_torso) & (pair_link_j == idx_l7)
+    )
+
+    assert jnp.any(mask), "left_arm_l7 vs torso_link should NOT be ignored"
 
 
 def test_collision_cost_integration(teaarm_robot: TeaArmRobot) -> None:
