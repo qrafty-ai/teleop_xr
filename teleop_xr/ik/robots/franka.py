@@ -20,7 +20,6 @@ class FrankaRobot(BaseRobot):
     """
 
     def __init__(self, urdf_string: str | None = None) -> None:
-        super().__init__()
         self.mesh_path = None
 
         if urdf_string:
@@ -62,11 +61,6 @@ class FrankaRobot(BaseRobot):
         else:
             # Fallback if hand not present (e.g. simplified URDF), use last link
             self.ee_link_idx = len(self.robot.links.names) - 1
-
-    @property
-    @override
-    def name(self) -> str:
-        return "franka"
 
     @property
     @override

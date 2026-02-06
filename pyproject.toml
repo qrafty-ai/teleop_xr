@@ -54,10 +54,6 @@ dependencies = [
   "xacro>=2.1.1",
   "filelock>=3.20.3",
   "loguru>=0.7.3",
-  "trimesh",
-  "yourdfpy",
-  "ballpark",
-  "viser",
 ]
 
 [project.urls]
@@ -82,6 +78,7 @@ dev = [
   "mkdocstrings[python]",
   "pytest-cov>=6.0.0",
   "pin",
+  "ballpark",  # Required by scripts/generate_spheres.py
 ]
 
 [tool.pytest.ini_options]
