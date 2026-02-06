@@ -48,11 +48,6 @@ dependencies = [
   "rich>=13.0.0",
   "tyro>=0.8.0",
   "pydantic>=2.0.0",
-  "spatialmath-python>=1.1.15",
-  "pyroki",
-  "gitpython>=3.1.46",
-  "xacro>=2.1.1",
-  "filelock>=3.20.3",
   "loguru>=0.7.3",
 ]
 
@@ -64,6 +59,15 @@ Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 [project.optional-dependencies]
 cuda = [
   "jax[cuda12]>=0.6.2",
+]
+ik = [
+  "ballpark",
+  "pyroki",
+  "spatialmath-python>=1.1.15",
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
+  "viser>=1.0.21",
 ]
 
 [project.entry-points."teleop_xr.robots"]
@@ -78,7 +82,6 @@ dev = [
   "mkdocstrings[python]",
   "pytest-cov>=6.0.0",
   "pin",
-  "ballpark",  # Required by scripts/generate_spheres.py
 ]
 
 [tool.pytest.ini_options]
