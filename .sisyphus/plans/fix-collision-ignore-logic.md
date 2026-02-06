@@ -71,7 +71,7 @@ Ensure high-fidelity self-collision detection where arm end-effectors are consis
   3. For TeaArm, use N=2 to ignore `torso` vs `l1` and `torso` vs `l2`.
   4. Ensure `EE` links are EXEMPT from N-hop ignoring against the torso.
 
-- [ ] 3. Cleanup TeaArmRobot and verify
+- [x] 3. Cleanup TeaArmRobot and verify
 
   **What to do**:
 
