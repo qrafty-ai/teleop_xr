@@ -181,16 +181,16 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        if target_Head is not None:
-            costs.append(
-                pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
-                    robot=self.robot,
-                    joint_var=JointVar(0),
-                    target_pose=target_Head,
-                    target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
-                    pos_weight=0.0,
-                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
-                )
-            )
+        # if target_Head is not None:
+        #     costs.append(
+        #         pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
+        #             robot=self.robot,
+        #             joint_var=JointVar(0),
+        #             target_pose=target_Head,
+        #             target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
+        #             pos_weight=0.0,
+        #             ori_weight=jnp.array([0.0, 0.0, 20.0]),
+        #         )
+        #     )
 
         return costs

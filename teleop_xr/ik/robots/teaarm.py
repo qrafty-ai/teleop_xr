@@ -45,6 +45,7 @@ class TeaArmRobot(BaseRobot):
             urdf = yourdfpy.URDF.load(self.urdf_path)
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
+        self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"
@@ -59,6 +60,8 @@ class TeaArmRobot(BaseRobot):
         else:
             raise ValueError(f"Link {self.R_ee} not found in URDF")
 
+        self.waist_link_idx: int = self.robot.links.names.index("waist_link")
+
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
@@ -67,7 +70,7 @@ class TeaArmRobot(BaseRobot):
     @property
     @override
     def supported_frames(self) -> set[str]:
-        return {"left", "right"}
+        return {"left", "right", "head"}
 
     @override
     def get_vis_config(self) -> RobotVisConfig | None:
@@ -98,6 +101,7 @@ class TeaArmRobot(BaseRobot):
         return {
             "left": jaxlie.SE3(fk[self.L_ee_link_idx]),
             "right": jaxlie.SE3(fk[self.R_ee_link_idx]),
+            "head": jaxlie.SE3(fk[self.waist_link_idx]),
         }
 
     @override
@@ -115,14 +119,43 @@ class TeaArmRobot(BaseRobot):
         costs = []
         JointVar = self.robot.joint_var_cls
 
+        # larger joints are more costly to move
+        energy_by_joint = [
+            1.0,  # waist_yaw
+            10.0,  # waist_pitch
+            5.0,  # left_j1
+            5.0,  # right_j1
+            4.0,  # left_j2
+            4.0,  # right_j2
+            3.0,  # left_j3
+            3.0,  # right_j3
+            2.0,  # left_j4
+            2.0,  # right_j4
+            1.0,  # left_j5
+            1.0,  # right_j5
+            0.5,  # left_j6
+            0.5,  # right_j6
+            0.1,  # left_j7
+            0.1,  # right_j7
+        ]
+
         if q_current is not None:
             costs.append(
                 pk.costs.rest_cost(
                     JointVar(0),
                     rest_pose=q_current,
-                    weight=1.0,
+                    weight=jnp.array(energy_by_joint),
                 )
             )
+
+        costs.append(
+            pk.costs.manipulability_cost(
+                self.robot,
+                JointVar(0),
+                jnp.array([self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32),
+                weight=0.01,
+            )
+        )
 
         if target_L is not None:
             costs.append(
@@ -148,6 +181,28 @@ class TeaArmRobot(BaseRobot):
                 )
             )
 
+        if target_Head is not None:
+            costs.append(
+                pk.costs.pose_cost(
+                    robot=self.robot,
+                    joint_var=JointVar(0),
+                    target_pose=target_Head,
+                    target_link_index=jnp.array(self.waist_link_idx, dtype=jnp.int32),
+                    pos_weight=0.0,
+                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
+                )
+            )
+
         costs.append(pk.costs.limit_cost(self.robot, JointVar(0), weight=100.0))
+
+        # costs.append(
+        #     pk.costs.self_collision_cost(
+        #         self.robot,
+        #         self.robot_coll,
+        #         JointVar(0),
+        #         margin=0.5,
+        #         weight=1.0,
+        #     )
+        # )
 
         return costs
