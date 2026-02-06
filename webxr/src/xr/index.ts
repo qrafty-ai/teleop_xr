@@ -21,6 +21,7 @@ import {
 import {
 	BackSide,
 	Euler,
+	GridHelper,
 	Mesh,
 	MeshBasicMaterial,
 	SphereGeometry,
@@ -134,7 +135,7 @@ export const initWorld = async (
 	if (!initialPassthrough) {
 		const skyGeo = new SphereGeometry(100, 32, 32);
 		const skyMat = new MeshBasicMaterial({
-			color: 0x101010, // Dark grey background
+			color: 0x080808,
 			side: BackSide,
 			depthWrite: false,
 		});
@@ -142,6 +143,11 @@ export const initWorld = async (
 		const skyEntity = world.createTransformEntity();
 		if (skyEntity.object3D) {
 			skyEntity.object3D.add(sky);
+
+			const grid = new GridHelper(100, 50, 0x00ff00, 0x333333);
+			// Lower the grid slightly to prevent z-fighting
+			grid.position.y = -0.01;
+			skyEntity.object3D.add(grid);
 		}
 	}
 
