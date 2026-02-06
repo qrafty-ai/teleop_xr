@@ -81,7 +81,7 @@ def _default_spheres_for_link(link_name: str, default_n_spheres: int) -> int:
         return 2
     if link_name in {"waist_link", "torso_link"}:
         return 4
-    if "_arm_l" in link_name:
+    if "_arm_l" in link_name or "_arm_r" in link_name:
         return 4
     if link_name.startswith("frame_") or "ee" in link_name:
         return 1
