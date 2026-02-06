@@ -910,6 +910,129 @@ class _SphereVisuals:
                     self._frames[key].position = pos
 
 
+def _export_collision_data(
+    gui: _SpheresGui,
+    robot: Robot,
+    result: RobotSpheresResult | None,
+) -> None:
+    """Export collision data to JSON."""
+    if not result:
+        return
+
+    path = Path(gui.export_filename)
+
+    spheres_data = {}
+    for link_name, spheres in result.link_spheres.items():
+        spheres_data[link_name] = {
+            "centers": [s.center.tolist() for s in spheres],
+            "radii": [float(s.radius) for s in spheres],
+        }
+
+    logger.info("Computing collision ignore pairs (this may take a moment)...")
+    if gui._generated_ignore_pairs is not None:
+        ignore_pairs = gui._generated_ignore_pairs
+    else:
+        ignore_pairs = compute_collision_ignore_pairs(
+            robot,
+            n_samples=gui._n_samples_slider.value,
+            collision_threshold=gui._threshold_slider.value,
+            n_jobs=gui._threads_slider.value,
+        )
+
+    # Add manually disabled pairs
+    all_links = set(robot.collision_links)
+    manual_pairs = set()
+    for disabled in gui._user_fully_disabled_links:
+        for other in all_links:
+            if disabled == other:
+                continue
+            pair = tuple(sorted((disabled, other)))
+            manual_pairs.add(pair)
+
+    # Merge with computed pairs
+    final_pairs = set(tuple(sorted(p)) for p in ignore_pairs)
+    final_pairs.update(manual_pairs)
+
+    export_pairs = [list(p) for p in sorted(final_pairs)]
+
+    collision_data = {
+        "spheres": spheres_data,
+        "collision_ignore_pairs": export_pairs,
+    }
+
+    logger.info(f"Exporting to {path}")
+    with open(path, "w") as f:
+        json.dump(collision_data, f, indent=2)
+    logger.success(
+        f"Exported {result.num_spheres} spheres and {len(ignore_pairs)} ignore pairs"
+    )
+
+
+def _run_loop_step(
+    gui: _SpheresGui,
+    robot: Robot,
+    sphere_visuals: _SphereVisuals,
+    urdf_vis: ViserUrdf,
+    result: RobotSpheresResult | None,
+) -> RobotSpheresResult | None:
+    """Run one iteration of the main loop."""
+    gui.poll()
+
+    if gui.needs_spherize:
+        if gui.is_auto_mode:
+            if gui.total_spheres == 0:
+                allocation = {name: 0 for name in robot.collision_links}
+            else:
+                allocation = robot.auto_allocate(gui.total_spheres)
+            gui.update_sliders_from_allocation(allocation)
+        else:
+            allocation = gui.manual_allocation
+
+        config = gui.get_config()
+        if gui.total_spheres > 0:
+            t0 = time.perf_counter()
+            result = robot.spherize(allocation=allocation, config=config)
+            elapsed = (time.perf_counter() - t0) * 1000
+            logger.debug(f"Generated {result.num_spheres} spheres in {elapsed:.1f}ms")
+        else:
+            result = RobotSpheresResult(link_spheres={})
+
+        gui.update_sphere_count(result.num_spheres)
+        gui.mark_spherized()
+        gui.set_needs_refine_update()
+
+    if gui.needs_refine_update and result is not None:
+        config = gui.get_config()
+        if gui.refine_enabled and result.num_spheres > 0:
+            t0 = time.perf_counter()
+            refined = robot.refine(
+                result,
+                config=config,
+                joint_cfg=gui.joint_config,
+            )
+            elapsed = (time.perf_counter() - t0) * 1000
+            logger.debug(f"Refined spheres in {elapsed:.1f}ms")
+            sphere_visuals.update(refined, gui.opacity, gui.show_spheres)
+        else:
+            sphere_visuals.update(result, gui.opacity, gui.show_spheres)
+
+        gui.mark_refine_updated()
+        gui.mark_visuals_updated()
+
+    if gui.needs_visual_update and result:
+        sphere_visuals.update(result, gui.opacity, gui.show_spheres)
+        gui.mark_visuals_updated()
+
+    cfg = gui.joint_config
+    urdf_vis.update_cfg(cfg)
+
+    if gui.show_spheres:
+        Ts = robot.compute_transforms(cfg)
+        sphere_visuals.update_transforms(Ts)
+
+    return result
+
+
 def main(
     robot_class: str = "h1",
     target_spheres: int = 64,
@@ -969,116 +1092,14 @@ def main(
     result: RobotSpheresResult | None = None
 
     def on_export() -> None:
-        if result:
-            path = Path(gui.export_filename)
-
-            spheres_data = {}
-            for link_name, spheres in result.link_spheres.items():
-                spheres_data[link_name] = {
-                    "centers": [s.center.tolist() for s in spheres],
-                    "radii": [float(s.radius) for s in spheres],
-                }
-
-            logger.info("Computing collision ignore pairs (this may take a moment)...")
-            if gui._generated_ignore_pairs is not None:
-                ignore_pairs = gui._generated_ignore_pairs
-            else:
-                ignore_pairs = compute_collision_ignore_pairs(
-                    ballpark_robot,
-                    n_samples=gui._n_samples_slider.value,
-                    collision_threshold=gui._threshold_slider.value,
-                    n_jobs=gui._threads_slider.value,
-                )
-
-            # Add manually disabled pairs
-            all_links = set(ballpark_robot.collision_links)
-            manual_pairs = set()
-            for disabled in gui._user_fully_disabled_links:
-                for other in all_links:
-                    if disabled == other:
-                        continue
-                    pair = tuple(sorted((disabled, other)))
-                    manual_pairs.add(pair)
-
-            # Merge with computed pairs
-            final_pairs = set(tuple(sorted(p)) for p in ignore_pairs)
-            final_pairs.update(manual_pairs)
-
-            export_pairs = [list(p) for p in sorted(final_pairs)]
-
-            collision_data = {
-                "spheres": spheres_data,
-                "collision_ignore_pairs": export_pairs,
-            }
-
-            logger.info(f"Exporting to {path}")
-            with open(path, "w") as f:
-                json.dump(collision_data, f, indent=2)
-            logger.success(
-                f"Exported {result.num_spheres} spheres and "
-                f"{len(ignore_pairs)} ignore pairs"
-            )
+        # Capture current result
+        _export_collision_data(gui, ballpark_robot, result)
 
     gui.on_export(on_export)
 
     logger.info("Starting visualization (open browser to view)...")
     while True:
-        gui.poll()
-
-        if gui.needs_spherize:
-            if gui.is_auto_mode:
-                if gui.total_spheres == 0:
-                    allocation = {name: 0 for name in ballpark_robot.collision_links}
-                else:
-                    allocation = ballpark_robot.auto_allocate(gui.total_spheres)
-                gui.update_sliders_from_allocation(allocation)
-            else:
-                allocation = gui.manual_allocation
-
-            config = gui.get_config()
-            if gui.total_spheres > 0:
-                t0 = time.perf_counter()
-                result = ballpark_robot.spherize(allocation=allocation, config=config)
-                elapsed = (time.perf_counter() - t0) * 1000
-                logger.debug(
-                    f"Generated {result.num_spheres} spheres in {elapsed:.1f}ms"
-                )
-            else:
-                result = RobotSpheresResult(link_spheres={})
-
-            gui.update_sphere_count(result.num_spheres)
-            gui.mark_spherized()
-            gui.set_needs_refine_update()
-
-        if gui.needs_refine_update and result is not None:
-            config = gui.get_config()
-            if gui.refine_enabled and result.num_spheres > 0:
-                t0 = time.perf_counter()
-                refined = ballpark_robot.refine(
-                    result,
-                    config=config,
-                    joint_cfg=gui.joint_config,
-                )
-                elapsed = (time.perf_counter() - t0) * 1000
-                logger.debug(f"Refined spheres in {elapsed:.1f}ms")
-                sphere_visuals.update(refined, gui.opacity, gui.show_spheres)
-            else:
-                sphere_visuals.update(result, gui.opacity, gui.show_spheres)
-
-            gui.mark_refine_updated()
-            gui.mark_visuals_updated()
-
-        if gui.needs_visual_update and result:
-            sphere_visuals.update(result, gui.opacity, gui.show_spheres)
-            gui.mark_visuals_updated()
-
-        cfg = gui.joint_config
-        urdf_vis.update_cfg(cfg)
-
-        if gui.show_spheres:
-            Ts = ballpark_robot.compute_transforms(cfg)
-            sphere_visuals.update_transforms(Ts)
-
+        result = _run_loop_step(gui, ballpark_robot, sphere_visuals, urdf_vis, result)
         time.sleep(0.05)
 
 
