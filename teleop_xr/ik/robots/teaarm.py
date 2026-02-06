@@ -71,7 +71,6 @@ class TeaArmRobot(BaseRobot):
             "/home/cc/codes/tea/ros2_wksp/src/tea-ros2/tea_bringup/config/teaarm.srdf"
         )
         srdf_pairs = parse_srdf_ignore_pairs(srdf_path)
-        srdf_pairs = parse_srdf_ignore_pairs(srdf_path)
         self.multi_sphere_coll = build_multi_sphere_collision(
             urdf,
             radius_margin=0.005,
@@ -292,8 +291,8 @@ class TeaArmRobot(BaseRobot):
                 self.robot,
                 self.multi_sphere_coll,
                 JointVar(0),
-                margin=0.02,
-                weight=100.0,
+                margin=0.0,
+                weight=50.0,
             )
         )
 
