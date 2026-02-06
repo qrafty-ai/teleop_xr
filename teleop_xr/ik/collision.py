@@ -7,6 +7,33 @@ import ballpark
 from ballpark import SpherizeParams
 from loguru import logger
 import io
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class CollisionConfig:
+    """
+    Centralized configuration for sphere-based collision decomposition.
+    """
+
+    # Core parameters
+    n_spheres_per_link: int = 8
+    padding: float = 0.0  # Additive padding for sphere radii
+
+    # Decomposition parameters (pinned for determinism/quality)
+    resolution: int = 100000
+    max_hulls: int = 32
+    epsilon: float = 0.001
+
+    # Ballpark specific parameters
+    ballpark_percentile: float = 100.0
+    ballpark_padding: float = 1.05  # Multiplier
+    ballpark_samples: int = 10000
+
+    # Post-processing & Verification parameters
+    extra_margin: float = 1.05  # Multiplier
+    coverage_threshold: float = 1e-3
+    coverage_samples: int = 10000
 
 
 def validate_sphere_decomposition(decomposition: dict) -> bool:
@@ -65,7 +92,10 @@ def _get_primitive_mesh(geometry):
 
 
 def generate_collision_spheres(
-    urdf_path=None, urdf_string=None, n_spheres_per_link=8, padding=0.0
+    urdf_path: str | None = None,
+    urdf_string: str | None = None,
+    config: CollisionConfig | None = None,
+    **kwargs,
 ):
     """
     Generates sphere-based collision decomposition for a robot URDF.
@@ -73,13 +103,32 @@ def generate_collision_spheres(
     Args:
         urdf_path: Path to the URDF file.
         urdf_string: URDF content as a string (overrides urdf_path).
-        n_spheres_per_link: Number of spheres to decompose each link into.
-        padding: Additive padding for sphere radii.
+        config: Configuration for decomposition.
+        **kwargs: Legacy support for n_spheres_per_link and padding.
 
     Returns:
         A dictionary with the sphere decomposition schema.
     """
-    # Set seed for reproducibility where possible
+    if config is None:
+        import dataclasses
+
+        valid_fields = {f.name for f in dataclasses.fields(CollisionConfig)}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
+        config = CollisionConfig(**filtered_kwargs)
+    elif kwargs:
+        from dataclasses import replace
+
+        import dataclasses
+
+        valid_fields = {f.name for f in dataclasses.fields(CollisionConfig)}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
+        config = replace(config, **filtered_kwargs)
+
+    logger.info(
+        f"Generating collision spheres (n={config.n_spheres_per_link}, padding={config.padding})"
+    )
+
+    # Set seed for reproducibility
     np.random.seed(42)
 
     if urdf_string is not None:
@@ -92,15 +141,18 @@ def generate_collision_spheres(
     decomposition = {}
 
     # ballpark params for strict over-approximation
-    # Use a small padding multiplier and high sample count to ensure strict coverage
-    params = SpherizeParams(percentile=100.0, padding=1.05, n_samples=10000)
+    params = SpherizeParams(
+        percentile=config.ballpark_percentile,
+        padding=config.ballpark_padding,
+        n_samples=config.ballpark_samples,
+    )
 
     for link in urdf.robot.links:
         # Special case: single sphere primitive for accuracy and efficiency
         if len(link.collisions) == 1 and link.collisions[0].geometry.sphere is not None:
             coll = link.collisions[0]
             origin = coll.origin if coll.origin is not None else np.eye(4)
-            radius = coll.geometry.sphere.radius + padding
+            radius = coll.geometry.sphere.radius + config.padding
             center = origin[:3, 3]
             decomposition[link.name] = {
                 "centers": [center.tolist()],
@@ -138,26 +190,24 @@ def generate_collision_spheres(
 
             try:
                 spheres = ballpark.spherize(
-                    combined_mesh, n_spheres_per_link, params=params
+                    combined_mesh, config.n_spheres_per_link, params=params
                 )
                 # Convert from jax arrays to numpy
                 centers = np.array([np.array(s.center) for s in spheres])
                 radii = np.array([float(s.radius) for s in spheres])
 
                 # Apply additive padding
-                radii += padding
+                radii += config.padding
 
-                # Apply a small extra margin for strict coverage if needed
-                # (ballpark uses samples, so it might miss some vertices)
-                radii *= 1.05
+                # Apply extra margin for strict coverage
+                radii *= config.extra_margin
 
                 # Strict coverage check
                 vertices = combined_mesh.vertices
                 if len(vertices) > 0:
-                    # Sample some vertices if there are too many for memory-efficient check
-                    if len(vertices) > 10000:
+                    if len(vertices) > config.coverage_samples:
                         sample_idx = np.random.choice(
-                            len(vertices), 10000, replace=False
+                            len(vertices), config.coverage_samples, replace=False
                         )
                         test_verts = vertices[sample_idx]
                     else:
@@ -166,7 +216,9 @@ def generate_collision_spheres(
                     dists = np.linalg.norm(
                         test_verts[:, None, :] - centers[None, :, :], axis=2
                     )
-                    covered = np.any(dists <= (radii[None, :] + 1e-3), axis=1)
+                    covered = np.any(
+                        dists <= (radii[None, :] + config.coverage_threshold), axis=1
+                    )
 
                     if not np.all(covered):
                         logger.warning(
@@ -174,7 +226,8 @@ def generate_collision_spheres(
                         )
                         center = combined_mesh.bounding_sphere.centroid
                         radius = (
-                            combined_mesh.bounding_sphere.primitive.radius + padding
+                            combined_mesh.bounding_sphere.primitive.radius
+                            + config.padding
                         )
                         centers = np.array([center])
                         radii = np.array([radius])
@@ -184,7 +237,7 @@ def generate_collision_spheres(
                     f"Ballpark failed for link {link.name}: {e}. Falling back to bounding sphere."
                 )
                 center = combined_mesh.bounding_sphere.centroid
-                radius = combined_mesh.bounding_sphere.primitive.radius + padding
+                radius = combined_mesh.bounding_sphere.primitive.radius + config.padding
                 centers = np.array([center])
                 radii = np.array([radius])
 

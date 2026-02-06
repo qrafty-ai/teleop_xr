@@ -13,8 +13,9 @@ from loguru import logger
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
-from teleop_xr.ik.collision import generate_collision_spheres
+from teleop_xr.ik.collision import generate_collision_spheres, CollisionConfig
 from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
+from dataclasses import asdict
 
 
 class UnitreeH1Robot(BaseRobot):
@@ -56,7 +57,7 @@ class UnitreeH1Robot(BaseRobot):
         self.robot = pk.Robot.from_urdf(urdf)
 
         cache = CollisionSphereCache("h1_2")
-        params = {"n_spheres_per_link": 8, "padding": 0.0}
+        config = CollisionConfig(n_spheres_per_link=8, padding=0.0)
 
         with open(self.urdf_path, "r") as f:
             urdf_content = f.read()
@@ -66,13 +67,14 @@ class UnitreeH1Robot(BaseRobot):
         # and usually URDF change implies mesh change or vice versa in this setup.
         mesh_fingerprints = {}
 
+        params = asdict(config)
         cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
         sphere_decomp = cache.load(cache_key)
 
         if sphere_decomp is None:
             logger.info("Generating collision sphere approximation...")
             sphere_decomp = generate_collision_spheres(
-                urdf_path=self.urdf_path, **params
+                urdf_path=self.urdf_path, config=config
             )
             cache.save(
                 cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}

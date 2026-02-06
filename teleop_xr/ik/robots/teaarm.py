@@ -15,8 +15,9 @@ from loguru import logger
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
-from teleop_xr.ik.collision import generate_collision_spheres
+from teleop_xr.ik.collision import generate_collision_spheres, CollisionConfig
 from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
+from dataclasses import asdict
 
 
 class TeaArmRobot(BaseRobot):
@@ -51,7 +52,7 @@ class TeaArmRobot(BaseRobot):
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
         cache = CollisionSphereCache("teaarm")
-        params = {"n_spheres_per_link": 8, "padding": 0.0}
+        config = CollisionConfig(n_spheres_per_link=8, padding=0.0)
 
         if urdf_string:
             urdf_hash = hashlib.sha256(urdf_string.encode()).hexdigest()
@@ -61,6 +62,7 @@ class TeaArmRobot(BaseRobot):
             urdf_hash = hashlib.sha256(urdf_content.encode()).hexdigest()
 
         mesh_fingerprints = {}
+        params = asdict(config)
         cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
         sphere_decomp = cache.load(cache_key)
 
@@ -68,11 +70,11 @@ class TeaArmRobot(BaseRobot):
             logger.info("Generating collision sphere approximation...")
             if urdf_string:
                 sphere_decomp = generate_collision_spheres(
-                    urdf_string=urdf_string, **params
+                    urdf_string=urdf_string, config=config
                 )
             else:
                 sphere_decomp = generate_collision_spheres(
-                    urdf_path=self.urdf_path, **params
+                    urdf_path=self.urdf_path, config=config
                 )
             cache.save(
                 cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}

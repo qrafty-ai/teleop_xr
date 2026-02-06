@@ -1,6 +1,6 @@
 {
-	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/teleop_transform_fix.md",
-	"started_at": "2026-02-05T05:50:00.000Z",
-	"session_ids": [],
-	"plan_name": "teleop_transform_fix"
+	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/sphere-collision-ballpark.md",
+	"started_at": "2026-02-06T07:28:51.879Z",
+	"session_ids": ["ses_3ce4a0818ffeCGCackmyuyMwQs"],
+	"plan_name": "sphere-collision-ballpark"
 }
