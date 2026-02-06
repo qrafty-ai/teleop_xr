@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/store";
 
 export function AdvancedSettingsPanel() {
@@ -21,19 +19,9 @@ export function AdvancedSettingsPanel() {
 	// Access store state and actions
 	const advancedSettings = useAppStore((state) => state.advancedSettings);
 	const setAdvancedSettings = useAppStore((state) => state.setAdvancedSettings);
-	const setRobotResetTrigger = useAppStore(
-		(state) => state.setRobotResetTrigger,
-	);
 
 	// Settings values from store
-	const {
-		updateRate,
-		logLevel,
-		robotVisible,
-		showAxes,
-		spawnDistance,
-		spawnHeight,
-	} = advancedSettings;
+	const { updateRate, logLevel } = advancedSettings;
 
 	const handleUpdateRateChange = (value: number[]) => {
 		setAdvancedSettings({ updateRate: value[0] });
@@ -42,26 +30,6 @@ export function AdvancedSettingsPanel() {
 	const handleLogLevelChange = (value: number[]) => {
 		const levels: ("info" | "warn" | "error")[] = ["info", "warn", "error"];
 		setAdvancedSettings({ logLevel: levels[value[0]] });
-	};
-
-	const handleRobotVisibilityChange = (checked: boolean) => {
-		setAdvancedSettings({ robotVisible: checked });
-	};
-
-	const handleShowAxesChange = (checked: boolean) => {
-		setAdvancedSettings({ showAxes: checked });
-	};
-
-	const handleSpawnDistanceChange = (value: number[]) => {
-		setAdvancedSettings({ spawnDistance: value[0] });
-	};
-
-	const handleSpawnHeightChange = (value: number[]) => {
-		setAdvancedSettings({ spawnHeight: value[0] });
-	};
-
-	const handleResetRobot = () => {
-		setRobotResetTrigger(Date.now());
 	};
 
 	const getLogLevelIndex = (level: string) => {
@@ -133,77 +101,6 @@ export function AdvancedSettingsPanel() {
 								<span>Error</span>
 							</div>
 						</div>
-					</div>
-
-					{/* Visualization Section */}
-					<div className="space-y-4">
-						<h4 className="text-sm font-medium leading-none text-muted-foreground">
-							Visualization
-						</h4>
-
-						<div className="flex items-center justify-between space-x-2">
-							<Label htmlFor="robot-visible">Robot Visibility</Label>
-							<Switch
-								id="robot-visible"
-								checked={robotVisible}
-								onCheckedChange={handleRobotVisibilityChange}
-							/>
-						</div>
-
-						<div className="flex items-center justify-between space-x-2">
-							<Label htmlFor="show-axes">Show Axes</Label>
-							<Switch
-								id="show-axes"
-								checked={showAxes}
-								onCheckedChange={handleShowAxesChange}
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="spawn-distance">Spawn Distance</Label>
-								<span className="text-sm text-muted-foreground">
-									{spawnDistance.toFixed(1)}m
-								</span>
-							</div>
-							<Slider
-								id="spawn-distance"
-								min={0.5}
-								max={3.0}
-								step={0.1}
-								value={[spawnDistance]}
-								onValueChange={handleSpawnDistanceChange}
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="spawn-height">Spawn Height Offset</Label>
-								<span className="text-sm text-muted-foreground">
-									{spawnHeight.toFixed(1)}m
-								</span>
-							</div>
-							<Slider
-								id="spawn-height"
-								min={-1.0}
-								max={1.0}
-								step={0.1}
-								value={[spawnHeight]}
-								onValueChange={handleSpawnHeightChange}
-							/>
-						</div>
-					</div>
-
-					{/* Actions */}
-					<div className="pt-2">
-						<Button
-							variant="outline"
-							className="w-full gap-2"
-							onClick={handleResetRobot}
-						>
-							<RefreshCw className="h-4 w-4" />
-							Reset Robot Position
-						</Button>
 					</div>
 				</CardContent>
 			)}

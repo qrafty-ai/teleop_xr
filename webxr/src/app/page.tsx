@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import { AdvancedSettingsPanel } from "@/components/dashboard/AdvancedSettingsPanel";
 import { CameraSettingsPanel } from "@/components/dashboard/CameraSettingsPanel";
+import { RobotSettingsPanel } from "@/components/dashboard/RobotSettingsPanel";
 import { TeleopPanel } from "@/components/dashboard/TeleopPanel";
 import { Button } from "@/components/ui/button";
 
@@ -95,6 +96,7 @@ export default function Home() {
 				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 					<div className="space-y-6 lg:col-span-2">
 						<TeleopPanel />
+						<RobotSettingsPanel />
 					</div>
 					<div className="space-y-6">
 						<CameraSettingsPanel />
