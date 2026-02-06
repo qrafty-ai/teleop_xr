@@ -57,6 +57,7 @@ dependencies = [
   "trimesh",
   "yourdfpy",
   "ballpark",
+  "viser",
 ]
 
 [project.urls]
