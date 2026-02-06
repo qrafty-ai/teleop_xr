@@ -1,6 +1,6 @@
 {
-	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/teleop_transform_fix.md",
-	"started_at": "2026-02-05T05:50:00.000Z",
-	"session_ids": [],
-	"plan_name": "teleop_transform_fix"
+	"active_plan": "/home/cc/.local/share/opencode/worktree/39264ada8ea06c9c90905586a19892f1eef97353/gentle-planet/.sisyphus/plans/multi-sphere-collision.md",
+	"started_at": "2026-02-06T04:48:36.290Z",
+	"session_ids": ["ses_3cecce479ffe6qw8JgolIaMjYx"],
+	"plan_name": "multi-sphere-collision"
 }
