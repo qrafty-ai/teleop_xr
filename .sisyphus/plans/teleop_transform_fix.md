@@ -49,9 +49,9 @@ This implies that the transform in `IKController` (`teleop_xr/ik/controller.py`)
     - Let's check `teleop/__init__.py` or wherever the websocket data comes in.
 
 ## Steps
-- [ ] 1. **Analyze Teleop Data Flow**: Check `teleop_xr/__init__.py` or `teleop_xr/server.py` to see if XR poses are modified before reaching `IKController`.
-- [ ] 2. **Analyze `R_xr_to_robot`**: Re-evaluate the matrix in `teleop_xr/ik/controller.py`.
-- [ ] 3. **Apply Fix**:
+- [x] 1. **Analyze Teleop Data Flow**: Check `teleop_xr/__init__.py` or `teleop_xr/server.py` to see if XR poses are modified before reaching `IKController`.
+- [x] 2. **Analyze `R_xr_to_robot`**: Re-evaluate the matrix in `teleop_xr/ik/controller.py`.
+- [x] 3. **Apply Fix**:
     - If data is raw XR, adjust `R_xr_to_robot`.
     - If data is pre-transformed, remove the redundant transform.
     - User suggests "it's just a 90 degree transform around z".

@@ -1,6 +1,5 @@
 # pyright: reportCallIssue=false
 import os
-import hashlib
 from typing import Any, override
 
 import jax
@@ -8,14 +7,10 @@ import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
 import yourdfpy
-from loguru import logger
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
-from teleop_xr.ik.collision import generate_collision_spheres, CollisionConfig
-from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
-from dataclasses import asdict
 
 
 class UnitreeH1Robot(BaseRobot):
@@ -24,6 +19,7 @@ class UnitreeH1Robot(BaseRobot):
     """
 
     def __init__(self) -> None:
+        super().__init__()
         # Load URDF from external repository via RAM
         self.urdf_path = str(
             ram.get_resource(
@@ -56,38 +52,19 @@ class UnitreeH1Robot(BaseRobot):
 
         self.robot = pk.Robot.from_urdf(urdf)
 
-        cache = CollisionSphereCache("h1_2")
-        config = CollisionConfig(n_spheres_per_link=8, padding=0.0)
-
-        with open(self.urdf_path, "r") as f:
-            urdf_content = f.read()
-        urdf_hash = hashlib.sha256(urdf_content.encode()).hexdigest()
-
-        # For now, we use an empty dict for mesh fingerprints as it's complex to track all meshes
-        # and usually URDF change implies mesh change or vice versa in this setup.
-        mesh_fingerprints = {}
-
-        params = asdict(config)
-        cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
-        sphere_decomp = cache.load(cache_key)
-
-        if sphere_decomp is None:
-            logger.info("Generating collision sphere approximation...")
-            sphere_decomp = generate_collision_spheres(
-                urdf_path=self.urdf_path, config=config
-            )
-            cache.save(
-                cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}
-            )
-        else:
-            logger.info("Loaded cached collision sphere approximation...")
-
-        if sphere_decomp:
+        if self.sphere_decomposition:
             self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
-                sphere_decomp, urdf
+                self.sphere_decomposition,
+                urdf,
+                ignore_immediate_adjacents=True,
+                user_ignore_pairs=self.collision_ignore_pairs,
             )
         else:
-            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
+            self.robot_coll = pk.collision.RobotCollision.from_urdf(
+                urdf,
+                ignore_immediate_adjacents=True,
+                user_ignore_pairs=self.collision_ignore_pairs,
+            )
 
         # End effector and torso link indices
         # We use hand base links as end effectors (L_ee, R_ee frames)
@@ -99,8 +76,13 @@ class UnitreeH1Robot(BaseRobot):
 
     @property
     @override
+    def name(self) -> str:
+        return "h1_2"
+
+    @property
+    @override
     def orientation(self) -> jaxlie.SO3:
-        return jaxlie.SO3.identity()
+        return jaxlie.SO3.from_rpy_radians(0.0, 0.0, -1.57079632679)
 
     @override
     def get_vis_config(self) -> RobotVisConfig | None:
@@ -116,6 +98,7 @@ class UnitreeH1Robot(BaseRobot):
         )
 
     @property
+    @override
     def joint_var_cls(self) -> Any:
         """
         The jaxls.Var class used for joint configurations.
@@ -123,14 +106,17 @@ class UnitreeH1Robot(BaseRobot):
         return self.robot.joint_var_cls
 
     @property
+    @override
     def actuated_joint_names(self) -> list[str]:
         return list(self.robot.joints.actuated_names)
 
     @property
+    @override
     def default_speed_ratio(self) -> float:
         # Unitree H1 often benefits from slightly amplified motion mapping
         return 1.2
 
+    @override
     def forward_kinematics(self, config: jax.Array) -> dict[str, jaxlie.SE3]:
         """
         Compute the forward kinematics for the given configuration.
@@ -142,9 +128,11 @@ class UnitreeH1Robot(BaseRobot):
             "head": jaxlie.SE3(fk[self.torso_link_idx]),
         }
 
+    @override
     def get_default_config(self) -> jax.Array:
         return jnp.zeros_like(self.robot.joints.lower_limits)
 
+    @override
     def build_costs(
         self,
         target_L: jaxlie.SE3 | None,
@@ -173,16 +161,6 @@ class UnitreeH1Robot(BaseRobot):
                 JointVar(0),
                 jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
                 weight=0.01,
-            )
-        )
-
-        costs.append(
-            pk.costs.self_collision_cost(
-                self.robot,
-                self.robot_coll,
-                JointVar(0),
-                margin=0.05,
-                weight=100.0,
             )
         )
 
@@ -229,5 +207,15 @@ class UnitreeH1Robot(BaseRobot):
                     ori_weight=jnp.array([0.0, 0.0, 20.0]),
                 )
             )
+
+        costs.append(
+            pk.costs.self_collision_cost(
+                self.robot,
+                self.robot_coll,
+                JointVar(0),
+                margin=0.05,
+                weight=100.0,
+            )
+        )
 
         return costs

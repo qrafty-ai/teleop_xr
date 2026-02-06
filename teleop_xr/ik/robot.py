@@ -1,5 +1,7 @@
 import jax.numpy as jnp
 import jaxlie
+import json
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 from teleop_xr.config import RobotVisConfig
@@ -16,12 +18,47 @@ class BaseRobot(ABC):
     to compute kinematics and optimization costs.
     """
 
+    def __init__(self) -> None:
+        self.sphere_decomposition: dict[str, Any] | None = (
+            self.load_sphere_decomposition()
+        )
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """
+        Get the name of the robot.
+        """
+        pass  # pragma: no cover
+
     @property
     def orientation(self) -> jaxlie.SO3:
         """
         Rotation from the robot's base frame to the canonical ROS2 frame (X-forward, Z-up).
         """
         return jaxlie.SO3.identity()
+
+    def load_sphere_decomposition(self) -> dict[str, Any] | None:
+        """
+        Load the sphere decomposition for this robot from assets.
+
+        Returns:
+            dict[str, Any] | None: The sphere decomposition dictionary, or None if not found.
+        """
+        # Get path relative to this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        asset_path = os.path.join(
+            current_dir, "robots", "assets", self.name, "sphere.json"
+        )
+
+        if not os.path.exists(asset_path):
+            return None
+
+        try:
+            with open(asset_path, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
 
     @property
     def base_to_ros(self) -> jaxlie.SO3:
@@ -68,6 +105,16 @@ class BaseRobot(ABC):
             Type[jaxls.Var]: The variable class to use for optimization.
         """
         pass  # pragma: no cover
+
+    @property
+    def collision_ignore_pairs(self) -> tuple[tuple[str, str], ...]:
+        """
+        Get the list of link pairs that should be ignored for collision checking.
+
+        Returns:
+            tuple[tuple[str, str], ...]: A tuple of link name pairs.
+        """
+        return ()
 
     @property
     def supported_frames(self) -> set[str]:

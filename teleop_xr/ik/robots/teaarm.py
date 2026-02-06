@@ -1,7 +1,5 @@
 # pyright: reportCallIssue=false
 import os
-import io
-import hashlib
 from pathlib import Path
 from typing import Any, override
 
@@ -10,21 +8,25 @@ import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
 import yourdfpy
-from loguru import logger
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
-from teleop_xr.ik.collision import generate_collision_spheres, CollisionConfig
-from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
-from dataclasses import asdict
 
 
 class TeaArmRobot(BaseRobot):
+    @property
+    @override
+    def name(self) -> str:
+        return "teaarm"
+
     def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
+        super().__init__()
         self.urdf_path: str
         self.mesh_path: str | None
         if urdf_string:
+            import io
+
             urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
             self.urdf_path = ""
             self.mesh_path = None
@@ -51,43 +53,19 @@ class TeaArmRobot(BaseRobot):
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
-        cache = CollisionSphereCache("teaarm")
-        config = CollisionConfig(n_spheres_per_link=8, padding=0.0)
-
-        if urdf_string:
-            urdf_hash = hashlib.sha256(urdf_string.encode()).hexdigest()
-        else:
-            with open(self.urdf_path, "r") as f:
-                urdf_content = f.read()
-            urdf_hash = hashlib.sha256(urdf_content.encode()).hexdigest()
-
-        mesh_fingerprints = {}
-        params = asdict(config)
-        cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
-        sphere_decomp = cache.load(cache_key)
-
-        if sphere_decomp is None:
-            logger.info("Generating collision sphere approximation...")
-            if urdf_string:
-                sphere_decomp = generate_collision_spheres(
-                    urdf_string=urdf_string, config=config
-                )
-            else:
-                sphere_decomp = generate_collision_spheres(
-                    urdf_path=self.urdf_path, config=config
-                )
-            cache.save(
-                cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}
-            )
-        else:
-            logger.info("Loaded cached collision sphere approximation...")
-
-        if sphere_decomp:
+        if self.sphere_decomposition:
             self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
-                sphere_decomp, urdf
+                self.sphere_decomposition,
+                urdf,
+                ignore_immediate_adjacents=True,
+                user_ignore_pairs=self.collision_ignore_pairs,
             )
         else:
-            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
+            self.robot_coll = pk.collision.RobotCollision.from_urdf(
+                urdf,
+                ignore_immediate_adjacents=True,
+                user_ignore_pairs=self.collision_ignore_pairs,
+            )
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"
@@ -108,6 +86,11 @@ class TeaArmRobot(BaseRobot):
     @override
     def orientation(self) -> jaxlie.SO3:
         return jaxlie.SO3.from_rpy_radians(0.0, 0.0, -1.57079632679)
+
+    @property
+    @override
+    def collision_ignore_pairs(self) -> tuple[tuple[str, str], ...]:
+        return ()
 
     @property
     @override

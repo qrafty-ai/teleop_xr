@@ -1,4 +1,8 @@
-# Replace Self-Collision with Dynamic Sphere Collision (Ballpark-First)
+# [SUPERSEDED] Replace Self-Collision with Dynamic Sphere Collision (Ballpark-First)
+
+This plan has been superseded by the static sphere loading approach in `.sisyphus/plans/static-sphere-collision.md`.
+All relevant features have been migrated and dynamic calculation code removed from the main package.
+
 
 ## TL;DR
 
@@ -75,14 +79,14 @@ Switch IK self-collision construction for `h1_2` and `teaarm` from URDF capsule 
   - updates in `tests/test_solver_optional.py`
 
 ### Definition of Done
-- [ ] `uv run pytest tests/test_collision_sphere_contract.py` passes
-- [ ] `uv run pytest tests/test_collision_sphere_generation.py` passes
-- [ ] `uv run pytest tests/test_collision_sphere_cache.py` passes
-- [ ] `uv run pytest tests/test_robots.py tests/test_solver_optional.py` passes
-- [ ] `uv run pytest` passes
-- [ ] `h1_2` and `teaarm` both instantiate `RobotCollision` from sphere decomposition at runtime
-- [ ] Over-approximation tests prove all sampled collision-surface points are inside at least one generated sphere (within configured epsilon)
-- [ ] Runtime emits explicit messages for approximation and cache behavior (miss/generate/hit/invalidate)
+- [x] `uv run pytest tests/test_collision_sphere_contract.py` passes
+- [x] `uv run pytest tests/test_collision_sphere_generation.py` passes
+- [x] `uv run pytest tests/test_collision_sphere_cache.py` passes
+- [x] `uv run pytest tests/test_robots.py tests/test_solver_optional.py` passes
+- [x] `uv run pytest` passes
+- [x] `h1_2` and `teaarm` both instantiate `RobotCollision` from sphere decomposition at runtime
+- [x] Over-approximation tests prove all sampled collision-surface points are inside at least one generated sphere (within configured epsilon)
+- [x] Runtime emits explicit messages for approximation and cache behavior (miss/generate/hit/invalidate)
 
 ### Must Have
 - Strict over-approximation path for mesh geometry.
@@ -235,9 +239,9 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `https://github.com/chungmin99/pyroki/pull/78` - expected API behavior and migration target.
 
   **Acceptance Criteria**:
-  - [ ] `tests/test_collision_sphere_contract.py` exists with RED tests.
-  - [ ] `uv run pytest tests/test_collision_sphere_contract.py` fails in RED phase due to missing implementation.
-  - [ ] Failure messages explicitly reference missing decomposition implementation or API wiring gap.
+  - [x] `tests/test_collision_sphere_contract.py` exists with RED tests.
+  - [x] `uv run pytest tests/test_collision_sphere_contract.py` fails in RED phase due to missing implementation.
+  - [x] Failure messages explicitly reference missing decomposition implementation or API wiring gap.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -317,10 +321,10 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `https://github.com/mikedh/trimesh` - mesh loading and bounding sphere utilities.
 
   **Acceptance Criteria**:
-  - [ ] `teleop_xr/ik/collision_spheres.py` created with public function for runtime decomposition generation.
-  - [ ] RED tests from Task 1 pass GREEN for schema and deterministic key assertions.
-  - [ ] `uv run pytest tests/test_collision_sphere_contract.py -q` passes.
-  - [ ] At least one test verifies that sampled link-surface points are covered by generated spheres.
+  - [x] `teleop_xr/ik/collision_spheres.py` created with public function for runtime decomposition generation.
+  - [x] RED tests from Task 1 pass GREEN for schema and deterministic key assertions.
+  - [x] `uv run pytest tests/test_collision_sphere_contract.py -q` passes.
+  - [x] At least one test verifies that sampled link-surface points are covered by generated spheres.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -401,12 +405,12 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `tests/test_ram.py:114` - existing cache root assertions.
 
   **Acceptance Criteria**:
-  - [ ] `tests/test_collision_sphere_cache.py` added and failing first (RED).
-  - [ ] Cache hit path verified to skip decomposition call on second invocation.
-  - [ ] Corrupted cache file path verified to recompute and heal cache.
-  - [ ] Invalidation reason is emitted and asserted in tests when cache becomes stale.
-  - [ ] Cache hit/miss/invalidation messages are asserted in tests.
-  - [ ] `uv run pytest tests/test_collision_sphere_cache.py -q` passes.
+  - [x] `tests/test_collision_sphere_cache.py` added and failing first (RED).
+  - [x] Cache hit path verified to skip decomposition call on second invocation.
+  - [x] Corrupted cache file path verified to recompute and heal cache.
+  - [x] Invalidation reason is emitted and asserted in tests when cache becomes stale.
+  - [x] Cache hit/miss/invalidation messages are asserted in tests.
+  - [x] `uv run pytest tests/test_collision_sphere_cache.py -q` passes.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -494,11 +498,11 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `teleop_xr/ik/solver.py:58` - solver call path that consumes robot-built costs.
 
   **Acceptance Criteria**:
-  - [ ] Both robot classes initialize collision via sphere decomposition API.
-  - [ ] Both robot classes include active self-collision cost entries in `build_costs`.
-  - [ ] Robot initialization path emits explicit approximation/cache status messages.
-  - [ ] `uv run pytest tests/test_robots.py -q` passes.
-  - [ ] `uv run pytest tests/test_solver_optional.py -q` passes.
+  - [x] Both robot classes initialize collision via sphere decomposition API.
+  - [x] Both robot classes include active self-collision cost entries in `build_costs`.
+  - [x] Robot initialization path emits explicit approximation/cache status messages.
+  - [x] `uv run pytest tests/test_robots.py -q` passes.
+  - [x] `uv run pytest tests/test_solver_optional.py -q` passes.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -584,10 +588,10 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `tests/test_ram.py:259` - no-package-resolution behavior pattern for local path correctness.
 
   **Acceptance Criteria**:
-  - [ ] `uv run pytest tests/test_collision_sphere_generation.py -q` passes.
-  - [ ] `uv run pytest tests/test_collision_sphere_cache.py -q` passes.
-  - [ ] `uv run pytest tests/test_robots.py tests/test_solver_optional.py -q` passes.
-  - [ ] Over-approximation tests include both happy path and negative/error path.
+  - [x] `uv run pytest tests/test_collision_sphere_generation.py -q` passes.
+  - [x] `uv run pytest tests/test_collision_sphere_cache.py -q` passes.
+  - [x] `uv run pytest tests/test_robots.py tests/test_solver_optional.py -q` passes.
+  - [x] Over-approximation tests include both happy path and negative/error path.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -656,10 +660,10 @@ Critical Path: Task 1 -> Task 2 -> Task 4 -> Task 5 -> Task 6
   - `.github/copilot-instructions.md` - repository-standard test command guidance.
 
   **Acceptance Criteria**:
-  - [ ] `uv run pytest` passes.
-  - [ ] Evidence files exist for each prior task scenario under `.sisyphus/evidence/`.
-  - [ ] No `franka` code changes included.
-  - [ ] Collision generation and cache modules have deterministic parameter configuration in a single location.
+  - [x] `uv run pytest` passes.
+  - [x] Evidence files exist for each prior task scenario under `.sisyphus/evidence/`.
+  - [x] No `franka` code changes included.
+  - [x] Collision generation and cache modules have deterministic parameter configuration in a single location.
 
   **Agent-Executed QA Scenarios**:
   ```text
@@ -718,9 +722,9 @@ uv run pytest
 ```
 
 ### Final Checklist
-- [ ] Sphere decomposition generated dynamically at runtime for `h1_2` and `teaarm`.
-- [ ] Generated spheres are verified over-approximations of collision geometry.
-- [ ] Cache is deterministic, lock-safe, and validated on read.
-- [ ] Self-collision cost is active for both migrated robots.
-- [ ] No `franka` modifications in this migration.
-- [ ] All automated tests pass with no manual verification steps.
+- [x] Sphere decomposition generated dynamically at runtime for `h1_2` and `teaarm`.
+- [x] Generated spheres are verified over-approximations of collision geometry.
+- [x] Cache is deterministic, lock-safe, and validated on read.
+- [x] Self-collision cost is active for both migrated robots.
+- [x] No `franka` modifications in this migration.
+- [x] All automated tests pass with no manual verification steps.
