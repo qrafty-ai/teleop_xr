@@ -1,6 +1,7 @@
 # pyright: reportCallIssue=false
 import os
 import io
+import hashlib
 from pathlib import Path
 from typing import Any, override
 
@@ -9,10 +10,13 @@ import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
 import yourdfpy
+from loguru import logger
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
+from teleop_xr.ik.collision import generate_collision_spheres
+from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
 
 
 class TeaArmRobot(BaseRobot):
@@ -45,7 +49,43 @@ class TeaArmRobot(BaseRobot):
             urdf = yourdfpy.URDF.load(self.urdf_path)
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
-        self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
+
+        cache = CollisionSphereCache("teaarm")
+        params = {"n_spheres_per_link": 8, "padding": 0.0}
+
+        if urdf_string:
+            urdf_hash = hashlib.sha256(urdf_string.encode()).hexdigest()
+        else:
+            with open(self.urdf_path, "r") as f:
+                urdf_content = f.read()
+            urdf_hash = hashlib.sha256(urdf_content.encode()).hexdigest()
+
+        mesh_fingerprints = {}
+        cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
+        sphere_decomp = cache.load(cache_key)
+
+        if sphere_decomp is None:
+            logger.info("Generating collision sphere approximation...")
+            if urdf_string:
+                sphere_decomp = generate_collision_spheres(
+                    urdf_string=urdf_string, **params
+                )
+            else:
+                sphere_decomp = generate_collision_spheres(
+                    urdf_path=self.urdf_path, **params
+                )
+            cache.save(
+                cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}
+            )
+        else:
+            logger.info("Loaded cached collision sphere approximation...")
+
+        if sphere_decomp:
+            self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
+                sphere_decomp, urdf
+            )
+        else:
+            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"
@@ -195,14 +235,14 @@ class TeaArmRobot(BaseRobot):
 
         costs.append(pk.costs.limit_cost(self.robot, JointVar(0), weight=100.0))
 
-        # costs.append(
-        #     pk.costs.self_collision_cost(
-        #         self.robot,
-        #         self.robot_coll,
-        #         JointVar(0),
-        #         margin=0.5,
-        #         weight=1.0,
-        #     )
-        # )
+        costs.append(
+            pk.costs.self_collision_cost(
+                self.robot,
+                self.robot_coll,
+                JointVar(0),
+                margin=0.05,
+                weight=100.0,
+            )
+        )
 
         return costs

@@ -89,7 +89,7 @@ def test_teaarm_robot(tmp_path):
     costs = robot.build_costs(
         jaxlie.SE3.identity(), jaxlie.SE3.identity(), jaxlie.SE3.identity(), q_current=q
     )
-    assert len(costs) == 6
+    assert len(costs) == 7
     assert robot.get_vis_config() is None
 
     dummy_urdf = tmp_path / "teaarm.urdf"

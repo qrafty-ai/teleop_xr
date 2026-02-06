@@ -1,5 +1,6 @@
 # pyright: reportCallIssue=false
 import os
+import hashlib
 from typing import Any, override
 
 import jax
@@ -7,10 +8,13 @@ import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
 import yourdfpy
+from loguru import logger
 
 from teleop_xr.ik.robot import BaseRobot, Cost
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
+from teleop_xr.ik.collision import generate_collision_spheres
+from teleop_xr.ik.collision_sphere_cache import CollisionSphereCache
 
 
 class UnitreeH1Robot(BaseRobot):
@@ -50,7 +54,38 @@ class UnitreeH1Robot(BaseRobot):
                 urdf.joint_map[joint_name].type = "fixed"
 
         self.robot = pk.Robot.from_urdf(urdf)
-        self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
+
+        cache = CollisionSphereCache("h1_2")
+        params = {"n_spheres_per_link": 8, "padding": 0.0}
+
+        with open(self.urdf_path, "r") as f:
+            urdf_content = f.read()
+        urdf_hash = hashlib.sha256(urdf_content.encode()).hexdigest()
+
+        # For now, we use an empty dict for mesh fingerprints as it's complex to track all meshes
+        # and usually URDF change implies mesh change or vice versa in this setup.
+        mesh_fingerprints = {}
+
+        cache_key = cache.compute_cache_key(urdf_hash, mesh_fingerprints, params)
+        sphere_decomp = cache.load(cache_key)
+
+        if sphere_decomp is None:
+            logger.info("Generating collision sphere approximation...")
+            sphere_decomp = generate_collision_spheres(
+                urdf_path=self.urdf_path, **params
+            )
+            cache.save(
+                cache_key, sphere_decomp, {"urdf_hash": urdf_hash, "params": params}
+            )
+        else:
+            logger.info("Loaded cached collision sphere approximation...")
+
+        if sphere_decomp:
+            self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
+                sphere_decomp, urdf
+            )
+        else:
+            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         # End effector and torso link indices
         # We use hand base links as end effectors (L_ee, R_ee frames)
@@ -139,15 +174,15 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        # costs.append(
-        #     pk.costs.self_collision_cost(
-        #         self.robot,
-        #         self.robot_coll,
-        #         JointVar(0),
-        #         margin=0.05,
-        #         weight=100.0,
-        #     )
-        # )
+        costs.append(
+            pk.costs.self_collision_cost(
+                self.robot,
+                self.robot_coll,
+                JointVar(0),
+                margin=0.05,
+                weight=100.0,
+            )
+        )
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency
@@ -181,16 +216,16 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        # if target_Head is not None:
-        #     costs.append(
-        #         pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
-        #             robot=self.robot,
-        #             joint_var=JointVar(0),
-        #             target_pose=target_Head,
-        #             target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
-        #             pos_weight=0.0,
-        #             ori_weight=jnp.array([0.0, 0.0, 20.0]),
-        #         )
-        #     )
+        if target_Head is not None:
+            costs.append(
+                pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
+                    robot=self.robot,
+                    joint_var=JointVar(0),
+                    target_pose=target_Head,
+                    target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
+                    pos_weight=0.0,
+                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
+                )
+            )
 
         return costs
