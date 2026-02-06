@@ -437,136 +437,39 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 ---
 
-- [ ] 3. Integrate into TeaArmRobot (uncomment + rewire self-collision cost)
+- [x] 3. Integrate into TeaArmRobot (uncomment + rewire self-collision cost)
+
+- [ ] 4. Occupancy testing script
 
   **What to do**:
 
-  Modify `teleop_xr/ik/robots/teaarm.py` to:
+  Create a script `scripts/test_sphere_occupancy.py` that validates how well the generated spheres cover the original collision meshes.
 
-  1. **In `__init__`**: Build the `MultiSphereCollision` alongside the existing `robot_coll`:
-     ```python
-     from teleop_xr.ik.collision import build_multi_sphere_collision
-     self.multi_sphere_coll = build_multi_sphere_collision(urdf)
-     ```
+  **Algorithm**:
+  - For each link in the robot:
+    - Build the `MultiSphereCollision` spheres
+    - Get the original collision trimesh for that link
+    - Sample points from the surface of the trimesh (using `trimesh.sample.sample_surface`)
+    - Also sample points from the volume of the trimesh (using `trimesh.sample.volume_mesh`)
+    - For each sampled point, check if it is contained within AT LEAST ONE of the generated spheres for that link
+    - Calculate the "occupancy ratio": `contained_points / total_points`
+    - Report the ratio per link
 
-  2. **In `build_costs`**: Replace the commented-out `self_collision_cost` with a new custom cost that uses `MultiSphereCollision`:
-     ```python
-     # Create a custom cost function that uses multi-sphere collision
-     from pyroki.collision._collision import colldist_from_sdf
-
-     @pk.costs.Cost.create_factory
-     def multi_sphere_self_collision_cost(
-         vals, robot, multi_sphere_coll, joint_var, margin, weight
-     ):
-         cfg = vals[joint_var]
-         distances = multi_sphere_coll.compute_self_collision_distance(robot, cfg)
-         residual = colldist_from_sdf(distances, margin)
-         return (residual * weight).flatten()
-     ```
-     Then add it to costs:
-     ```python
-     costs.append(
-         multi_sphere_self_collision_cost(
-             self.robot,
-             self.multi_sphere_coll,
-             JointVar(0),
-             margin=0.02,   # 2cm activation margin
-             weight=5.0,
-         )
-     )
-     ```
-
-  3. **Keep the old `self.robot_coll`** for backwards compatibility / potential world collision use — don't remove it.
-
-  4. **Tune parameters**:
-     - `margin`: Start with 0.02m (2cm). Too large → arms can't cross midline. Too small → collision not detected early enough.
-     - `weight`: Start with 5.0 (moderate — the pose cost is 50.0, so collision should be meaningful but not dominant).
-
-  **Must NOT do**:
-  - Don't change any other cost weights or parameters
-  - Don't remove the existing `robot_coll` attribute
-  - Don't modify the `BaseRobot` interface
-  - Don't change how FK or other costs work
+  **Expectation**:
+  - For arm links, the ratio should be > 95% (conservative approximation)
+  - For complex links like torso, verify the ratio is acceptable (> 80%)
 
   **Recommended Agent Profile**:
-  - **Category**: `quick`
-    - Reason: Straightforward integration — import new class, build in init, add cost in build_costs. Changes are localized to one file.
-  - **Skills**: (none)
-
-  **Parallelization**:
-  - **Can Run In Parallel**: NO
-  - **Parallel Group**: Wave 3 (sequential after Task 2)
-  - **Blocks**: Task 4
-  - **Blocked By**: Task 2
-
-  **References**:
-
-  **Pattern References**:
-  - `teleop_xr/ik/robots/teaarm.py:47-48` — Current `robot_coll` creation: `self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)`. Add `self.multi_sphere_coll` alongside.
-  - `teleop_xr/ik/robots/teaarm.py:196-206` — Commented-out `self_collision_cost` block: this is where the new cost goes. Remove the commented block and replace with the multi-sphere version.
-  - `pyroki/costs/_costs.py:169-182` — `self_collision_cost` function: follow this pattern for the custom cost factory. Note the `@Cost.create_factory` decorator pattern.
-  - `pyroki/collision/_collision.py:125-152` — `colldist_from_sdf()`: import and use directly for the margin penalty.
-
-  **API References**:
-  - `teleop_xr/ik/robots/teaarm.py:112-208` — `build_costs()` method: the full cost list construction. The new collision cost should be added after `limit_cost` (line 196) and before the return.
-
-  **Acceptance Criteria**:
-
-  - [ ] `TeaArmRobot.__init__` creates `self.multi_sphere_coll` attribute
-  - [ ] `build_costs()` includes multi-sphere self-collision cost (not commented out)
-  - [ ] Old `self.robot_coll` still exists (not removed)
-  - [ ] TeaArmRobot can be instantiated without error
-
-  **Agent-Executed QA Scenarios:**
-
-  ```
-  Scenario: TeaArmRobot initializes with multi-sphere collision
-    Tool: Bash (python)
-    Preconditions: Tasks 1-2 complete
-    Steps:
-      1. python -c "
-         from teleop_xr.ik.robots.teaarm import TeaArmRobot
-         robot = TeaArmRobot()
-         assert hasattr(robot, 'multi_sphere_coll'), 'Missing multi_sphere_coll'
-         assert hasattr(robot, 'robot_coll'), 'Old robot_coll should still exist'
-         print('multi_sphere primitives:', robot.multi_sphere_coll.num_primitives)
-         print('INIT CHECK PASSED')
-         "
-      2. Assert: stdout contains "INIT CHECK PASSED"
-    Expected Result: Robot creates both collision models
-    Evidence: stdout captured
-
-  Scenario: build_costs includes self-collision cost
-    Tool: Bash (python)
-    Preconditions: TeaArmRobot initializes
-    Steps:
-      1. python -c "
-         import jaxlie
-         from teleop_xr.ik.robots.teaarm import TeaArmRobot
-         robot = TeaArmRobot()
-         costs = robot.build_costs(
-             target_L=jaxlie.SE3.identity(),
-             target_R=jaxlie.SE3.identity(),
-             target_Head=None,
-         )
-         print('Number of costs:', len(costs))
-         # Previously had ~5 costs (rest, manip, pose_L, pose_R, limit)
-         # Now should have 6 (+ self-collision)
-         assert len(costs) >= 6, f'Expected at least 6 costs, got {len(costs)}'
-         print('COST COUNT CHECK PASSED')
-         "
-      2. Assert: stdout contains "COST COUNT CHECK PASSED"
-    Expected Result: Self-collision cost is included in the cost list
-    Evidence: stdout captured
-  ```
+  - **Category**: `deep`
+    - Reason: Requires working with `trimesh` sampling and geometric containment logic.
 
   **Commit**: YES
-  - Message: `feat(ik): enable multi-sphere self-collision in TeaArmRobot`
-  - Files: `teleop_xr/ik/robots/teaarm.py`
+  - Message: `test(ik): add sphere occupancy validation script`
+  - Files: `scripts/test_sphere_occupancy.py`
 
 ---
 
-- [ ] 4. Tests and validation
+- [ ] 5. Tests and validation
 
   **What to do**:
 
@@ -662,7 +565,8 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 | 1 | `feat(ik): add MultiSphereCollision data model with sphere-sphere distance` | `teleop_xr/ik/collision.py` | python import check |
 | 2 | `feat(ik): add multi-sphere fitting algorithm from URDF collision meshes` | `teleop_xr/ik/collision.py` | factory build check |
 | 3 | `feat(ik): enable multi-sphere self-collision in TeaArmRobot` | `teleop_xr/ik/robots/teaarm.py` | robot init check |
-| 4 | `test(ik): add multi-sphere self-collision validation tests` | `tests/test_multi_sphere_collision.py` | pytest |
+| 4 | `test(ik): add sphere occupancy validation script` | `scripts/test_sphere_occupancy.py` | script run |
+| 5 | `test(ik): add multi-sphere self-collision validation tests` | `tests/test_multi_sphere_collision.py` | pytest |
 
 ---
 
@@ -693,6 +597,9 @@ print(f'Distances: min={float(d.min()):.4f}, max={float(d.max()):.4f}')
 assert jnp.all(jnp.isfinite(d)), 'Non-finite distances!'
 print('SUCCESS')
 "
+
+# 4. Occupancy test passes
+python scripts/test_sphere_occupancy.py
 ```
 
 ### Final Checklist

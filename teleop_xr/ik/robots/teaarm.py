@@ -9,10 +9,27 @@ import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
 import yourdfpy
+from pyroki.collision._collision import colldist_from_sdf
 
 from teleop_xr.ik.robot import BaseRobot, Cost
+from teleop_xr.ik.collision import build_multi_sphere_collision
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
+
+
+@pk.costs.Cost.create_factory  # pyright: ignore[reportAttributeAccessIssue]
+def multi_sphere_self_collision_cost(
+    vals,
+    robot,
+    multi_sphere_coll,
+    joint_var,
+    margin,
+    weight,
+):
+    cfg = vals[joint_var]
+    distances = multi_sphere_coll.compute_self_collision_distance(robot, cfg)
+    residual = colldist_from_sdf(distances, margin)
+    return (residual * weight).flatten()
 
 
 class TeaArmRobot(BaseRobot):
@@ -46,6 +63,7 @@ class TeaArmRobot(BaseRobot):
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
         self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
+        self.multi_sphere_coll = build_multi_sphere_collision(urdf)
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"
@@ -195,14 +213,14 @@ class TeaArmRobot(BaseRobot):
 
         costs.append(pk.costs.limit_cost(self.robot, JointVar(0), weight=100.0))
 
-        # costs.append(
-        #     pk.costs.self_collision_cost(
-        #         self.robot,
-        #         self.robot_coll,
-        #         JointVar(0),
-        #         margin=0.5,
-        #         weight=1.0,
-        #     )
-        # )
+        costs.append(
+            multi_sphere_self_collision_cost(
+                self.robot,
+                self.multi_sphere_coll,
+                JointVar(0),
+                margin=0.02,
+                weight=5.0,
+            )
+        )
 
         return costs
