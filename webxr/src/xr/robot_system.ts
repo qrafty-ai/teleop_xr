@@ -73,22 +73,45 @@ export class RobotModelSystem extends createSystem({}) {
 			}
 		};
 
-		let lastRobotVisible = useAppStore.getState().advancedSettings.robotVisible;
-		let lastShowAxes = useAppStore.getState().advancedSettings.showAxes;
+		let lastRobotVisible = useAppStore.getState().robotSettings.robotVisible;
+		let lastShowAxes = useAppStore.getState().robotSettings.showAxes;
 		let lastResetTrigger = useAppStore.getState().robotResetTrigger;
+		let lastDistanceGrab =
+			useAppStore.getState().robotSettings.distanceGrabEnabled;
 
 		useAppStore.subscribe((state) => {
-			if (state.advancedSettings.robotVisible !== lastRobotVisible) {
-				lastRobotVisible = state.advancedSettings.robotVisible;
+			if (state.robotSettings.robotVisible !== lastRobotVisible) {
+				lastRobotVisible = state.robotSettings.robotVisible;
 				if (this.robotEntity?.object3D) {
 					this.robotEntity.object3D.visible = lastRobotVisible;
 				}
 			}
 
-			if (state.advancedSettings.showAxes !== lastShowAxes) {
-				lastShowAxes = state.advancedSettings.showAxes;
+			if (state.robotSettings.showAxes !== lastShowAxes) {
+				lastShowAxes = state.robotSettings.showAxes;
 				if (this.axesHelper) {
 					this.axesHelper.visible = lastShowAxes;
+				}
+			}
+
+			if (state.robotSettings.distanceGrabEnabled !== lastDistanceGrab) {
+				lastDistanceGrab = state.robotSettings.distanceGrabEnabled;
+				if (this.robotEntity) {
+					const hasGrab = this.robotEntity.hasComponent(DistanceGrabbable);
+
+					if (lastDistanceGrab && !hasGrab) {
+						if (!this.robotEntity.hasComponent(Interactable)) {
+							this.robotEntity.addComponent(Interactable);
+						}
+						this.robotEntity.addComponent(DistanceGrabbable, {
+							movementMode: MovementMode.MoveFromTarget,
+						});
+					} else if (!lastDistanceGrab && hasGrab) {
+						this.robotEntity.removeComponent(DistanceGrabbable);
+						if (this.robotEntity.hasComponent(Interactable)) {
+							this.robotEntity.removeComponent(Interactable);
+						}
+					}
 				}
 			}
 
@@ -196,16 +219,18 @@ export class RobotModelSystem extends createSystem({}) {
 			this.robotModel = robot;
 
 			// Create interactable entity
-			this.robotEntity = (this.world as World)
-				.createTransformEntity()
-				.addComponent(Interactable)
-				.addComponent(DistanceGrabbable, {
+			this.robotEntity = (this.world as World).createTransformEntity();
+
+			if (useAppStore.getState().robotSettings.distanceGrabEnabled) {
+				this.robotEntity.addComponent(Interactable);
+				this.robotEntity.addComponent(DistanceGrabbable, {
 					movementMode: MovementMode.MoveFromTarget,
 				});
+			}
 
 			if (this.robotEntity?.object3D) {
 				this.robotEntity.object3D.visible =
-					useAppStore.getState().advancedSettings.robotVisible;
+					useAppStore.getState().robotSettings.robotVisible;
 			}
 
 			const robotObject = this.robotEntity?.object3D;
@@ -217,8 +242,7 @@ export class RobotModelSystem extends createSystem({}) {
 			robotObject3D.add(tiltNode);
 
 			this.axesHelper = new AxesHelper(1.0);
-			this.axesHelper.visible =
-				useAppStore.getState().advancedSettings.showAxes;
+			this.axesHelper.visible = useAppStore.getState().robotSettings.showAxes;
 			tiltNode.add(this.axesHelper);
 
 			// Add lights to ensure textures are visible
@@ -254,8 +278,7 @@ export class RobotModelSystem extends createSystem({}) {
 		if (!camera || !camera.position) {
 			return;
 		}
-		const { spawnDistance, spawnHeight } =
-			useAppStore.getState().advancedSettings;
+		const { spawnDistance, spawnHeight } = useAppStore.getState().robotSettings;
 		const cameraPosition = camera.position;
 		const forward = new Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
 		forward.y = 0; // Keep horizontal
