@@ -469,7 +469,7 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 ---
 
-- [ ] 5. Tests and validation
+- [x] 5. Tests and validation
 
   **What to do**:
 
