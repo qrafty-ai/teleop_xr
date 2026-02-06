@@ -87,30 +87,43 @@ def test_franka_get_vis_config(mock_ram, dummy_urdf_file):
 
 def test_franka_forward_kinematics():
     robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
-    q = jnp.zeros(1)  # 1 joint
+    q = jnp.zeros(1)
     fk = robot.forward_kinematics(q)
 
     assert "right" in fk
     assert isinstance(fk["right"], jaxlie.SE3)
+    assert robot.joint_var_cls is not None
 
 
 def test_franka_build_costs():
     robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
     target = jaxlie.SE3.identity()
 
-    # Test with target
-    costs = robot.build_costs(target_L=None, target_R=target, target_Head=None)
-    # Expect: pose cost (1) + limit cost (1) = 2
-    # Note: FrankaRobot adds pose cost only if target_R is not None.
-    # It always adds limit cost.
-    # It does NOT add align_cost in the current implementation (I removed it in previous turn? let's check source)
-    # The source I wrote has pose_cost and limit_cost.
-    assert len(costs) >= 2
+    costs = robot.build_costs(
+        target_L=None, target_R=target, target_Head=None, q_current=jnp.zeros(1)
+    )
+    assert len(costs) >= 3
 
-    # Test without target
     costs_no_target = robot.build_costs(target_L=None, target_R=None, target_Head=None)
-    # Expect: limit cost + manipulability cost
     assert len(costs_no_target) == 2
+
+
+def test_franka_get_vis_config_none():
+    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+    assert robot.get_vis_config() is None
+
+
+def test_franka_init_error(tmp_path):
+    with (
+        patch("teleop_xr.ik.robots.franka.ram.get_resource") as mock_get,
+        patch("teleop_xr.ik.robots.franka.ram.get_repo") as mock_repo,
+        patch("teleop_xr.ik.robots.franka.os.path.exists") as mock_exists,
+    ):
+        mock_get.return_value = tmp_path / "nonexistent.urdf"
+        mock_repo.return_value = tmp_path
+        mock_exists.return_value = False
+        with pytest.raises(FileNotFoundError):
+            FrankaRobot()
 
 
 def test_franka_default_config():

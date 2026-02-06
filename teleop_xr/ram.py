@@ -6,7 +6,7 @@ Handles fetching and processing robot descriptions (URDF/Xacro) from git.
 import hashlib
 import re
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from contextlib import contextmanager
 
 import git
@@ -30,7 +30,7 @@ def _resolve_package(package_name: str) -> str:
         # 2. Check immediate subdirectories (common for metapackages)
         for child in _CURRENT_REPO_ROOT.iterdir():
             if child.is_dir():
-                if child.name == package_name:
+                if child.name == package_name:  # pragma: no cover
                     return str(child)
                 # Check one level deeper
                 candidate = child / package_name
@@ -128,10 +128,11 @@ def get_repo(
             if branch:
                 try:
                     repo.git.checkout(branch)
-                except git.exc.GitCommandError:
+                except git.GitCommandError:
                     # If checkout fails, try fetching first
                     repo.remotes.origin.fetch()
                     repo.git.checkout(branch)
+
             repo.remotes.origin.pull()
 
     return repo_dir
@@ -149,7 +150,7 @@ def process_xacro(
     """
     # Use context to allow $(find ...) resolution
     with _ram_repo_context(repo_root):
-        doc = xacro.process_file(str(xacro_path), mappings=mappings)
+        doc: Any = xacro.process_file(str(xacro_path), mappings=mappings)
         urdf_xml = doc.toprettyxml(indent="  ")
 
     if resolve_packages:
@@ -185,6 +186,7 @@ def get_resource(
     if repo_root:
         repo_dir = Path(repo_root)
     else:
+        assert repo_url is not None
         repo_dir = get_repo(repo_url, branch=branch, cache_dir=cache_dir)
 
     file_path = repo_dir / path_inside_repo

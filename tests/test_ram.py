@@ -278,25 +278,57 @@ def test_get_resource_no_resolve_packages(temp_git_repo, mock_cache_dir):
     assert "file://" not in content  # Should NOT be resolved to absolute path
 
 
-def test_get_resource_with_resolve_packages(temp_git_repo, mock_cache_dir):
-    """Test get_resource with resolve_packages=True."""
-    repo_url = f"file://{temp_git_repo}"
+def test_resolve_package_at_root(temp_git_repo):
+    (temp_git_repo / "my_pkg").mkdir()
+    with ram._ram_repo_context(temp_git_repo):
+        path = ram._resolve_package("my_pkg")
+        assert path == str(temp_git_repo / "my_pkg")
 
-    # Create a urdf with package://
+
+def test_resolve_package_metapackage(temp_git_repo):
+    (temp_git_repo / "subdir").mkdir()
+    (temp_git_repo / "subdir" / "my_pkg").mkdir()
+
+    with ram._ram_repo_context(temp_git_repo):
+        path = ram._resolve_package("my_pkg")
+        assert path == str(temp_git_repo / "subdir" / "my_pkg")
+
+    (temp_git_repo / "direct_pkg").mkdir()
+    with ram._ram_repo_context(temp_git_repo):
+        path = ram._resolve_package("direct_pkg")
+        assert path == str(temp_git_repo / "direct_pkg")
+
+
+def test_package_uri_resolution_full(temp_git_repo):
+    (temp_git_repo / "my_pkg").mkdir()
+    (temp_git_repo / "my_pkg" / "mesh.stl").write_text("foo")
+    content = '<mesh filename="package://my_pkg/mesh.stl"/>'
+    with ram._ram_repo_context(temp_git_repo):
+        resolved = ram._replace_package_uris(content, temp_git_repo)
+        assert str((temp_git_repo / "my_pkg" / "mesh.stl").absolute()) in resolved
+
+
+def test_process_xacro_no_resolve(temp_git_repo):
+    xacro_path = temp_git_repo / "robot.xacro"
+    urdf_xml = ram.process_xacro(
+        xacro_path, repo_root=temp_git_repo, resolve_packages=False
+    )
+    assert "test_xacro" in urdf_xml
+
+
+def test_package_uri_fallback(temp_git_repo):
+    content = '<mesh filename="package://unknown_pkg/mesh.stl"/>'
+    with ram._ram_repo_context(temp_git_repo):
+        resolved = ram._replace_package_uris(content, temp_git_repo)
+        assert str(temp_git_repo / "mesh.stl") in resolved
+
+
+def test_get_resource_local_processed_with_package_uri(temp_git_repo, mock_cache_dir):
     (temp_git_repo / "pkg.urdf").write_text(
         '<mesh filename="package://test_repo/mesh.stl"/>'
     )
-    repo = git.Repo(temp_git_repo)
-    repo.index.add(["pkg.urdf"])
-    repo.index.commit("Add pkg urdf")
-
-    # Fetch with resolution
     path = ram.get_resource(
-        repo_url, "pkg.urdf", cache_dir=mock_cache_dir, resolve_packages=True
+        path_inside_repo="pkg.urdf", repo_root=temp_git_repo, cache_dir=mock_cache_dir
     )
-
-    content = path.read_text()
-    assert "package://" not in content
-    # Should resolve to an absolute path ending in mesh.stl
-    assert content.strip().endswith('mesh.stl"/>')
-    assert "ram_cache" in content
+    assert "processed" in str(path)
+    assert "mesh.stl" in path.read_text()

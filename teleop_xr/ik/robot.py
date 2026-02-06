@@ -45,7 +45,7 @@ class BaseRobot(ABC):
             Subclasses should use `self.orientation` to populate
             `RobotVisConfig.initial_rotation_euler`.
         """
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
@@ -56,7 +56,7 @@ class BaseRobot(ABC):
         Returns:
             list[str]: A list of joint names.
         """
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
@@ -67,7 +67,7 @@ class BaseRobot(ABC):
         Returns:
             Type[jaxls.Var]: The variable class to use for optimization.
         """
-        pass
+        pass  # pragma: no cover
 
     @property
     def supported_frames(self) -> set[str]:
@@ -101,7 +101,7 @@ class BaseRobot(ABC):
             dict[str, jaxlie.SE3]: A dictionary mapping link names (e.g., "left", "right", "head")
                                   to their respective SE3 poses.
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_default_config(self) -> jnp.ndarray:
@@ -111,7 +111,7 @@ class BaseRobot(ABC):
         Returns:
             jnp.ndarray: The default configuration as a JAX array.
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def build_costs(
@@ -133,4 +133,4 @@ class BaseRobot(ABC):
         Returns:
             list[Cost]: A list of jaxls Cost objects representing the optimization objectives.
         """
-        pass
+        pass  # pragma: no cover

@@ -80,7 +80,7 @@ def compute_next_transform(
     return T_tp1
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     T_tm1 = np.eye(4)
     T_t = np.array(
         [[0.998, -0.05, 0, 0.5], [0.05, 0.998, 0, 0.0], [0, 0, 1, 0.0], [0, 0, 0, 1]]

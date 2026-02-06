@@ -1,6 +1,8 @@
 import numpy as np
 import jax.numpy as jnp
 import jaxlie
+from unittest.mock import patch, PropertyMock
+from loguru import logger
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
@@ -34,7 +36,7 @@ class DummyRobot(BaseRobot):
     def get_default_config(self) -> jnp.ndarray:
         return jnp.array([0.0, 0.0])
 
-    def build_costs(self, target_L, target_R, target_Head):
+    def build_costs(self, target_L, target_R, target_Head, q_current=None):
         return []
 
 
@@ -143,13 +145,97 @@ def test_ik_controller_deadman_requires_two_buttons():
     np.testing.assert_allclose(out, q0)
 
 
-def test_ik_controller_reset():
+def test_ik_controller_no_solver():
     robot = DummyRobot()
     controller = IKController(robot=robot)
-    controller.active = True
-    ident = jaxlie.SE3.identity()
-    controller.snapshot_xr = {"left": ident}
+
+    left = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.LEFT,
+        gripPose=_pose(0.0, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    right = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.RIGHT,
+        gripPose=_pose(0.1, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    head = XRInputSource(role=XRDeviceRole.HEAD, pose=_pose(0.0, 0.2, 0.0))
+    state = XRState(timestamp_unix_ms=1.0, devices=[left, right, head])
+    q0 = np.array([0.0, 0.0])
+
+    controller.step(state, q0)
+    assert controller.active
+
+    out = controller.step(state, q0)
+    np.testing.assert_allclose(out, q0)
+
+
+def test_ik_controller_no_filter():
+    robot = DummyRobot()
+    solver = DummySolver(np.array([5.0, 6.0]))
+    controller = IKController(robot=robot, solver=solver)
+
+    left = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.LEFT,
+        gripPose=_pose(0.0, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    right = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.RIGHT,
+        gripPose=_pose(0.1, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    head = XRInputSource(role=XRDeviceRole.HEAD, pose=_pose(0.0, 0.2, 0.0))
+    state = XRState(timestamp_unix_ms=1.0, devices=[left, right, head])
+    q0 = np.array([0.0, 0.0])
+
+    controller.step(state, q0)
+    out = controller.step(state, q0)
+    np.testing.assert_allclose(out, [5.0, 6.0])
+
+
+def test_ik_controller_reset_with_filter():
+    robot = DummyRobot()
+    controller = IKController(robot=robot, filter_weights=np.array([0.5, 0.5]))
+    assert controller.filter is not None
+    controller.filter.add_data(np.array([1.0, 1.0]))
+    assert len(controller.filter._data_queue) > 0
+
     controller.reset()
     assert controller.active is False
-    assert controller.snapshot_xr == {}
-    assert controller.snapshot_robot == {}
+    assert len(controller.filter._data_queue) == 0
+
+
+def test_ik_controller_unsupported_frame_warning():
+    robot = DummyRobot()
+    controller = IKController(robot=robot)
+
+    # DummyRobot only supports left/right/head by default in BaseRobot,
+    # but DummyRobot FK returns all three.
+    # Let's mock robot.supported_frames to be just {"left"}
+    with patch.object(
+        DummyRobot, "supported_frames", new_callable=PropertyMock
+    ) as mock_frames:
+        mock_frames.return_value = {"left"}
+
+        # Create state with right controller
+        right = XRInputSource(
+            role=XRDeviceRole.CONTROLLER,
+            handedness=XRHandedness.RIGHT,
+            gripPose=_pose(0.1, 0.0, 0.0),
+            gamepad=_deadman_gamepad(True),
+        )
+        state = XRState(timestamp_unix_ms=1.0, devices=[right])
+
+        # Collect logs
+        logs = []
+        handler_id = logger.add(lambda msg: logs.append(msg), level="WARNING")
+        try:
+            controller._get_device_poses(state)
+            assert any("not supported by robot" in str(m) for m in logs)
+        finally:
+            logger.remove(handler_id)

@@ -2,9 +2,22 @@ import asyncio
 import time
 import pytest
 from fastapi.testclient import TestClient
-from teleop_xr import Teleop, TeleopSettings
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock
+from teleop_xr import Teleop, TeleopSettings, get_local_ip
+
+
+def test_get_local_ip_success():
+    with patch("socket.socket") as mock_socket:
+        mock_instance = mock_socket.return_value
+        mock_instance.getsockname.return_value = ["1.2.3.4"]
+        assert get_local_ip() == "1.2.3.4"
+
+
+def test_get_local_ip_failure():
+    with patch("socket.socket") as mock_socket:
+        mock_socket.side_effect = Exception("test error")
+        assert "Error:" in get_local_ip()
 
 
 def test_missing_client_id_handling():
