@@ -226,7 +226,7 @@ class TeaArmRobot(BaseRobot):
                 self.robot_coll,
                 JointVar(0),
                 margin=0.05,
-                weight=100.0,
+                weight=10.0,
             )
         )
 

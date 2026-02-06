@@ -26,11 +26,11 @@ The user wants `scripts/generate_spheres.py` to be interactive, providing a GUI 
     - Port interactive GUI components from `ballpark`.
     - Integrate `teleop_xr` robot loading.
     - Ensure "Export" logic targets `teleop_xr/ik/robots/assets/{robot.name}/sphere.json`.
-- [ ] 3. **Verification**:
+- [x] 3. **Verification**:
     - Run the script and verify the GUI launches.
     - Verify that exporting from the GUI saves the file to the correct location.
 
 ## Acceptance Criteria
-- [ ] `uv run python scripts/generate_spheres.py --robot-class h1` launches a `viser` server.
-- [ ] The GUI provides interactive controls for sphere decomposition.
-- [ ] Exporting from the GUI correctly saves `sphere.json` in the robot's asset directory.
+- [x] `uv run python scripts/generate_spheres.py --robot-class h1` launches a `viser` server.
+- [x] The GUI provides interactive controls for sphere decomposition.
+- [x] Exporting from the GUI correctly saves `sphere.json` in the robot's asset directory.

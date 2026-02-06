@@ -1,8 +1,8 @@
 {
-	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/static-sphere-collision.md",
-	"started_at": "2026-02-06T08:45:00.000Z",
-	"completed_at": "2026-02-06T09:35:00.000Z",
+	"active_plan": "/home/cc/codes/teleop_xr/.sisyphus/plans/interactive-sphere-generation.md",
+	"started_at": "2026-02-06T09:40:00.000Z",
+	"completed_at": "2026-02-06T10:05:00.000Z",
 	"session_ids": ["ses_3ce4a0818ffeCGCackmyuyMwQs"],
-	"plan_name": "static-sphere-collision",
+	"plan_name": "interactive-sphere-generation",
 	"status": "completed"
 }
