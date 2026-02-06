@@ -1,4 +1,5 @@
 import pytest
+import logging
 from unittest.mock import MagicMock, patch
 from typing import cast
 from teleop_xr.video_stream import (
@@ -66,11 +67,46 @@ async def test_video_stream_manager():
         sources = cast(dict[str, VideoSource], {"cam1": MagicMock()})
         manager = VideoStreamManager(sources)
 
+        # Test with _stream_id attribute
+        mock_sender = MagicMock()
+        mock_sender._stream_id = None
+        mock_transceiver = MagicMock()
+        mock_transceiver.sender = mock_sender
+        mock_pc.addTransceiver.return_value = mock_transceiver
+
         await manager.create_offer()
 
+        assert mock_sender._stream_id == "cam1"
         mock_pc.addTransceiver.assert_called()
         mock_pc.createOffer.assert_called()
         mock_pc.setLocalDescription.assert_called()
+
+
+@pytest.mark.anyio
+async def test_video_stream_manager_no_stream_id(caplog):
+    from unittest.mock import AsyncMock
+
+    mock_pc = MagicMock()
+    mock_pc.createOffer = AsyncMock(return_value=MagicMock())
+    mock_pc.setLocalDescription = AsyncMock()
+    mock_pc.setRemoteDescription = AsyncMock()
+    mock_pc.addIceCandidate = AsyncMock()
+    mock_pc.close = AsyncMock()
+
+    with patch("teleop_xr.video_stream.RTCPeerConnection", return_value=mock_pc):
+        sources = cast(dict[str, VideoSource], {"cam1": MagicMock()})
+        manager = VideoStreamManager(sources)
+
+        # Test without _stream_id attribute
+        mock_sender = object()  # No _stream_id
+        mock_transceiver = MagicMock()
+        mock_transceiver.sender = mock_sender
+        mock_pc.addTransceiver.return_value = mock_transceiver
+
+        with caplog.at_level(logging.WARNING):
+            await manager.create_offer()
+
+        assert "Could not set stream ID" in caplog.text
 
         await manager.handle_answer("sdp", "answer")
         mock_pc.setRemoteDescription.assert_called()
