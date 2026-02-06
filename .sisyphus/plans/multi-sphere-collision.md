@@ -439,7 +439,7 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 - [x] 3. Integrate into TeaArmRobot (uncomment + rewire self-collision cost)
 
-- [ ] 4. Occupancy testing script
+- [x] 4. Occupancy testing script
 
   **What to do**:
 
