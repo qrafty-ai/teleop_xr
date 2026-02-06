@@ -117,7 +117,7 @@ def _fit_radii_along_centerline(
     rel = vertices - c1[None, :]
     t = rel @ axis_dir
     perp = onp.linalg.norm(rel - t[:, None] * axis_dir[None, :], axis=1)
-    fallback = float(perp.max()) * 0.5 + radius_margin
+    fallback_max_perp = float(perp.max())
 
     radii: list[float] = []
     for center in centers:
@@ -126,12 +126,30 @@ def _fit_radii_along_centerline(
         t_max = tc + sidelength
         mask = (t >= t_min) & (t <= t_max)
         if onp.any(mask):
-            radius = float(perp[mask].max()) + radius_margin
+            max_perp = float(perp[mask].max())
         else:
-            radius = fallback
+            max_perp = fallback_max_perp
+        radius = float(onp.sqrt(sidelength**2 + max_perp**2)) + radius_margin
         radii.append(max(min_radius, radius))
 
     return radii
+
+
+def _points_covered_by_spheres(
+    points: onp.ndarray,
+    centers: list[onp.ndarray],
+    radii: list[float],
+) -> onp.ndarray:
+    if points.shape[0] == 0:
+        return onp.zeros((0,), dtype=bool)
+    if len(centers) == 0:
+        return onp.zeros((points.shape[0],), dtype=bool)
+
+    centers_arr = onp.asarray(centers, dtype=onp.float32)
+    radii_arr = onp.asarray(radii, dtype=onp.float32)
+    diff = points[:, None, :] - centers_arr[None, :, :]
+    inside = onp.sum(diff * diff, axis=-1) <= (radii_arr[None, :] ** 2)
+    return onp.any(inside, axis=1)
 
 
 def parse_srdf_ignore_pairs(srdf_path: str) -> tuple[tuple[str, str], ...]:
@@ -198,6 +216,9 @@ def build_multi_sphere_collision(
         )
 
         child_origins = child_joint_origins.get(link_name, [])
+        link_centers: list[onp.ndarray] = []
+        link_radii: list[float] = []
+
         if len(child_origins) == 0:
             if vertices.shape[0] == 0:
                 continue
@@ -205,57 +226,74 @@ def build_multi_sphere_collision(
             radius = (
                 float(onp.linalg.norm(vertices - center, axis=1).max()) + radius_margin
             )
-            all_centers.append(center)
-            all_radii.append(max(min_radius, radius))
-            sphere_link_indices.append(link_idx)
-            continue
+            link_centers.append(center)
+            link_radii.append(max(min_radius, radius))
+        else:
+            for child_origin in child_origins:
+                c1 = onp.zeros(3, dtype=onp.float32)
+                c2 = onp.asarray(child_origin, dtype=onp.float32)
+                segment = c2 - c1
+                length = float(onp.linalg.norm(segment))
 
-        for child_origin in child_origins:
-            c1 = onp.zeros(3, dtype=onp.float32)
-            c2 = onp.asarray(child_origin, dtype=onp.float32)
-            segment = c2 - c1
-            length = float(onp.linalg.norm(segment))
+                n_spheres = per_link_override.get(
+                    link_name,
+                    _default_spheres_for_link(link_name, default_n_spheres),
+                )
+                n_spheres = max(1, int(n_spheres))
 
-            n_spheres = per_link_override.get(
-                link_name,
-                _default_spheres_for_link(link_name, default_n_spheres),
-            )
-            n_spheres = max(1, int(n_spheres))
+                if length < 1e-9:
+                    center = 0.5 * (c1 + c2)
+                    if vertices.shape[0] > 0:
+                        radius = (
+                            float(onp.linalg.norm(vertices - center, axis=1).max())
+                            + radius_margin
+                        )
+                    else:
+                        radius = min_radius
+                    link_centers.append(center.astype(onp.float32))
+                    link_radii.append(max(min_radius, radius))
+                    continue
 
-            if length < 1e-9:
-                center = 0.5 * (c1 + c2)
-                if vertices.shape[0] > 0:
-                    radius = (
-                        float(onp.linalg.norm(vertices - center, axis=1).max())
-                        + radius_margin
+                direction = segment / length
+                sidelength = length / (2.0 * n_spheres)
+                centers = [
+                    c1 + direction * ((2.0 * i + 1.0) * sidelength)
+                    for i in range(n_spheres)
+                ]
+                radii = _fit_radii_along_centerline(
+                    vertices=vertices,
+                    c1=c1,
+                    c2=c2,
+                    centers=centers,
+                    sidelength=sidelength,
+                    radius_margin=radius_margin,
+                    min_radius=min_radius,
+                )
+
+                for center, radius in zip(centers, radii):
+                    link_centers.append(center.astype(onp.float32))
+                    link_radii.append(radius)
+
+        if vertices.shape[0] > 0:
+            covered = _points_covered_by_spheres(vertices, link_centers, link_radii)
+            if not bool(onp.all(covered)):
+                uncovered_vertices = vertices[~covered]
+                fallback_center = onp.zeros(3, dtype=onp.float32)
+                fallback_radius = (
+                    float(
+                        onp.linalg.norm(
+                            uncovered_vertices - fallback_center, axis=1
+                        ).max()
                     )
-                else:
-                    radius = min_radius
-                all_centers.append(center.astype(onp.float32))
-                all_radii.append(max(min_radius, radius))
-                sphere_link_indices.append(link_idx)
-                continue
+                    + radius_margin
+                )
+                link_centers.append(fallback_center)
+                link_radii.append(max(min_radius, fallback_radius))
 
-            direction = segment / length
-            sidelength = length / (2.0 * n_spheres)
-            centers = [
-                c1 + direction * ((2.0 * i + 1.0) * sidelength)
-                for i in range(n_spheres)
-            ]
-            radii = _fit_radii_along_centerline(
-                vertices=vertices,
-                c1=c1,
-                c2=c2,
-                centers=centers,
-                sidelength=sidelength,
-                radius_margin=radius_margin,
-                min_radius=min_radius,
-            )
-
-            for center, radius in zip(centers, radii):
-                all_centers.append(center.astype(onp.float32))
-                all_radii.append(radius)
-                sphere_link_indices.append(link_idx)
+        for center, radius in zip(link_centers, link_radii):
+            all_centers.append(center.astype(onp.float32))
+            all_radii.append(radius)
+            sphere_link_indices.append(link_idx)
 
     num_primitives = len(all_centers)
     if num_primitives == 0:

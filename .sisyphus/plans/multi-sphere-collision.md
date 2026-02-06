@@ -54,10 +54,10 @@ Create a tighter self-collision model for TeaArm that uses multiple spheres per 
 - `tests/test_multi_sphere_collision.py` — Validation tests
 
 ### Definition of Done
-- [ ] `TeaArmRobot` uses multi-sphere self-collision cost (no longer commented out)
-- [ ] Default configuration (zeros) produces non-penetrating distances
-- [ ] Collision cost is differentiable (JAX jit + grad compatible)
-- [ ] Known colliding pose produces non-zero collision cost
+- [x] `TeaArmRobot` uses multi-sphere self-collision cost (no longer commented out)
+- [x] Default configuration (zeros) produces non-penetrating distances
+- [x] Collision cost is differentiable (JAX jit + grad compatible)
+- [x] Known colliding pose produces non-zero collision cost
 
 ### Must Have
 - Multiple spheres per link (not just one primitive per link)
@@ -720,15 +720,19 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 - [x] 8. Final pose safety verification
 
+- [x] 9. Over-approximation verification (100% occupancy)
+
   **What to do**:
-  - Run the `compute_self_collision_distance` check at the zero pose again.
-  - Verify that the number of collisions is significantly reduced and that remaining "collisions" (if any) are negligible (distance > -0.005).
-  - Update `test_default_pose_no_penetration` in `tests/test_multi_sphere_collision.py` to use a tighter tolerance.
+  Ensure the sphere fitting algorithm always over-approximates the original mesh. This is verified by ensuring 100% occupancy in `scripts/test_sphere_occupancy.py`.
+
+  **Steps**:
+  - Update `_fit_radii_along_centerline` to use `sqrt(sidelength^2 + max_perp^2)` formula.
+  - Implement a final coverage check in `build_multi_sphere_collision` per link.
+  - Add fallback bounding sphere if any vertices are uncovered.
+  - Verify with `uv run python scripts/test_sphere_occupancy.py`.
 
   **Recommended Agent Profile**:
-  - **Category**: `unspecified-low`
-
----
+  - **Category**: `deep`
 
 ## Commit Strategy
 
