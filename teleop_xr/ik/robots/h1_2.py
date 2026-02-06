@@ -134,20 +134,10 @@ class UnitreeH1Robot(BaseRobot):
             pk.costs.manipulability_cost(
                 self.robot,
                 JointVar(0),
-                jnp.array([self.L_ee_link_idx], dtype=jnp.int32),
+                jnp.array([self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32),
                 weight=0.01,
             )
         )
-
-        # costs.append(
-        #     pk.costs.self_collision_cost(
-        #         self.robot,
-        #         self.robot_coll,
-        #         JointVar(0),
-        #         margin=0.05,
-        #         weight=100.0,
-        #     )
-        # )
 
         # 1. Bimanual costs (L/R EE frames: L_ee, R_ee)
         # Using analytic jacobian for efficiency
@@ -181,16 +171,16 @@ class UnitreeH1Robot(BaseRobot):
             )
         )
 
-        # if target_Head is not None:
-        #     costs.append(
-        #         pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
-        #             robot=self.robot,
-        #             joint_var=JointVar(0),
-        #             target_pose=target_Head,
-        #             target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
-        #             pos_weight=0.0,
-        #             ori_weight=jnp.array([0.0, 0.0, 20.0]),
-        #         )
-        #     )
+        if target_Head is not None:
+            costs.append(
+                pk.costs.pose_cost(  # pyright: ignore[reportCallIssue]
+                    robot=self.robot,
+                    joint_var=JointVar(0),
+                    target_pose=target_Head,
+                    target_link_index=jnp.array(self.torso_link_idx, dtype=jnp.int32),
+                    pos_weight=0.0,
+                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
+                )
+            )
 
         return costs

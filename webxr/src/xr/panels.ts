@@ -24,8 +24,10 @@ import {
 	MeshBasicMaterial,
 	type Object3D,
 	PlaneGeometry,
+	Vector3,
 	VideoTexture,
 } from "three";
+import { GlobalRefs } from "./global_refs";
 
 export const CameraPanelInfo = createComponent("CameraPanelInfo", {
 	label: { type: Types.String, default: "" },
@@ -41,6 +43,8 @@ export const PanelHandle = createComponent("PanelHandle", {
 	originalColorB: { type: Types.Float32, default: 1 },
 	visualState: { type: Types.Boolean, default: false },
 	cooldown: { type: Types.Float32, default: 0 },
+	panelEntityId: { type: Types.Float32, default: -1 },
+	panelOffsetY: { type: Types.Float32, default: 0 },
 });
 
 export class DraggablePanel {
@@ -84,6 +88,21 @@ export class DraggablePanel {
 			this.entity.object3D.add(handleMesh);
 		}
 
+		// Panel Y - height/2 = handleHeight/2 + gap
+		const panelY = height / 2 + handleHeight / 2 + gap;
+
+		// 2. Create Panel (Child) - Interactable but NOT Grabbable
+		this.panelEntity = world.createTransformEntity().addComponent(PanelUI, {
+			config: configPath,
+			...options,
+		});
+
+		// NOTE: We do NOT parent the panel to the handle entity.
+		// Instead, we link them via ID and sync their transforms in the system.
+		// This prevents "grabbing the panel" from triggering "grabbing the handle".
+
+		GlobalRefs.panelEntities.set(this.panelEntity.index, this.panelEntity);
+
 		this.entity.addComponent(PanelHandle, {
 			originalPosZ: handleMesh.position.z,
 			originalScaleX: handleMesh.scale.x,
@@ -92,25 +111,9 @@ export class DraggablePanel {
 			originalColorR: handleMat.color.r,
 			originalColorG: handleMat.color.g,
 			originalColorB: handleMat.color.b,
+			panelEntityId: this.panelEntity.index,
+			panelOffsetY: panelY,
 		});
-
-		// 2. Create Panel (Child) - Interactable but NOT Grabbable
-		this.panelEntity = world.createTransformEntity().addComponent(PanelUI, {
-			config: configPath,
-			...options,
-		});
-
-		// Parent Panel to Handle
-		if (this.entity.object3D && this.panelEntity.object3D) {
-			this.entity.object3D.add(this.panelEntity.object3D);
-		}
-
-		// Offset Panel above Handle
-		// Panel Y - height/2 = handleHeight/2 + gap
-		const panelY = height / 2 + handleHeight / 2 + gap;
-		if (this.panelEntity.object3D) {
-			this.panelEntity.object3D.position.set(0, panelY, 0);
-		}
 	}
 
 	setPosition(x: number, y: number, z: number) {
@@ -129,8 +132,11 @@ export class DraggablePanel {
 	}
 
 	dispose() {
-		if (this.panelEntity && typeof this.panelEntity.destroy === "function") {
-			this.panelEntity.destroy();
+		if (this.panelEntity) {
+			GlobalRefs.panelEntities.delete(this.panelEntity.index);
+			if (typeof this.panelEntity.destroy === "function") {
+				this.panelEntity.destroy();
+			}
 		}
 		if (this.entity && typeof this.entity.destroy === "function") {
 			this.entity.destroy();
@@ -345,6 +351,20 @@ export class PanelHoverSystem extends createSystem({
 
 			PanelHandle.data.visualState[entity.index] = visualState;
 			PanelHandle.data.cooldown[entity.index] = cd;
+
+			// Sync Panel Position
+			const panelId = PanelHandle.data.panelEntityId[entity.index];
+			const offsetY = PanelHandle.data.panelOffsetY[entity.index];
+
+			if (panelId !== -1 && entity.object3D) {
+				const panelEntity = GlobalRefs.panelEntities.get(panelId);
+				if (panelEntity && panelEntity.object3D) {
+					panelEntity.object3D.position.copy(entity.object3D.position);
+					panelEntity.object3D.quaternion.copy(entity.object3D.quaternion);
+					// Apply local offset Y in rotated space (along local Up)
+					panelEntity.object3D.translateY(offsetY);
+				}
+			}
 
 			if (!entity.object3D) return;
 

@@ -37,6 +37,9 @@ export function XRScene({ mode, onError, onExit }: XRSceneProps) {
 			worldRef.current = null;
 		}
 		sessionRef.current = null;
+		// Do not call onExit() here if it triggers navigation or unmounting immediately
+		// because we might want to stay on the page to allow re-entering.
+		// However, the original code called it. If onExit goes back to menu, that's fine.
 		onExitRef.current?.();
 	}, []);
 
@@ -138,6 +141,22 @@ export function XRScene({ mode, onError, onExit }: XRSceneProps) {
 
 function cleanupWorld(world: unknown) {
 	try {
+		// Cleanup VideoClient if attached (see initWorld in xr/index.ts)
+		// biome-ignore lint/suspicious/noExplicitAny: Temporary retrieval for cleanup
+		const videoClient = (world as any)._videoClient;
+		if (videoClient) {
+			console.log("[XRScene] Cleaning up VideoClient on world disposal");
+			if (typeof videoClient.closePeerConnection === "function") {
+				videoClient.closePeerConnection();
+			}
+			if (typeof videoClient.stopControlPolling === "function") {
+				videoClient.stopControlPolling();
+			}
+			if (videoClient.ws && typeof videoClient.ws.close === "function") {
+				videoClient.ws.close();
+			}
+		}
+
 		if (isDisposable(world)) {
 			world.dispose();
 			return;

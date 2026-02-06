@@ -3,6 +3,7 @@ from typing import Any, Protocol, runtime_checkable
 import asyncio
 import threading
 import time
+import logging
 
 import cv2
 import numpy as np
@@ -78,11 +79,13 @@ class OpenCVVideoSource:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_FPS, fps)
 
-        # Determine format (MJPG is faster for high res, YUYV/default otherwise)
-        # For now, stick to default or try MJPG if supported
-        # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        if not self.cap.isOpened():
+            logging.error(f"Failed to open video source: {src}")
 
         self.grabbed, self.frame = self.cap.read()
+        if not self.grabbed:
+            logging.warning(f"Failed to read initial frame from video source: {src}")
+
         self.started = False
         self.read_lock = threading.Lock()
         self.new_frame_event = threading.Event()
@@ -165,6 +168,10 @@ class CameraStreamTrack(VideoStreamTrack):
         # The frontend uses track.id or transceiver.mid
         self.kind = "video"
 
+    @property
+    def id(self):
+        return self._id
+
     async def recv(self):
         pts, time_base = await self.next_timestamp()
 
@@ -221,7 +228,14 @@ class VideoStreamManager:
             for stream_id, source in self._sources.items()
         ]
         for track in self._tracks:
-            self._pc.addTrack(track)
+            transceiver = self._pc.addTransceiver(track, direction="sendonly")
+            if hasattr(transceiver.sender, "_stream_id"):
+                transceiver.sender._stream_id = track.id
+            else:
+                logging.warning(
+                    f"Could not set stream ID for track {track.id}: sender has no _stream_id"
+                )
+
         offer = await self._pc.createOffer()
         await self._pc.setLocalDescription(offer)
         return self._pc.localDescription

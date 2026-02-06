@@ -21,6 +21,7 @@ import {
 import {
 	BackSide,
 	Euler,
+	GridHelper,
 	Mesh,
 	MeshBasicMaterial,
 	SphereGeometry,
@@ -47,7 +48,7 @@ import { TeleopSystem } from "./teleop_system";
 import { type CameraViewKey, resolveTrackView } from "./track_routing";
 import { VideoClient } from "./video";
 
-const disableHeadCameraPanel = true;
+const disableHeadCameraPanel = false;
 
 const assets: AssetManifest = {
 	chimeSound: {
@@ -134,7 +135,7 @@ export const initWorld = async (
 	if (!initialPassthrough) {
 		const skyGeo = new SphereGeometry(100, 32, 32);
 		const skyMat = new MeshBasicMaterial({
-			color: 0x101010, // Dark grey background
+			color: 0x080808,
 			side: BackSide,
 			depthWrite: false,
 		});
@@ -142,6 +143,11 @@ export const initWorld = async (
 		const skyEntity = world.createTransformEntity();
 		if (skyEntity.object3D) {
 			skyEntity.object3D.add(sky);
+
+			const grid = new GridHelper(100, 50, 0x00ff00, 0x333333);
+			// Lower the grid slightly to prevent z-fighting
+			grid.position.y = -0.01;
+			skyEntity.object3D.add(grid);
 		}
 	}
 
@@ -349,7 +355,8 @@ export const initWorld = async (
 	const videoWsUrl = `${protocol}//${window.location.host}/ws`;
 
 	let trackCount = 0;
-	const _videoClient = new VideoClient(
+	// Assign to a variable that can be cleaned up
+	const videoClient = new VideoClient(
 		videoWsUrl,
 		(_stats) => {},
 		(track, trackId) => {
@@ -366,6 +373,10 @@ export const initWorld = async (
 			trackCount++;
 		},
 	);
+
+	// Attach video client to world for cleanup
+	// biome-ignore lint/suspicious/noExplicitAny: Temporary attachment for cleanup
+	(world as any)._videoClient = videoClient;
 
 	world.registerSystem(PanelSystem);
 	world.registerSystem(TeleopSystem);
