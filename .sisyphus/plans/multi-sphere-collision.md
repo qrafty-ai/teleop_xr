@@ -269,7 +269,7 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 ---
 
-- [ ] 2. Implement sphere fitting algorithm (`build_multi_sphere_collision`)
+- [x] 2. Implement sphere fitting algorithm (`build_multi_sphere_collision`)
 
   **What to do**:
 
