@@ -1,23 +1,17 @@
 # TeleopXR
 
+![TeleopXR Cover](docs/assets/teleop_xr.jpg)
+
 **TeleopXR** transforms your VR/AR headset into a powerful, precise robot controller. It provides a lightweight, installation-free teleoperation interface with low-latency video streaming and full WebXR state tracking.
 
 ## Key Features
 
-1.  **🚀 Installation-Free Experience**
-    Simply open the URL in your headset's browser (Meta Quest, Vision Pro, etc.). No app installation or APK sideloading required.
+*   **🕶️ VR/Passthrough**: Seamlessly switch between fully immersive VR and high-fidelity AR Passthrough modes, allowing you to choose between total focus and situational awareness.
+*   **📡 WebRTC Video Streaming**: Get ultra-low latency, real-time video feedback directly in the headset, providing a near-instantaneous visual link to your robot's perspective.
+*   **🤖 Robot Visualization**: Benefit from real-time 3D visualization of the robot model, ensuring your digital twin is always perfectly synchronized with the physical robot's state.
+*   **🕹️ Realtime Teleoperation based on Whole-Body IK**: Achieve precise and intuitive control through advanced Whole-Body Inverse Kinematics, enabling complex coordination with minimal effort.
 
-2.  **🎮 Full-Featured WebXR Streaming**
-    Streams complete state data in real-time, including:
-    *   6DoF Controller & Hand Poses
-    *   Joystick Buttons & Axes
-    *   Grip & Trigger Values
-
-3.  **🎥 WebRTC Video Streaming**
-    Built-in low-latency WebRTC video streaming for real-time visual feedback from your robot.
-
-4.  **🔌 Modular IK & ROS2 Support**
-    High-performance Inverse Kinematics (IK) solver with native ROS2 integration for seamless robot control.
+![IK Demo](docs/assets/ik_demo.gif)
 
 ## 🚀 Quick Start (Demo)
 
