@@ -12,10 +12,14 @@ export type TeleopSettings = {
 export type AdvancedSettings = {
 	updateRate: number;
 	logLevel: "info" | "warn" | "error";
+};
+
+export type RobotSettings = {
 	robotVisible: boolean;
 	showAxes: boolean;
 	spawnDistance: number;
 	spawnHeight: number;
+	distanceGrabEnabled: boolean;
 };
 
 export type TeleopTelemetry = {
@@ -30,6 +34,7 @@ export type AppState = {
 	availableCameras: string[];
 	teleopSettings: TeleopSettings;
 	advancedSettings: AdvancedSettings;
+	robotSettings: RobotSettings;
 	robotResetTrigger: number;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
@@ -39,6 +44,7 @@ export type AppState = {
 	setAvailableCameras: (keys: string[]) => void;
 	setTeleopSettings: (settings: Partial<TeleopSettings>) => void;
 	setAdvancedSettings: (settings: Partial<AdvancedSettings>) => void;
+	setRobotSettings: (settings: Partial<RobotSettings>) => void;
 	setRobotResetTrigger: (trigger: number) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
@@ -53,10 +59,14 @@ const defaultTeleopSettings: TeleopSettings = {
 const defaultAdvancedSettings: AdvancedSettings = {
 	updateRate: 100,
 	logLevel: "info",
+};
+
+const defaultRobotSettings: RobotSettings = {
 	robotVisible: true,
 	showAxes: false,
 	spawnDistance: 1.0,
 	spawnHeight: -0.3,
+	distanceGrabEnabled: false,
 };
 
 const defaultTeleopTelemetry: TeleopTelemetry = {
@@ -71,6 +81,7 @@ export const useAppStore = create<AppState>()(
 			availableCameras: [],
 			teleopSettings: defaultTeleopSettings,
 			advancedSettings: defaultAdvancedSettings,
+			robotSettings: defaultRobotSettings,
 			robotResetTrigger: 0,
 			teleopTelemetry: defaultTeleopTelemetry,
 			connectionStatus: "disconnected",
@@ -101,6 +112,11 @@ export const useAppStore = create<AppState>()(
 					advancedSettings: { ...state.advancedSettings, ...settings },
 				}));
 			},
+			setRobotSettings: (settings) => {
+				set((state) => ({
+					robotSettings: { ...state.robotSettings, ...settings },
+				}));
+			},
 			setRobotResetTrigger: (trigger) => {
 				set({ robotResetTrigger: trigger });
 			},
@@ -118,6 +134,7 @@ export const useAppStore = create<AppState>()(
 				cameraConfig: state.cameraConfig,
 				teleopSettings: state.teleopSettings,
 				advancedSettings: state.advancedSettings,
+				robotSettings: state.robotSettings,
 			}),
 		},
 	),
