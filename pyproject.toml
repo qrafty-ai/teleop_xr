@@ -78,7 +78,7 @@ dev = [
   "mkdocstrings[python]",
   "pytest-cov>=6.0.0",
   "pin",
-  "ballpark",
+  "ballpark",  # Required by scripts/generate_spheres.py
 ]
 
 [tool.pytest.ini_options]
