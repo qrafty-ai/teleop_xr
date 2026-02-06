@@ -48,12 +48,38 @@ def _collect_zero_pose_ignore_pairs(
     link_names = multi_sphere_coll.link_names
 
     ignore_pairs: set[tuple[str, str]] = set()
+
+    def get_symmetric_name(name: str) -> str | None:
+        if name.startswith("left_"):
+            return name.replace("left_", "right_", 1)
+        if name.startswith("right_"):
+            return name.replace("right_", "left_", 1)
+        if "_left_" in name:
+            return name.replace("_left_", "_right_", 1)
+        if "_right_" in name:
+            return name.replace("_right_", "_left_", 1)
+        return None
+
     for pair_idx in colliding_pair_indices:
-        link_i = int(sphere_link_indices[int(pair_i[pair_idx])])
-        link_j = int(sphere_link_indices[int(pair_j[pair_idx])])
-        name_i = link_names[link_i]
-        name_j = link_names[link_j]
-        ignore_pairs.add((name_i, name_j) if name_i < name_j else (name_j, name_i))
+        idx_i = int(sphere_link_indices[int(pair_i[pair_idx])])
+        idx_j = int(sphere_link_indices[int(pair_j[pair_idx])])
+        name_i = link_names[idx_i]
+        name_j = link_names[idx_j]
+
+        # Add original pair
+        p = (name_i, name_j) if name_i < name_j else (name_j, name_i)
+        ignore_pairs.add(p)
+
+        # Symmetrize
+        sym_i = get_symmetric_name(name_i)
+        sym_j = get_symmetric_name(name_j)
+
+        if sym_i or sym_j:
+            si = sym_i or name_i
+            sj = sym_j or name_j
+            if si in link_names and sj in link_names:
+                p_sym = (si, sj) if si < sj else (sj, si)
+                ignore_pairs.add(p_sym)
 
     return tuple(sorted(ignore_pairs))
 
@@ -266,7 +292,7 @@ class TeaArmRobot(BaseRobot):
                 self.multi_sphere_coll,
                 JointVar(0),
                 margin=0.02,
-                weight=5.0,
+                weight=100.0,
             )
         )
 

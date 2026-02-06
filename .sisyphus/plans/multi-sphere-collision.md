@@ -722,17 +722,19 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
 - [x] 9. Over-approximation verification (100% occupancy)
 
+- [x] 10. Symmetrize auto-ignore pairs
+
   **What to do**:
-  Ensure the sphere fitting algorithm always over-approximates the original mesh. This is verified by ensuring 100% occupancy in `scripts/test_sphere_occupancy.py`.
+  Ensure that auto-ignore pairs detected at zero pose are symmetric between left and right sides. This prevents "weird" behavior where one arm detects collisions with the torso but the other doesn't due to minor asymmetries at the zero pose.
 
   **Steps**:
-  - Update `_fit_radii_along_centerline` to use `sqrt(sidelength^2 + max_perp^2)` formula.
-  - Implement a final coverage check in `build_multi_sphere_collision` per link.
-  - Add fallback bounding sphere if any vertices are uncovered.
-  - Verify with `uv run python scripts/test_sphere_occupancy.py`.
+  - Update `_collect_zero_pose_ignore_pairs` in `teleop_xr/ik/robots/teaarm.py`.
+  - Implement a `get_symmetric_name` helper to map `left_` to `right_` and vice versa.
+  - For every auto-detected ignore pair `(i, j)`, also add the symmetric pair `(sym_i, sym_j)` if it exists.
+  - Verify both `left_arm_l7` and `right_arm_l7` are ignored against `torso_link`.
 
   **Recommended Agent Profile**:
-  - **Category**: `deep`
+  - **Category**: `quick`
 
 ## Commit Strategy
 
