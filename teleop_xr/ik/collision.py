@@ -88,6 +88,10 @@ def _default_spheres_for_link(link_name: str, default_n_spheres: int) -> int:
     return default_n_spheres
 
 
+def _is_end_effector_link(link_name: str) -> bool:
+    return link_name.startswith("frame_") or "ee" in link_name
+
+
 def _fit_radii_along_centerline(
     vertices: onp.ndarray,
     c1: onp.ndarray,
@@ -177,6 +181,7 @@ def build_multi_sphere_collision(
     default_n_spheres: int = 3,
     radius_margin: float = 0.01,
     user_ignore_pairs: tuple[tuple[str, str], ...] = (),
+    ignore_adj_order: int = 1,
 ) -> MultiSphereCollision:
     _, link_info = RobotURDFParser.parse(urdf)
     link_names = link_info.names
@@ -362,11 +367,33 @@ def build_multi_sphere_collision(
 
     link_name_to_idx = {name: idx for idx, name in enumerate(link_names)}
     ignore_set: set[tuple[int, int]] = set()
-    for joint in urdf.joint_map.values():
-        if joint.parent in link_name_to_idx and joint.child in link_name_to_idx:
-            i = link_name_to_idx[joint.parent]
-            j = link_name_to_idx[joint.child]
-            ignore_set.add((min(i, j), max(i, j)))
+    ignore_depth = max(0, int(ignore_adj_order))
+
+    if ignore_depth > 0:
+        parent_by_child: dict[str, str] = {}
+        for joint in urdf.joint_map.values():
+            if joint.parent in link_name_to_idx and joint.child in link_name_to_idx:
+                parent_by_child[joint.child] = joint.parent
+
+        for descendant_name in link_names:
+            current = descendant_name
+            for _ in range(ignore_depth):
+                parent_name = parent_by_child.get(current)
+                if parent_name is None:
+                    break
+
+                is_ee_vs_torso = (
+                    ignore_depth > 1
+                    and parent_name == "torso_link"
+                    and _is_end_effector_link(descendant_name)
+                )
+                if not is_ee_vs_torso:
+                    i = link_name_to_idx[descendant_name]
+                    j = link_name_to_idx[parent_name]
+                    ignore_set.add((min(i, j), max(i, j)))
+
+                current = parent_name
+
     for name_i, name_j in user_ignore_pairs:
         if name_i in link_name_to_idx and name_j in link_name_to_idx:
             i = link_name_to_idx[name_i]
