@@ -1,13 +1,8 @@
 import logging
+import re
 
 
 def parse_device_spec(value: str | int) -> int | str:
-    """
-    Accept int -> return int
-    Accept string digits -> return int
-    Accept string starting with '/dev/' -> return string
-    Reject empty string, None, bool, or other values with ValueError
-    """
     if value is None or isinstance(value, bool):
         raise ValueError("Device spec cannot be None or bool")
 
@@ -20,6 +15,11 @@ def parse_device_spec(value: str | int) -> int | str:
             raise ValueError("Device spec cannot be empty string")
         if value.isdigit():
             return int(value)
+
+        match = re.match(r"^/dev/video(\d+)$", value)
+        if match:
+            return int(match.group(1))
+
         if value.startswith("/dev/"):
             return value
 
@@ -27,7 +27,7 @@ def parse_device_spec(value: str | int) -> int | str:
 
 
 def build_camera_views_config(
-    head=None, wrist_left=None, wrist_right=None, extra_streams: dict = None
+    head=None, wrist_left=None, wrist_right=None, extra_streams: dict | None = None
 ) -> dict:
     """
     Inputs are optional device specs (int/str/None)

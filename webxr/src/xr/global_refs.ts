@@ -2,6 +2,7 @@ import type {
 	CameraPanel,
 	ControllerCameraPanel,
 	DraggablePanel,
+	Entity,
 } from "./panels";
 
 // Global references store - populated at creation time, read by systems
@@ -13,4 +14,5 @@ export const GlobalRefs = {
 	cameraSettingsPanel: null as DraggablePanel | null,
 	leftWristPanel: null as ControllerCameraPanel | null,
 	rightWristPanel: null as ControllerCameraPanel | null,
+	panelEntities: new Map<number, Entity>(),
 };

@@ -29,14 +29,24 @@ export class VideoClient {
 		this.ws = new WebSocket(url);
 		this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
 		this.ws.onopen = () => {
+			console.log(`[VideoClient] WebSocket connected. URL: ${url}`);
 			this.waitingForOffer = false;
 			this.sendControlCheck();
 			this.startControlPolling();
+		};
+		this.ws.onerror = (err) => {
+			console.error("[VideoClient] WebSocket error:", err);
+		};
+		this.ws.onclose = (event) => {
+			console.warn(
+				`[VideoClient] WebSocket closed: ${event.code} ${event.reason}`,
+			);
 		};
 	}
 
 	private async handleMessage(msg: { type: string; data: unknown }) {
 		if (msg.type === "deny") {
+			console.warn("[VideoClient] Received DENY:", msg.data);
 			this.waitingForOffer = false;
 			this.closePeerConnection();
 			this.startControlPolling();
@@ -46,9 +56,13 @@ export class VideoClient {
 		if (msg.type === "control_status") {
 			// biome-ignore lint/suspicious/noExplicitAny: external message
 			const inControl = Boolean((msg as any).data?.in_control);
+
 			if (inControl) {
 				this.stopControlPolling();
 				if (!this.pc && !this.waitingForOffer) {
+					console.log(
+						`[VideoClient] In control, requesting video. ClientID: ${this.clientId}`,
+					);
 					this.waitingForOffer = true;
 					this.ws.send(
 						JSON.stringify({
@@ -64,14 +78,36 @@ export class VideoClient {
 		}
 
 		if (msg.type === "video_offer") {
+			console.log("[VideoClient] Received video offer");
 			this.waitingForOffer = false;
 			this.pc = new RTCPeerConnection();
 			this.pc.ontrack = (event) => {
+				console.log(
+					"[VideoClient] ontrack event:",
+					"kind=",
+					event.track.kind,
+					"id=",
+					event.track.id,
+					"mid=",
+					event.transceiver?.mid,
+					"streams=",
+					event.streams.map((s) => s.id),
+				);
+
 				if (this.onTrack && event.track.kind === "video") {
-					// Use track id (if explicit) or transceiver mid as identifier
-					const trackId = event.track.id || event.transceiver?.mid;
+					// Prioritize stream ID if available (matches python stream_ids)
+					let trackId = event.track.id;
+					if (event.streams.length > 0) {
+						trackId = event.streams[0].id;
+					} else if (event.transceiver?.mid) {
+						trackId = event.transceiver.mid;
+					}
+
 					if (trackId) {
+						console.log(`[VideoClient] Notifying onTrack with ID: ${trackId}`);
 						this.onTrack(event.track, trackId);
+					} else {
+						console.warn("[VideoClient] Could not determine track ID");
 					}
 				}
 			};
@@ -86,17 +122,24 @@ export class VideoClient {
 					);
 				}
 			};
-			await this.pc.setRemoteDescription(msg.data as RTCSessionDescriptionInit);
-			const answer = await this.pc.createAnswer();
-			await this.pc.setLocalDescription(answer);
-			this.ws.send(
-				JSON.stringify({
-					type: "video_answer",
-					client_id: this.clientId,
-					data: this.pc.localDescription,
-				}),
-			);
-			this.startStats();
+			try {
+				await this.pc.setRemoteDescription(
+					msg.data as RTCSessionDescriptionInit,
+				);
+				const answer = await this.pc.createAnswer();
+				await this.pc.setLocalDescription(answer);
+				this.ws.send(
+					JSON.stringify({
+						type: "video_answer",
+						client_id: this.clientId,
+						data: this.pc.localDescription,
+					}),
+				);
+				console.log("[VideoClient] Sent video answer");
+				this.startStats();
+			} catch (err) {
+				console.error("[VideoClient] Error handling video offer:", err);
+			}
 		}
 		if (msg.type === "video_ice" && this.pc) {
 			await this.pc.addIceCandidate(msg.data as RTCIceCandidateInit);

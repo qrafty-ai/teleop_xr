@@ -48,7 +48,7 @@ import { TeleopSystem } from "./teleop_system";
 import { type CameraViewKey, resolveTrackView } from "./track_routing";
 import { VideoClient } from "./video";
 
-const disableHeadCameraPanel = true;
+const disableHeadCameraPanel = false;
 
 const assets: AssetManifest = {
 	chimeSound: {
@@ -355,7 +355,8 @@ export const initWorld = async (
 	const videoWsUrl = `${protocol}//${window.location.host}/ws`;
 
 	let trackCount = 0;
-	const _videoClient = new VideoClient(
+	// Assign to a variable that can be cleaned up
+	const videoClient = new VideoClient(
 		videoWsUrl,
 		(_stats) => {},
 		(track, trackId) => {
@@ -372,6 +373,10 @@ export const initWorld = async (
 			trackCount++;
 		},
 	);
+
+	// Attach video client to world for cleanup
+	// biome-ignore lint/suspicious/noExplicitAny: Temporary attachment for cleanup
+	(world as any)._videoClient = videoClient;
 
 	world.registerSystem(PanelSystem);
 	world.registerSystem(TeleopSystem);
