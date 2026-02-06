@@ -71,7 +71,7 @@ def test_default_pose_no_penetration(
     q0 = teaarm_robot.get_default_config()
     robot_model = cast(RobotLike, teaarm_robot.robot)
     distances = multi_sphere_coll.compute_self_collision_distance(robot_model, q0)
-    assert float(jnp.min(distances)) > -0.2
+    assert float(jnp.min(distances)) > -0.005
 
 
 def test_collision_cost_integration(teaarm_robot: TeaArmRobot) -> None:

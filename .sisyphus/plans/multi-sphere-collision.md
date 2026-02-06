@@ -188,7 +188,7 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
   **Must NOT do**:
   - Don't use pyroki's `pairwise_collide` (it materializes full L×L matrix)
   - Don't create `Sphere` dataclass objects at runtime — work with raw arrays
-  - Don't add any trimesh/numpy operations in runtime path (pure JAX only)
+  - Don't add any non-JAX operations (numpy, trimesh) in the runtime path (pure JAX only)
 
   **Recommended Agent Profile**:
   - **Category**: `deep`
@@ -219,11 +219,11 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
   **Acceptance Criteria**:
 
-  - [ ] File `teleop_xr/ik/collision.py` exists with `MultiSphereCollision` class
-  - [ ] Class has all fields: `num_primitives`, `num_links`, `link_names`, `sphere_centers_local`, `sphere_radii`, `sphere_link_indices`, `pair_i`, `pair_j`
-  - [ ] `at_config()` method returns world-frame centers and radii
-  - [ ] `compute_self_collision_distance()` method returns `(K,)` array of distances
-  - [ ] Both methods are JAX jit-compatible
+  - [x] File `teleop_xr/ik/collision.py` exists with `MultiSphereCollision` class
+  - [x] Class has all fields: `num_primitives`, `num_links`, `link_names`, `sphere_centers_local`, `sphere_radii`, `sphere_link_indices`, `pair_i`, `pair_j`
+  - [x] `at_config()` method returns world-frame centers and radii
+  - [x] `compute_self_collision_distance()` method returns `(K,)` array of distances
+  - [x] Both methods are JAX jit-compatible
 
   **Agent-Executed QA Scenarios:**
 
@@ -372,12 +372,12 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
   **Acceptance Criteria**:
 
-  - [ ] `build_multi_sphere_collision()` function exists in `teleop_xr/ik/collision.py`
-  - [ ] Returns a `MultiSphereCollision` with `num_primitives > 19` (more than 1 sphere per link)
-  - [ ] All sphere radii are positive (> 0.005)
-  - [ ] No same-link pairs exist in `pair_i/pair_j`
-  - [ ] No adjacent-link pairs exist in `pair_i/pair_j`
-  - [ ] Link names match `Robot.links.names` ordering
+  - [x] `build_multi_sphere_collision()` function exists in `teleop_xr/ik/collision.py`
+  - [x] Returns a `MultiSphereCollision` with `num_primitives > 19` (more than 1 sphere per link)
+  - [x] All sphere radii are positive (> 0.005)
+  - [x] No same-link pairs exist in `pair_i/pair_j`
+  - [x] No adjacent-link pairs exist in `pair_i/pair_j`
+  - [x] Link names match `Robot.links.names` ordering
 
   **Agent-Executed QA Scenarios:**
 
@@ -438,6 +438,133 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 ---
 
 - [x] 3. Integrate into TeaArmRobot (uncomment + rewire self-collision cost)
+
+  **What to do**:
+
+  Modify `teleop_xr/ik/robots/teaarm.py` to:
+
+  1. **In `__init__`**: Build the `MultiSphereCollision` alongside the existing `robot_coll`:
+     ```python
+     from teleop_xr.ik.collision import build_multi_sphere_collision
+     self.multi_sphere_coll = build_multi_sphere_collision(urdf)
+     ```
+
+  2. **In `build_costs`**: Replace the commented-out `self_collision_cost` with a new custom cost that uses `MultiSphereCollision`:
+     ```python
+     # Create a custom cost function that uses multi-sphere collision
+     from pyroki.collision._collision import colldist_from_sdf
+
+     @pk.costs.Cost.create_factory
+     def multi_sphere_self_collision_cost(
+         vals, robot, multi_sphere_coll, joint_var, margin, weight
+     ):
+         cfg = vals[joint_var]
+         distances = multi_sphere_coll.compute_self_collision_distance(robot, cfg)
+         residual = colldist_from_sdf(distances, margin)
+         return (residual * weight).flatten()
+     ```
+     Then add it to costs:
+     ```python
+     costs.append(
+         multi_sphere_self_collision_cost(
+             self.robot,
+             self.multi_sphere_coll,
+             JointVar(0),
+             margin=0.02,   # 2cm activation margin
+             weight=5.0,
+         )
+     )
+     ```
+
+  3. **Keep the old `self.robot_coll`** for backwards compatibility / potential world collision use — don't remove it.
+
+  4. **Tune parameters**:
+     - `margin`: Start with 0.02m (2cm). Too large → arms can't cross midline. Too small → collision not detected early enough.
+     - `weight`: Start with 5.0 (moderate — the pose cost is 50.0, so collision should be meaningful but not dominant).
+
+  **Must NOT do**:
+  - Don't change any other cost weights or parameters
+  - Don't remove the existing `robot_coll` attribute
+  - Don't modify the `BaseRobot` interface
+  - Don't change how FK or other costs work
+
+  **Recommended Agent Profile**:
+  - **Category**: `quick`
+    - Reason: Straightforward integration — import new class, build in init, add cost in build_costs. Changes are localized to one file.
+  - **Skills**: (none)
+
+  **Parallelization**:
+  - **Can Run In Parallel**: NO
+  - **Parallel Group**: Wave 3 (sequential after Task 2)
+  - **Blocks**: Task 4
+  - **Blocked By**: Task 2
+
+  **References**:
+
+  **Pattern References**:
+  - `teleop_xr/ik/robots/teaarm.py:47-48` — Current `robot_coll` creation: `self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)`. Add `self.multi_sphere_coll` alongside.
+  - `teleop_xr/ik/robots/teaarm.py:196-206` — Commented-out `self_collision_cost` block: this is where the new cost goes. Remove the commented block and replace with the multi-sphere version.
+  - `pyroki/costs/_costs.py:169-182` — `self_collision_cost` function: follow this pattern for the custom cost factory. Note the `@Cost.create_factory` decorator pattern.
+  - `pyroki/collision/_collision.py:125-152` — `colldist_from_sdf()`: import and use directly for the margin penalty.
+
+  **API References**:
+  - `teleop_xr/ik/robots/teaarm.py:112-208` — `build_costs()` method: the full cost list construction. The new collision cost should be added after `limit_cost` (line 196) and before the return.
+
+  **Acceptance Criteria**:
+
+  - [x] `TeaArmRobot.__init__` creates `self.multi_sphere_coll` attribute
+  - [x] `build_costs()` includes multi-sphere self-collision cost (not commented out)
+  - [x] Old `self.robot_coll` still exists (not removed)
+  - [x] TeaArmRobot can be instantiated without error
+
+  **Agent-Executed QA Scenarios:**
+
+  ```
+  Scenario: TeaArmRobot initializes with multi-sphere collision
+    Tool: Bash (python)
+    Preconditions: Tasks 1-2 complete
+    Steps:
+      1. python -c "
+         from teleop_xr.ik.robots.teaarm import TeaArmRobot
+         robot = TeaArmRobot()
+         assert hasattr(robot, 'multi_sphere_coll'), 'Missing multi_sphere_coll'
+         assert hasattr(robot, 'robot_coll'), 'Old robot_coll should still exist'
+         print('multi_sphere primitives:', robot.multi_sphere_coll.num_primitives)
+         print('INIT CHECK PASSED')
+         "
+      2. Assert: stdout contains "INIT CHECK PASSED"
+    Expected Result: Robot creates both collision models
+    Evidence: stdout captured
+
+  Scenario: build_costs includes self-collision cost
+    Tool: Bash (python)
+    Preconditions: TeaArmRobot initializes
+    Steps:
+      1. python -c "
+         import jaxlie
+         from teleop_xr.ik.robots.teaarm import TeaArmRobot
+         robot = TeaArmRobot()
+         costs = robot.build_costs(
+             target_L=jaxlie.SE3.identity(),
+             target_R=jaxlie.SE3.identity(),
+             target_Head=None,
+         )
+         print('Number of costs:', len(costs))
+         # Previously had ~5 costs (rest, manip, pose_L, pose_R, limit)
+         # Now should have 6 (+ self-collision)
+         assert len(costs) >= 6, f'Expected at least 6 costs, got {len(costs)}'
+         print('COST COUNT CHECK PASSED')
+         "
+      2. Assert: stdout contains "COST COUNT CHECK PASSED"
+    Expected Result: Self-collision cost is included in the cost list
+    Evidence: stdout captured
+  ```
+
+  **Commit**: YES
+  - Message: `feat(ik): enable multi-sphere self-collision in TeaArmRobot`
+  - Files: `teleop_xr/ik/robots/teaarm.py`
+
+---
 
 - [x] 4. Occupancy testing script
 
@@ -525,9 +652,9 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
 
   **Acceptance Criteria**:
 
-  - [ ] `tests/test_multi_sphere_collision.py` exists with 5 test functions
-  - [ ] `python -m pytest tests/test_multi_sphere_collision.py -v` passes all tests
-  - [ ] No test takes longer than 30 seconds
+  - [x] `tests/test_multi_sphere_collision.py` exists with 5 test functions
+  - [x] `python -m pytest tests/test_multi_sphere_collision.py -v` passes all tests
+  - [x] No test takes longer than 30 seconds
 
   **Agent-Executed QA Scenarios:**
 
@@ -555,6 +682,51 @@ Critical Path: Task 1 → Task 2 → Task 3 → Task 4
   **Commit**: YES
   - Message: `test(ik): add multi-sphere self-collision validation tests`
   - Files: `tests/test_multi_sphere_collision.py`
+
+---
+
+- [x] 6. Parse and apply SRDF ignore pairs
+
+  **What to do**:
+
+  The current multi-sphere model reports many collisions at the zero pose because it only uses URDF immediate adjacency for ignore pairs. The TeaArm robot has a MoveIt SRDF file with comprehensive ignore pairs that should be applied.
+
+  **Steps**:
+  - Create a helper function in `teleop_xr/ik/collision.py` to parse `<disable_collisions link1="..." link2="..." />` from an SRDF file.
+  - In `TeaArmRobot.__init__`, locate the SRDF file at `/home/cc/codes/tea/ros2_wksp/src/tea-ros2/tea_bringup/config/teaarm.srdf`.
+  - Parse the ignore pairs from the SRDF.
+  - Pass these pairs to `build_multi_sphere_collision(..., user_ignore_pairs=srdf_pairs)`.
+  - Also, consider reducing `radius_margin` from `0.01` to `0.005` if collisions persist at zero pose.
+
+  **Recommended Agent Profile**:
+  - **Category**: `quick`
+    - Reason: XML parsing and passing a list of strings to an existing factory function.
+
+- [x] 7. Auto-ignore zero-pose collisions
+
+  **What to do**:
+  Both the old capsule model and the new multi-sphere model report many collisions at the zero pose (e.g., base_link vs torso_link). This suggests either the collision meshes are overlapping by design or our approximation is too conservative. We should auto-generate a set of ignore pairs for any link pair that is in collision at the zero pose.
+
+  **Steps**:
+  - Implement an `auto_ignore_zero_pose_collisions(robot, coll)` function.
+  - Compute distances at zero pose.
+  - Identify link pairs with `distance < 0.005` (or similar threshold).
+  - Add these to a permanent ignore set.
+  - Re-initialize `MultiSphereCollision` (or filter its `pair_i/j`) to exclude these.
+  - Apply this in `TeaArmRobot.__init__`.
+
+  **Recommended Agent Profile**:
+  - **Category**: `quick`
+
+- [x] 8. Final pose safety verification
+
+  **What to do**:
+  - Run the `compute_self_collision_distance` check at the zero pose again.
+  - Verify that the number of collisions is significantly reduced and that remaining "collisions" (if any) are negligible (distance > -0.005).
+  - Update `test_default_pose_no_penetration` in `tests/test_multi_sphere_collision.py` to use a tighter tolerance.
+
+  **Recommended Agent Profile**:
+  - **Category**: `unspecified-low`
 
 ---
 
@@ -603,11 +775,11 @@ python scripts/test_sphere_occupancy.py
 ```
 
 ### Final Checklist
-- [ ] Multi-sphere collision model created with mesh-informed radii
-- [ ] Sphere count per link > 1 (more than old single-capsule approach)
-- [ ] Collision cost enabled in TeaArmRobot.build_costs() (not commented out)
-- [ ] Default pose produces non-penetrating distances
-- [ ] JAX jit + grad compatible
-- [ ] All tests pass
-- [ ] Old robot_coll preserved for backwards compatibility
-- [ ] No pyroki source modifications
+- [x] Multi-sphere collision model created with mesh-informed radii
+- [x] Sphere count per link > 1 (more than old single-capsule approach)
+- [x] Collision cost enabled in TeaArmRobot.build_costs() (not commented out)
+- [x] Default pose produces non-penetrating distances
+- [x] JAX jit + grad compatible
+- [x] All tests pass
+- [x] Old robot_coll preserved for backwards compatibility
+- [x] No pyroki source modifications

@@ -7,12 +7,13 @@ from typing import Any, override
 import jax
 import jax.numpy as jnp
 import jaxlie
+import numpy as onp
 import pyroki as pk
 import yourdfpy
 from pyroki.collision._collision import colldist_from_sdf
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.ik.collision import build_multi_sphere_collision
+from teleop_xr.ik.collision import build_multi_sphere_collision, parse_srdf_ignore_pairs
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
@@ -30,6 +31,31 @@ def multi_sphere_self_collision_cost(
     distances = multi_sphere_coll.compute_self_collision_distance(robot, cfg)
     residual = colldist_from_sdf(distances, margin)
     return (residual * weight).flatten()
+
+
+def _collect_zero_pose_ignore_pairs(
+    robot: pk.Robot,
+    multi_sphere_coll,
+    q_zero: jax.Array,
+    distance_threshold: float = 0.005,
+) -> tuple[tuple[str, str], ...]:
+    distances = multi_sphere_coll.compute_self_collision_distance(robot, q_zero)
+    colliding_pair_indices = onp.where(onp.asarray(distances) < distance_threshold)[0]
+
+    sphere_link_indices = onp.asarray(multi_sphere_coll.sphere_link_indices)
+    pair_i = onp.asarray(multi_sphere_coll.pair_i)
+    pair_j = onp.asarray(multi_sphere_coll.pair_j)
+    link_names = multi_sphere_coll.link_names
+
+    ignore_pairs: set[tuple[str, str]] = set()
+    for pair_idx in colliding_pair_indices:
+        link_i = int(sphere_link_indices[int(pair_i[pair_idx])])
+        link_j = int(sphere_link_indices[int(pair_j[pair_idx])])
+        name_i = link_names[link_i]
+        name_j = link_names[link_j]
+        ignore_pairs.add((name_i, name_j) if name_i < name_j else (name_j, name_i))
+
+    return tuple(sorted(ignore_pairs))
 
 
 class TeaArmRobot(BaseRobot):
@@ -63,7 +89,28 @@ class TeaArmRobot(BaseRobot):
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
         self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
-        self.multi_sphere_coll = build_multi_sphere_collision(urdf)
+        srdf_path = (
+            "/home/cc/codes/tea/ros2_wksp/src/tea-ros2/tea_bringup/config/teaarm.srdf"
+        )
+        srdf_pairs = parse_srdf_ignore_pairs(srdf_path)
+        temp_multi_sphere_coll = build_multi_sphere_collision(
+            urdf,
+            radius_margin=0.005,
+            user_ignore_pairs=srdf_pairs,
+        )
+        q_zero = jnp.zeros(len(self.robot.joints.actuated_names), dtype=jnp.float32)
+        zero_pose_pairs = _collect_zero_pose_ignore_pairs(
+            self.robot,
+            temp_multi_sphere_coll,
+            q_zero,
+            distance_threshold=0.005,
+        )
+        combined_ignore_pairs = tuple(sorted(set(srdf_pairs) | set(zero_pose_pairs)))
+        self.multi_sphere_coll = build_multi_sphere_collision(
+            urdf,
+            radius_margin=0.005,
+            user_ignore_pairs=combined_ignore_pairs,
+        )
 
         self.L_ee: str = "frame_left_arm_ee"
         self.R_ee: str = "frame_right_arm_ee"

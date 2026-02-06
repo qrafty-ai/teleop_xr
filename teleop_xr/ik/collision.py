@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Protocol, cast
+import xml.etree.ElementTree as ET
 
 import jax.numpy as jnp
 import jax_dataclasses as jdc
@@ -131,6 +132,27 @@ def _fit_radii_along_centerline(
         radii.append(max(min_radius, radius))
 
     return radii
+
+
+def parse_srdf_ignore_pairs(srdf_path: str) -> tuple[tuple[str, str], ...]:
+    if not srdf_path:
+        return ()
+
+    try:
+        root = ET.parse(srdf_path).getroot()
+    except (FileNotFoundError, ET.ParseError, OSError):
+        return ()
+
+    pairs: set[tuple[str, str]] = set()
+    for entry in root.findall(".//disable_collisions"):
+        link1 = entry.attrib.get("link1")
+        link2 = entry.attrib.get("link2")
+        if link1 is None or link2 is None or link1 == link2:
+            continue
+        pair = (link1, link2) if link1 < link2 else (link2, link1)
+        pairs.add(pair)
+
+    return tuple(sorted(pairs))
 
 
 def build_multi_sphere_collision(
