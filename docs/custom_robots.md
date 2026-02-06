@@ -75,72 +75,8 @@ Register your robot in `pyproject.toml` to make it discoverable by name:
 my-robot = "my_package.robots:MyRobot"
 ```
 
-## 5. Advanced Collision Support (Spheres)
+## 5. Sphere Collision Support
 
-TeleopXR uses sphere-based collision checking for high-performance, differentiable inverse kinematics. While basic capsule collision is supported from URDF, sphere decomposition offers better accuracy for complex geometries.
+For advanced robots with complex geometries, TeleopXR supports sphere-based collision checking. This provides superior performance and differentiable signed distance fields for IK optimization.
 
-### Workflow
-
-1.  **Generate Collision Data**: Use the interactive tool to generate sphere decompositions and calculate collision ignore pairs.
-    ```bash
-    python scripts/configure_sphere_collision.py --robot-class "my_robot"
-    ```
-2.  **Configure Spheres**:
-    *   **Allocation**: Set target number of spheres.
-    *   **Spherize**: Run the decomposition algorithm.
-    *   **Refine**: Optimize sphere positions.
-
-    ![Sphere Generation](./assets/collision_sphere.jpg)
-
-3.  **Calculate Ignore Pairs**:
-    *   Go to the **Collision** tab.
-    *   Adjust **Settings** (Samples, Threshold) if needed.
-    *   Click **Calculate Ignore Pairs** to identify links that never collide or are always colliding (structural).
-    *   Use **Manual Overrides** to disable specific links if necessary.
-
-    ![Ignore Pair Calculation](./assets/collision_ignore.jpg)
-
-4.  **Export**: Save to `collision.json` in your robot's asset folder.
-
-### Robot Implementation
-
-Update your robot class to load the collision data:
-
-```python
-# ... imports ...
-import pyroki as pk
-
-class MyRobot(BaseRobot):
-    def __init__(self, ...):
-        # ... setup URDF ...
-
-        # Load collision data
-        collision_data = self._load_collision_data()
-        if collision_data is not None:
-            spheres, ignore_pairs = collision_data
-            self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
-                spheres,
-                urdf,
-                user_ignore_pairs=ignore_pairs,
-                ignore_immediate_adjacents=True,
-            )
-        else:
-            self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
-
-    @staticmethod
-    def _load_collision_data():
-        """Helper to load collision.json or fallback to sphere.json"""
-        import os, json
-        # Adjust path to your asset directory
-        asset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "my_robot")
-
-        collision_path = os.path.join(asset_dir, "collision.json")
-        if os.path.exists(collision_path):
-            with open(collision_path, "r") as f:
-                data = json.load(f)
-            spheres = data["spheres"]
-            ignore_pairs = tuple(tuple(p) for p in data.get("collision_ignore_pairs", []))
-            return spheres, ignore_pairs
-
-        return None
-```
+See the [**Sphere Collision Guide**](./sphere_collision.md) for details on how to generate sphere decompositions and integrate them into your robot implementation.
