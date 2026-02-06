@@ -1,6 +1,6 @@
 # TeleopXR
 
-![TeleopXR Cover](docs/assets/teleop_xr.jpg)
+![TeleopXR Cover](./assets/teleop_xr.jpg)
 
 **TeleopXR** transforms your VR/AR headset into a powerful, precise robot controller. It provides a lightweight, installation-free teleoperation interface with low-latency video streaming and full WebXR state tracking.
 
@@ -11,7 +11,7 @@
 *   **🤖 Robot Visualization**: Benefit from real-time 3D visualization of the robot model, ensuring your digital twin is always perfectly synchronized with the physical robot's state.
 *   **🕹️ Realtime Teleoperation based on Whole-Body IK**: Achieve precise and intuitive control through advanced Whole-Body Inverse Kinematics, enabling complex coordination with minimal effort.
 
-![IK Demo](docs/assets/ik_demo.gif)
+![IK Demo](./assets/ik_demo.gif)
 
 ## 🚀 Quick Start (Demo)
 
