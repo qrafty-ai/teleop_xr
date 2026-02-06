@@ -92,6 +92,11 @@ For developers contributing to TeleopXR or customizing the frontend:
 
 This project is forked from [SpesRobotics/teleop](https://github.com/SpesRobotics/teleop). We are grateful for their foundational work in creating a WebXR-based teleoperation solution.
 
+We also leverage powerful libraries for robotics:
+
+-   [**Pyroki**](https://github.com/chungmin99/pyroki): For high-performance, differentiable Inverse Kinematics and collision checking.
+-   [**Ballpark**](https://github.com/chungmin99/ballpark): For robust collision geometry generation and sphere decomposition.
+
 ## License
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/qrafty-ai/teleop_xr/blob/main/LICENSE) file for details.
