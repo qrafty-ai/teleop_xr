@@ -48,11 +48,13 @@ class TeaArmRobot(BaseRobot):
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
-        sphere_decomposition = self._load_sphere_decomposition()
-        if sphere_decomposition:
+        collision_data = self._load_collision_data()
+        if collision_data is not None:
+            sphere_decomposition, ignore_pairs = collision_data
             self.robot_coll = pk.collision.RobotCollision.from_sphere_decomposition(
                 sphere_decomposition,
                 urdf,
+                user_ignore_pairs=ignore_pairs,
                 ignore_immediate_adjacents=True,
             )
         else:
@@ -74,21 +76,45 @@ class TeaArmRobot(BaseRobot):
         self.waist_link_idx: int = self.robot.links.names.index("waist_link")
 
     @staticmethod
-    def _load_sphere_decomposition() -> dict[str, Any] | None:
-        """Load the sphere decomposition for TeaArm from assets."""
-        asset_path = os.path.join(
+    def _load_collision_data() -> (
+        tuple[dict[str, Any], tuple[tuple[str, str], ...]] | None
+    ):
+        """Load collision data (spheres + ignore pairs) for TeaArm from assets.
+
+        Tries ``collision.json`` first (new format with ignore pairs),
+        falls back to ``sphere.json`` (legacy sphere-only format).
+
+        Returns:
+            Tuple of (sphere_decomposition, ignore_pairs) or None.
+        """
+        asset_dir = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "assets",
             "teaarm",
-            "sphere.json",
         )
-        if not os.path.exists(asset_path):
-            return None
+
+        collision_path = os.path.join(asset_dir, "collision.json")
+        sphere_path = os.path.join(asset_dir, "sphere.json")
+
         try:
-            with open(asset_path, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            return None
+            if os.path.exists(collision_path):
+                with open(collision_path, "r") as f:
+                    data = json.load(f)
+                spheres = data["spheres"]
+                ignore_pairs = tuple(
+                    tuple(pair) for pair in data.get("collision_ignore_pairs", [])
+                )
+                return spheres, ignore_pairs
+
+            if os.path.exists(sphere_path):
+                with open(sphere_path, "r") as f:
+                    data = json.load(f)
+                return data, ()
+
+        except (json.JSONDecodeError, IOError, KeyError):
+            pass
+
+        return None
 
     @property
     @override
