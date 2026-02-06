@@ -7,7 +7,6 @@ webxr/node_modules/
 webxr/dist/
 webxr/.next/
 webxr/out/
-webxr/package-lock.json
 .worktrees/
 uv.lock
 teleop_xr/_version.py
