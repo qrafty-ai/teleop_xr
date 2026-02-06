@@ -68,7 +68,7 @@ async def test_video_stream_manager():
 
         await manager.create_offer()
 
-        mock_pc.addTrack.assert_called()
+        mock_pc.addTransceiver.assert_called()
         mock_pc.createOffer.assert_called()
         mock_pc.setLocalDescription.assert_called()
 

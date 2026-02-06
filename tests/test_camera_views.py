@@ -10,7 +10,7 @@ from teleop_xr.camera_views import (
 def test_parse_device_spec_valid():
     assert parse_device_spec(0) == 0
     assert parse_device_spec("1") == 1
-    assert parse_device_spec("/dev/video0") == "/dev/video0"
+    assert parse_device_spec("/dev/video0") == 0
 
 
 def test_parse_device_spec_invalid():
@@ -30,12 +30,12 @@ def test_parse_device_spec_invalid():
 
 def test_parse_device_spec_whitespace():
     assert parse_device_spec(" 2 ") == 2
-    assert parse_device_spec(" /dev/video0  ") == "/dev/video0"
+    assert parse_device_spec(" /dev/video0  ") == 0
 
 
 def test_build_camera_views_config_basic():
     config = build_camera_views_config(head=0, wrist_left="/dev/video1")
-    assert config == {"head": {"device": 0}, "wrist_left": {"device": "/dev/video1"}}
+    assert config == {"head": {"device": 0}, "wrist_left": {"device": 1}}
     assert "wrist_right" not in config
 
 
@@ -67,14 +67,14 @@ def test_build_video_streams_ordering():
 
 def test_build_video_streams_partial():
     camera_views = {
-        "wrist_left": {"device": "/dev/video1"},
+        "wrist_left": {"device": 1},
         "head": {"device": 0},
     }
     streams = build_video_streams(camera_views)
     expected = {
         "streams": [
             {"id": "head", "device": 0},
-            {"id": "wrist_left", "device": "/dev/video1"},
+            {"id": "wrist_left", "device": 1},
         ]
     }
     assert streams == expected
