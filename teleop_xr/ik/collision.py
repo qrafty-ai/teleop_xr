@@ -117,8 +117,6 @@ def _fit_radii_along_centerline(
     rel = vertices - c1[None, :]
     t = rel @ axis_dir
     perp = onp.linalg.norm(rel - t[:, None] * axis_dir[None, :], axis=1)
-    fallback_max_perp = float(perp.max())
-
     radii: list[float] = []
     for center in centers:
         tc = float((center - c1) @ axis_dir)
@@ -128,7 +126,7 @@ def _fit_radii_along_centerline(
         if onp.any(mask):
             max_perp = float(perp[mask].max())
         else:
-            max_perp = fallback_max_perp
+            max_perp = 0.0
         radius = float(onp.sqrt(sidelength**2 + max_perp**2)) + radius_margin
         radii.append(max(min_radius, radius))
 
