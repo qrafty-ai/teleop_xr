@@ -1,6 +1,7 @@
 import numpy as np
 import jax.numpy as jnp
 import jaxlie
+from loguru import logger
 from unittest.mock import MagicMock
 from teleop_xr.ik.controller import IKController
 from teleop_xr.ik.robot import BaseRobot
@@ -40,7 +41,7 @@ class MockRobot(BaseRobot):
     def get_default_config(self):
         return jnp.zeros(10)
 
-    def build_costs(self, target_L, target_R, target_Head):
+    def build_costs(self, target_L, target_R, target_Head, q_current=None):
         return []
 
 
@@ -128,20 +129,27 @@ def test_controller_missing_required_frame():
     assert not controller.active
 
 
-def test_warning_unsupported_frame(capsys):
+def test_warning_unsupported_frame():
     robot = MockRobot(supported_frames={"left", "right"})
     controller = IKController(robot)
 
     state = create_xr_state(has_left=True, has_right=True, has_head=True)
     config = np.zeros(10)
 
-    controller.step(state, config)
-    captured = capsys.readouterr()
-    assert (
-        "Warning: Frame 'head' is available in XRState but not supported by robot"
-        in captured.out
-    )
+    # Use a list to collect log messages
+    logs = []
+    handler_id = logger.add(lambda msg: logs.append(msg), level="WARNING")
 
-    controller.step(state, config)
-    captured = capsys.readouterr()
-    assert "Warning" not in captured.out
+    try:
+        controller.step(state, config)
+        assert any(
+            "Warning: Frame 'head' is available in XRState but not supported by robot"
+            in str(m)
+            for m in logs
+        )
+
+        logs.clear()
+        controller.step(state, config)
+        assert not any("Warning" in str(m) for m in logs)
+    finally:
+        logger.remove(handler_id)

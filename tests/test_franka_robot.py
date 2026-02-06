@@ -109,8 +109,8 @@ def test_franka_build_costs():
 
     # Test without target
     costs_no_target = robot.build_costs(target_L=None, target_R=None, target_Head=None)
-    # Expect: limit cost only
-    assert len(costs_no_target) == 1
+    # Expect: limit cost + manipulability cost
+    assert len(costs_no_target) == 2
 
 
 def test_franka_default_config():
