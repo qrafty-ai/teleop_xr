@@ -2,7 +2,6 @@ import {
 	type AssetManifest,
 	AssetType,
 	type Camera,
-	createSystem,
 	type Object3D,
 	SessionMode,
 	World,

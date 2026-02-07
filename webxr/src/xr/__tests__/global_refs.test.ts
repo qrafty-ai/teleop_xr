@@ -23,7 +23,11 @@ describe("GlobalRefs", () => {
 	});
 
 	it("stores camera panels in map", () => {
-		const mockPanel = { id: "head" } as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T> ? T : never;
+		const mockPanel = {
+			id: "head",
+		} as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T>
+			? T
+			: never;
 		GlobalRefs.cameraPanels.set("head", mockPanel);
 
 		expect(GlobalRefs.cameraPanels.has("head")).toBe(true);
@@ -32,14 +36,20 @@ describe("GlobalRefs", () => {
 	});
 
 	it("stores panel root references", () => {
-		const mockPanel = { type: "teleop" } as unknown as typeof GlobalRefs.teleopPanelRoot;
+		const mockPanel = {
+			type: "teleop",
+		} as unknown as typeof GlobalRefs.teleopPanelRoot;
 		GlobalRefs.teleopPanelRoot = mockPanel;
 
 		expect(GlobalRefs.teleopPanelRoot).toBe(mockPanel);
 	});
 
 	it("stores panel entities in map", () => {
-		const mockEntity = { id: 123 } as unknown as typeof GlobalRefs.panelEntities extends Map<number, infer T> ? T : never;
+		const mockEntity = {
+			id: 123,
+		} as unknown as typeof GlobalRefs.panelEntities extends Map<number, infer T>
+			? T
+			: never;
 		GlobalRefs.panelEntities.set(123, mockEntity);
 
 		expect(GlobalRefs.panelEntities.has(123)).toBe(true);
@@ -48,8 +58,16 @@ describe("GlobalRefs", () => {
 	});
 
 	it("handles multiple camera panels", () => {
-		const panel1 = { id: "head" } as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T> ? T : never;
-		const panel2 = { id: "wrist_left" } as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T> ? T : never;
+		const panel1 = {
+			id: "head",
+		} as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T>
+			? T
+			: never;
+		const panel2 = {
+			id: "wrist_left",
+		} as unknown as typeof GlobalRefs.cameraPanels extends Map<string, infer T>
+			? T
+			: never;
 
 		GlobalRefs.cameraPanels.set("head", panel1);
 		GlobalRefs.cameraPanels.set("wrist_left", panel2);

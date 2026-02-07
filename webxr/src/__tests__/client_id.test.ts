@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getClientId } from "../client_id";
-
 describe("getClientId", () => {
 	const GLOBAL_KEY = "__teleop_xr_client_id__";
 
