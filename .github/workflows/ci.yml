@@ -93,7 +93,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     environment:
       name: pypi
-      url: https://pypi.org/p/teleop_xr
+      url: https://pypi.org/p/teleop-xr
     permissions:
       id-token: write  # Required for Trusted Publishing
     steps:
