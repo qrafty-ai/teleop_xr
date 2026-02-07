@@ -24,13 +24,20 @@ Use the built-in demo to verify connectivity and visualize the XR state data in 
 pip install teleop-xr
 ```
 
-**With IK support (recommended):**
+**With IK support:**
 
-The IK solver requires additional dependencies that must be installed separately:
+The IK solver requires additional dependencies. Install with:
 
 ```bash
-pip install "teleop-xr[ik]"
+pip install teleop-xr
+# Install IK dependencies from PyPI
+pip install spatialmath-python>=1.1.15 gitpython>=3.1.46 xacro>=2.1.1 filelock>=3.20.3 viser>=1.0.21
+# Install pyroki and ballpark from GitHub (not available on PyPI)
+pip install git+https://github.com/chungmin99/pyroki.git
+pip install git+https://github.com/chungmin99/ballpark.git
 ```
+
+> **Note**: `pyroki` and `ballpark` are not available on PyPI, so `pip install teleop-xr[ik]` will not work. You must install them manually from GitHub as shown above.
 
 ### Running the Demo
 
@@ -90,7 +97,9 @@ For developers contributing to TeleopXR or customizing the frontend:
     **Option B: Using pip**
     ```bash
     pip install -e .
-    # For IK support:
+
+    # For IK support, install additional dependencies:
+    pip install spatialmath-python>=1.1.15 gitpython>=3.1.46 xacro>=2.1.1 filelock>=3.20.3 viser>=1.0.21
     pip install git+https://github.com/chungmin99/pyroki.git
     pip install git+https://github.com/chungmin99/ballpark.git
     ```
