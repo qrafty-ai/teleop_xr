@@ -39,6 +39,11 @@ pip install git+https://github.com/chungmin99/ballpark.git
 
 > **Note**: `pyroki` and `ballpark` are not available on PyPI, so `pip install teleop-xr[ik]` will not work. You must install them manually from GitHub as shown above.
 
+Alternatively, you can use `uv` to install from source:
+```bash
+uv pip install "teleop-xr[ik]@git+https://github.com/qrafty-ai/teleop_xr"
+```
+
 ### Running the Demo
 
 ```bash
