@@ -24,7 +24,6 @@ import {
 	MeshBasicMaterial,
 	type Object3D,
 	PlaneGeometry,
-	Vector3,
 	VideoTexture,
 } from "three";
 import { GlobalRefs } from "./global_refs";
@@ -358,7 +357,7 @@ export class PanelHoverSystem extends createSystem({
 
 			if (panelId !== -1 && entity.object3D) {
 				const panelEntity = GlobalRefs.panelEntities.get(panelId);
-				if (panelEntity && panelEntity.object3D) {
+				if (panelEntity?.object3D) {
 					panelEntity.object3D.position.copy(entity.object3D.position);
 					panelEntity.object3D.quaternion.copy(entity.object3D.quaternion);
 					// Apply local offset Y in rotated space (along local Up)

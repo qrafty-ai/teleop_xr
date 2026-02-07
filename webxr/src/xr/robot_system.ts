@@ -36,9 +36,11 @@ export class RobotModelSystem extends createSystem({}) {
 		this.loader = new URDFLoader();
 		this.loader.packages = (pkg: string) => `/robot_assets/${pkg}`;
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: URDFLoader type doesn't expose loadMeshCb
 		(this.loader as any).loadMeshCb = (
 			path: string,
 			manager: LoadingManager,
+			// biome-ignore lint/suspicious/noExplicitAny: callback error type is unspecified in URDFLoader
 			done: (mesh: Object3D | null, err?: any) => void,
 		) => {
 			const ext = path.split(".").pop()?.toLowerCase();
@@ -64,6 +66,7 @@ export class RobotModelSystem extends createSystem({}) {
 					(err) => done(null, err),
 				);
 			} else {
+				// biome-ignore lint/suspicious/noExplicitAny: fallback to default loader if available
 				const loader = this.loader as any;
 				if (loader.defaultMeshLoader) {
 					loader.defaultMeshLoader(path, manager, done);
