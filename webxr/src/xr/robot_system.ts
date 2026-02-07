@@ -5,16 +5,19 @@ import {
 	MovementMode,
 	type World,
 } from "@iwsdk/core";
+import { Container, Text } from "@pmndrs/uikit";
 import {
 	AmbientLight,
 	AxesHelper,
 	DirectionalLight,
 	Group,
+	Light,
 	LoadingManager,
 	Mesh,
 	type Object3D,
 	SRGBColorSpace,
 	Texture,
+	Camera as ThreeCamera,
 	Vector3,
 } from "three";
 import { ColladaLoader, GLTFLoader, STLLoader } from "three-stdlib";
@@ -31,6 +34,7 @@ export class RobotModelSystem extends createSystem({}) {
 	private robotEntity: Entity | null = null;
 	private robotModel: Object3D | null = null;
 	private axesHelper: AxesHelper | null = null;
+	private loadingEntity: Entity | null = null;
 
 	init() {
 		this.loader = new URDFLoader();
@@ -146,6 +150,7 @@ export class RobotModelSystem extends createSystem({}) {
 
 				manager.onLoad = () => {
 					console.log("[RobotModelSystem] All meshes loaded");
+					this.setLoadingVisible(false);
 					if (_robot) {
 						this.processRobotMaterials(_robot);
 						resolve(_robot);
@@ -157,6 +162,7 @@ export class RobotModelSystem extends createSystem({}) {
 						"[RobotModelSystem] LoadingManager error for URL:",
 						url,
 					);
+					this.setLoadingVisible(false);
 					reject(new Error(`Failed to load: ${url}`));
 				};
 
@@ -185,10 +191,13 @@ export class RobotModelSystem extends createSystem({}) {
 								err.message,
 							);
 						}
+						this.setLoadingVisible(false);
 						reject(err);
 					},
 				);
 			});
+
+			this.setLoadingVisible(true);
 
 			if (this.robotEntity && typeof this.robotEntity.destroy === "function") {
 				this.robotEntity.destroy();
@@ -267,6 +276,53 @@ export class RobotModelSystem extends createSystem({}) {
 				console.error("[RobotModelSystem] Stack trace:", error.stack);
 			} else {
 				console.error("[RobotModelSystem] Failed to load robot:", error);
+			}
+		}
+	}
+
+	private setLoadingVisible(visible: boolean) {
+		if (visible) {
+			if (!this.loadingEntity) {
+				this.loadingEntity = (this.world as World).createTransformEntity();
+				if (this.loadingEntity.object3D) {
+					// Use uikit text
+					// @ts-ignore
+					const container = new Container(this.world.uikit);
+					container.setProperties({
+						flexDirection: "row",
+						justifyContent: "center",
+						alignItems: "center",
+						padding: 20,
+						backgroundColor: 0x000000,
+						opacity: 0.8,
+						borderRadius: 10,
+					});
+
+					// @ts-ignore
+					const text = new Text(this.world.uikit);
+					text.setProperties({
+						text: "Loading Robot...",
+						fontSize: 40,
+						color: 0xffffff,
+					});
+					container.add(text);
+
+					this.loadingEntity.object3D.add(container);
+					this.positionRobotInFront(
+						this.loadingEntity.object3D,
+						this.world.camera,
+					);
+				}
+			}
+			if (this.loadingEntity?.object3D) {
+				this.loadingEntity.object3D.visible = true;
+			}
+		} else {
+			if (this.loadingEntity) {
+				if (typeof this.loadingEntity.destroy === "function") {
+					this.loadingEntity.destroy();
+				}
+				this.loadingEntity = null;
 			}
 		}
 	}

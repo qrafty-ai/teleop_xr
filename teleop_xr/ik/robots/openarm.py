@@ -41,6 +41,7 @@ class OpenArmRobot(BaseRobot):
                     path_inside_repo=xacro_path,
                     xacro_args=xacro_args,
                     resolve_packages=True,
+                    convert_dae_to_glb=True,
                 )
             )
 

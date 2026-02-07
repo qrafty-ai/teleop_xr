@@ -13,6 +13,7 @@ import git
 import xacro
 import xacro.substitution_args
 from filelock import FileLock
+import trimesh
 
 
 # --- Xacro Patching for RAM ---
@@ -120,6 +121,44 @@ def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
 
+def _convert_dae_to_glb(dae_path: Path) -> Path:
+    """Convert a .dae file to .glb and return the new path."""
+    glb_path = dae_path.with_suffix(".glb")
+    if glb_path.exists():
+        return glb_path
+
+    try:
+        scene = trimesh.load(dae_path, force="scene")
+        # Ensure we export as GLB
+        glb_data = scene.export(file_obj=None, file_type="glb")  # type: ignore
+        if isinstance(glb_data, bytes):
+            glb_path.write_bytes(glb_data)
+        else:
+            with open(glb_path, "wb") as f:
+                f.write(glb_data)  # type: ignore
+        return glb_path
+    except Exception as e:
+        print(f"Failed to convert {dae_path} to GLB: {e}")
+        return dae_path
+
+
+def _replace_dae_with_glb(urdf_content: str) -> str:
+    """Find all .dae file references in the URDF, convert them to .glb, and update the URDF content to point to the .glb files."""
+
+    def replace_match(match: re.Match[str]) -> str:
+        original_path_str = match.group(1)
+        original_path = Path(original_path_str)
+
+        if original_path.suffix.lower() == ".dae" and original_path.exists():
+            glb_path = _convert_dae_to_glb(original_path)
+            if glb_path != original_path:
+                return f'filename="{glb_path}"'
+
+        return f'filename="{original_path_str}"'
+
+    return re.sub(r'filename="([^"]+)"', replace_match, urdf_content)
+
+
 def get_repo(
     repo_url: str, branch: Optional[str] = None, cache_dir: Optional[Path] = None
 ) -> Path:
@@ -186,6 +225,7 @@ def get_resource(
     cache_dir: Optional[Path] = None,
     xacro_args: Optional[Dict[str, str]] = None,
     resolve_packages: bool = True,
+    convert_dae_to_glb: bool = False,
 ) -> Path:
     """
     Main entry point for fetching a robot resource.
@@ -220,6 +260,7 @@ def get_resource(
         # Unique name for output based on args and resolution
         arg_str = str(sorted(xacro_args.items())) if xacro_args else ""
         arg_str += f"_resolved={resolve_packages}"
+        arg_str += f"_glb={convert_dae_to_glb}"
 
         if repo_root:
             # Hash includes absolute repo path to avoid collisions
@@ -241,28 +282,45 @@ def get_resource(
         urdf_content = process_xacro(
             file_path, repo_dir, mappings=xacro_args, resolve_packages=resolve_packages
         )
+
+        if convert_dae_to_glb:
+            urdf_content = _replace_dae_with_glb(urdf_content)
+
         output_urdf_path.write_text(urdf_content)
     else:
         # For plain URDF
-        if resolve_packages:
+        if resolve_packages or convert_dae_to_glb:
             content = file_path.read_text()
-            if "package://" in content:
+            needs_processing = False
+
+            if resolve_packages and "package://" in content:
+                needs_processing = True
+            if convert_dae_to_glb and ".dae" in content:
+                needs_processing = True
+
+            if needs_processing:
                 if repo_root:
                     # Create a processed version in cache for local repos too
                     output_dir = cache_dir / "processed"
                     output_dir.mkdir(parents=True, exist_ok=True)
                     # Use a hash to avoid collisions
                     path_hash = hashlib.sha256(
-                        f"{repo_dir.absolute()}:{path_inside_repo}".encode()
+                        f"{repo_dir.absolute()}:{path_inside_repo}:{convert_dae_to_glb}".encode()
                     ).hexdigest()[:12]
                     output_urdf_path = output_dir / f"{file_path.stem}_{path_hash}.urdf"
                 else:
+                    suffix = "_processed_glb" if convert_dae_to_glb else "_processed"
                     output_urdf_path = (
-                        file_path.parent / f"{file_path.stem}_processed.urdf"
+                        file_path.parent / f"{file_path.stem}{suffix}.urdf"
                     )
 
                 with _ram_repo_context(repo_dir):
-                    content = _replace_package_uris(content, repo_dir)
+                    if resolve_packages:
+                        content = _replace_package_uris(content, repo_dir)
+
+                    if convert_dae_to_glb:
+                        content = _replace_dae_with_glb(content)
+
                 output_urdf_path.write_text(content)
             else:
                 output_urdf_path = file_path
