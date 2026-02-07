@@ -12,10 +12,6 @@ source = "vcs"
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.uv.sources]
-pyroki = { git = "https://github.com/chungmin99/pyroki.git" }
-ballpark = { git = "https://github.com/chungmin99/ballpark.git" }
-
 [tool.hatch.build.hooks.vcs]
 version-file = "teleop_xr/_version.py"
 
