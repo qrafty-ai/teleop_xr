@@ -37,6 +37,11 @@ def _resolve_package(package_name: str) -> str:
                 if candidate.exists():
                     return str(candidate)
 
+        # 3. Check if repo root itself IS the package
+        #    (common for single-package repos like openarm_description)
+        if _CURRENT_REPO_ROOT.name == package_name:
+            return str(_CURRENT_REPO_ROOT)
+
     # Fallback: ignore or raise?
     raise ValueError(
         f"Package '{package_name}' not found in RAM repo {_CURRENT_REPO_ROOT}"

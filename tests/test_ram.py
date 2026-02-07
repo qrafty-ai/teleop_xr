@@ -332,3 +332,20 @@ def test_get_resource_local_processed_with_package_uri(temp_git_repo, mock_cache
     )
     assert "processed" in str(path)
     assert "mesh.stl" in path.read_text()
+
+
+def test_resolve_package_repo_root_is_package(tmp_path):
+    """Test _resolve_package when the repo root itself IS the package.
+
+    This covers cases like openarm_description where the repo is cloned
+    as 'openarm_description/' and $(find openarm_description) should
+    resolve to the repo root.
+    """
+    # Create a directory whose name matches the package
+    repo_root = tmp_path / "openarm_description"
+    repo_root.mkdir()
+    (repo_root / "config").mkdir()
+
+    with ram._ram_repo_context(repo_root):
+        path = ram._resolve_package("openarm_description")
+        assert path == str(repo_root)
