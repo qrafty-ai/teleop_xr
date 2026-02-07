@@ -121,7 +121,7 @@ def test_openarm_init_with_string():
     robot = OpenArmRobot(urdf_string=MINIMAL_OPENARM_URDF)
     assert robot.L_ee == "openarm_left_link7"
     assert robot.R_ee == "openarm_right_link7"
-    assert robot.supported_frames == {"left", "right", "head"}
+    assert robot.supported_frames == {"left", "right"}
     assert len(robot.actuated_joint_names) == 14  # 7 per arm
 
 
@@ -133,10 +133,8 @@ def test_openarm_forward_kinematics():
 
     assert "left" in fk
     assert "right" in fk
-    assert "head" in fk
     assert isinstance(fk["left"], jaxlie.SE3)
     assert isinstance(fk["right"], jaxlie.SE3)
-    assert isinstance(fk["head"], jaxlie.SE3)
     assert robot.joint_var_cls is not None
 
 
@@ -147,10 +145,10 @@ def test_openarm_build_costs():
     q = robot.get_default_config()
 
     costs = robot.build_costs(
-        target_L=target, target_R=target, target_Head=target, q_current=q
+        target_L=target, target_R=target, target_Head=None, q_current=q
     )
-    # rest + manipulability + L + R + head + limits + self_collision = 7
-    assert len(costs) == 7
+    # rest + manipulability + L + R + limits + self_collision = 6
+    assert len(costs) == 6
 
     costs_no_target = robot.build_costs(
         target_L=None, target_R=None, target_Head=None

@@ -71,14 +71,10 @@ class OpenArmRobot(BaseRobot):
         else:
             raise ValueError(f"Link {self.R_ee} not found in URDF")
 
-        # Body link for head frame
-        self.body_link: str = "openarm_body_link0"
-        self.body_link_idx: int = self.robot.links.names.index(self.body_link)
-
     @property
     @override
     def supported_frames(self) -> set[str]:
-        return {"left", "right", "head"}
+        return {"left", "right"}
 
     @override
     def get_vis_config(self) -> RobotVisConfig | None:
@@ -109,7 +105,6 @@ class OpenArmRobot(BaseRobot):
         return {
             "left": jaxlie.SE3(fk[self.L_ee_link_idx]),
             "right": jaxlie.SE3(fk[self.R_ee_link_idx]),
-            "head": jaxlie.SE3(fk[self.body_link_idx]),
         }
 
     @override
@@ -168,20 +163,6 @@ class OpenArmRobot(BaseRobot):
                     jnp.array(self.R_ee_link_idx, dtype=jnp.int32),
                     pos_weight=50.0,
                     ori_weight=10.0,
-                )
-            )
-
-        if target_Head is not None:
-            costs.append(
-                pk.costs.pose_cost(
-                    robot=self.robot,
-                    joint_var=JointVar(0),
-                    target_pose=target_Head,
-                    target_link_index=jnp.array(
-                        self.body_link_idx, dtype=jnp.int32
-                    ),
-                    pos_weight=0.0,
-                    ori_weight=jnp.array([0.0, 0.0, 20.0]),
                 )
             )
 
