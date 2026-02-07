@@ -23,16 +23,18 @@ class TeaArmRobot(BaseRobot):
         path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
         xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
 
-        urdf_path = str(
-            ram.get_resource(
-                repo_root=repo_root,
-                path_inside_repo=path_inside_repo,
-                xacro_args=xacro_args,
-                resolve_packages=True,
-            )
+        resource = ram.get_resource(
+            repo_root=repo_root,
+            path_inside_repo=path_inside_repo,
+            xacro_args=xacro_args,
+            resolve_packages=True,
         )
-        self._default_mesh_path: str | None = str(repo_root)
-        self._default_description = RobotDescription(content=urdf_path, kind="path")
+
+        urdf_path = str(resource.path)
+        self._default_mesh_path: str | None = str(resource.root)
+        self._default_description = RobotDescription(
+            content=urdf_path, kind="path", mesh_path=self._default_mesh_path
+        )
 
         if not os.path.exists(urdf_path):
             raise FileNotFoundError(f"TeaArm URDF not found at {urdf_path}")

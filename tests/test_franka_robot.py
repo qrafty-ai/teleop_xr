@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import jax.numpy as jnp
 import jaxlie
 
@@ -39,8 +39,11 @@ def dummy_urdf_file(tmp_path):
 
 def _make_franka(mock_ram_obj, dummy_file):
     """Helper: create a FrankaRobot with mocked RAM."""
-    mock_ram_obj.get_resource.return_value = dummy_file
-    mock_ram_obj.get_repo.return_value = dummy_file.parent
+    mock_resource = MagicMock()
+    mock_resource.path = dummy_file
+    mock_resource.root = dummy_file.parent
+    mock_ram_obj.get_resource.return_value = mock_resource
+    # mock_ram_obj.get_repo is no longer called in new implementation
     return FrankaRobot()
 
 
@@ -67,7 +70,8 @@ def test_franka_init_with_ram(mock_ram, dummy_urdf_file):
 
     # Check RAM calls
     assert mock_ram.get_resource.call_count == 1
-    assert mock_ram.get_repo.called
+    # get_repo should NOT be called anymore (optimization)
+    assert not mock_ram.get_repo.called
 
     assert robot.urdf_path == str(dummy_urdf_file)
     assert robot.description.kind == "path"
@@ -119,7 +123,11 @@ def test_franka_init_error(tmp_path):
         patch("teleop_xr.ik.robots.franka.ram.get_repo") as mock_repo,
         patch("teleop_xr.ik.robots.franka.os.path.exists") as mock_exists,
     ):
-        mock_get.return_value = tmp_path / "nonexistent.urdf"
+        mock_resource = MagicMock()
+        mock_resource.path = tmp_path / "nonexistent.urdf"
+        mock_resource.root = tmp_path
+        mock_get.return_value = mock_resource
+
         mock_repo.return_value = tmp_path
         mock_exists.return_value = False
         with pytest.raises(FileNotFoundError):

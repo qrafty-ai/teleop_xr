@@ -21,14 +21,17 @@ class UnitreeH1Robot(BaseRobot):
         super().__init__()
 
         # Resolve default URDF path via RAM
-        urdf_path = str(
-            ram.get_resource(
-                repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
-                path_inside_repo="assets/h1_2/h1_2.urdf",
-            )
+        resource = ram.get_resource(
+            repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
+            path_inside_repo="assets/h1_2/h1_2.urdf",
         )
+
+        urdf_path = str(resource.path)
+        # H1 uses the directory of the URDF as the mesh path
         self._default_mesh_path = os.path.dirname(urdf_path)
-        self._default_description = RobotDescription(content=urdf_path, kind="path")
+        self._default_description = RobotDescription(
+            content=urdf_path, kind="path", mesh_path=self._default_mesh_path
+        )
 
         # Robot-specific constants (set before _init_from_description)
         self.leg_joint_names = [

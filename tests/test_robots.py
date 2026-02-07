@@ -1,7 +1,7 @@
 import pytest
 import jax.numpy as jnp
 import jaxlie
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from teleop_xr.ik.robot import BaseRobot, RobotDescription
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
@@ -94,11 +94,16 @@ def _make_teaarm(tmp_path, urdf_text=None):
     """Helper: create a TeaArmRobot with mocked RAM, optionally override description."""
     urdf_file = tmp_path / "teaarm.urdf"
     urdf_file.write_text(urdf_text or TEAARM_URDF)
+
+    mock_resource = MagicMock()
+    mock_resource.path = urdf_file
+    mock_resource.root = urdf_file.parent
+
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
         patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
     ):
-        mock_get.return_value = urdf_file
+        mock_get.return_value = mock_resource
         mock_exists.return_value = True
         robot = TeaArmRobot()
     return robot
@@ -125,11 +130,16 @@ def test_teaarm_robot(tmp_path):
     # Also test RAM-loaded path mode
     dummy_urdf = tmp_path / "teaarm2.urdf"
     dummy_urdf.write_text(TEAARM_URDF)
+
+    mock_resource = MagicMock()
+    mock_resource.path = dummy_urdf
+    mock_resource.root = dummy_urdf.parent
+
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
         patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
     ):
-        mock_get.return_value = dummy_urdf
+        mock_get.return_value = mock_resource
         mock_exists.return_value = True
         robot_local = TeaArmRobot()
         assert robot_local.urdf_path == str(dummy_urdf)
@@ -147,11 +157,15 @@ def test_teaarm_robot_errors(tmp_path):
     with pytest.raises(ValueError, match="Link frame_right_arm_ee not found"):
         robot2.set_description(MISSING_R_EE_URDF)
 
+    mock_resource = MagicMock()
+    mock_resource.path = tmp_path / "nonexistent.urdf"
+    mock_resource.root = tmp_path
+
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
         patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
     ):
-        mock_get.return_value = tmp_path / "nonexistent.urdf"
+        mock_get.return_value = mock_resource
         mock_exists.return_value = False
         with pytest.raises(FileNotFoundError, match="TeaArm URDF not found"):
             TeaArmRobot()
@@ -160,8 +174,13 @@ def test_teaarm_robot_errors(tmp_path):
 def test_h1_robot(tmp_path):
     dummy_urdf = tmp_path / "h1.urdf"
     dummy_urdf.write_text(H1_URDF)
+
+    mock_resource = MagicMock()
+    mock_resource.path = dummy_urdf
+    mock_resource.root = dummy_urdf.parent
+
     with patch("teleop_xr.ik.robots.h1_2.ram.get_resource") as mock_get:
-        mock_get.return_value = dummy_urdf
+        mock_get.return_value = mock_resource
         robot = UnitreeH1Robot()
         assert robot.supported_frames == {"left", "right", "head"}
         assert robot.default_speed_ratio == 1.2

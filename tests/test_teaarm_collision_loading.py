@@ -1,7 +1,8 @@
 import json
 import os
 import tempfile
-from unittest.mock import mock_open, patch
+from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -43,7 +44,10 @@ def _make_teaarm_with_collision_mock(urdf_text, exists_side_effect, open_mock=No
         f.write(TEAARM_URDF)
 
     with patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get:
-        mock_get.return_value = urdf_file
+        mock_resource = MagicMock()
+        mock_resource.path = Path(urdf_file)
+        mock_resource.root = Path(urdf_file).parent
+        mock_get.return_value = mock_resource
         robot = TeaArmRobot()
 
     with patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists:

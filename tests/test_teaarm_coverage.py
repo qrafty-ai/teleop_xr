@@ -1,5 +1,5 @@
 import jaxlie
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 
 TEAARM_URDF = """
@@ -20,11 +20,16 @@ def _make_teaarm(tmp_path, urdf_text=None):
     """Helper: create a TeaArmRobot with mocked RAM, optionally override description."""
     urdf_file = tmp_path / "teaarm.urdf"
     urdf_file.write_text(urdf_text or TEAARM_URDF)
+
+    mock_resource = MagicMock()
+    mock_resource.path = urdf_file
+    mock_resource.root = urdf_file.parent
+
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
         patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
     ):
-        mock_get.return_value = urdf_file
+        mock_get.return_value = mock_resource
         mock_exists.return_value = True
         robot = TeaArmRobot()
     return robot

@@ -13,6 +13,7 @@ import git
 import xacro
 import xacro.substitution_args
 from filelock import FileLock
+from dataclasses import dataclass
 
 
 # --- Xacro Patching for RAM ---
@@ -160,6 +161,20 @@ def process_xacro(
     return urdf_xml
 
 
+@dataclass
+class RAMResource:
+    """A resolved resource from RAM, including its path and the repo root."""
+
+    path: Path
+    root: Path
+
+    def __str__(self) -> str:
+        return str(self.path)
+
+    def __getattr__(self, name):
+        return getattr(self.path, name)
+
+
 def get_resource(
     repo_url: Optional[str] = None,
     path_inside_repo: str = "",
@@ -168,9 +183,10 @@ def get_resource(
     cache_dir: Optional[Path] = None,
     xacro_args: Optional[Dict[str, str]] = None,
     resolve_packages: bool = True,
-) -> Path:
+) -> RAMResource:
     """
     Main entry point for fetching a robot resource.
+    Returns a RAMResource containing the path to the processed file and the repo root.
     """
     if not repo_url and not repo_root:
         raise ValueError("Either repo_url or repo_root must be provided")
@@ -251,7 +267,7 @@ def get_resource(
         else:
             output_urdf_path = file_path
 
-    return output_urdf_path
+    return RAMResource(path=output_urdf_path, root=repo_dir)
 
 
 # Alias get_asset to get_resource for backward compatibility if any

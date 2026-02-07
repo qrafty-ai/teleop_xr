@@ -19,10 +19,12 @@ class RobotDescription:
     Attributes:
         content: Either a filesystem path to a URDF file or a raw URDF XML string.
         kind: Discriminator indicating how to interpret ``content``.
+        mesh_path: Optional root path for resolving meshes.
     """
 
     content: str
     kind: Literal["path", "urdf_string"]
+    mesh_path: str | None = None
 
 
 def _detect_description_kind(content: str) -> Literal["path", "urdf_string"]:
@@ -83,6 +85,7 @@ class BaseRobot(ABC):
         self,
         content: str,
         kind: Literal["path", "urdf_string"] | None = None,
+        mesh_path: str | None = None,
     ) -> None:
         """Override the robot description and reinitialise URDF-dependent state.
 
@@ -91,10 +94,13 @@ class BaseRobot(ABC):
             kind: Explicit discriminator.  When ``None`` the kind is
                 auto-detected (strings starting with ``<`` are treated as
                 URDF XML).
+            mesh_path: Optional override for the mesh resolution path.
         """
         if kind is None:
             kind = _detect_description_kind(content)
-        self._description_override = RobotDescription(content=content, kind=kind)
+        self._description_override = RobotDescription(
+            content=content, kind=kind, mesh_path=mesh_path
+        )
         self._init_from_description(self._description_override)
 
     def load_urdf_model(
@@ -107,18 +113,23 @@ class BaseRobot(ABC):
         Args:
             description: The description to load from.
             fallback_mesh_path: Path to use for mesh resolution if description
-                is a raw string (kind="urdf_string").
+                is a raw string (kind="urdf_string") and has no internal ``mesh_path``.
 
         Returns:
             The loaded yourdfpy.URDF object.
         """
+        if description.mesh_path:
+            self.mesh_path = description.mesh_path
+        elif description.kind == "path":
+            self.mesh_path = os.path.dirname(description.content)
+        else:
+            self.mesh_path = fallback_mesh_path
+
         if description.kind == "path":
             self.urdf_path = description.content
-            self.mesh_path = os.path.dirname(description.content)
             return yourdfpy.URDF.load(description.content)
         else:
             self.urdf_path = ""
-            self.mesh_path = fallback_mesh_path
             return yourdfpy.URDF.load(io.StringIO(description.content))
 
     # ------------------------------------------------------------------

@@ -25,18 +25,20 @@ class FrankaRobot(BaseRobot):
         xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
         xacro_args = {"hand": "true"}
 
-        urdf_path = str(
-            ram.get_resource(
-                repo_url=repo_url,
-                path_inside_repo=xacro_path,
-                xacro_args=xacro_args,
-                resolve_packages=True,
-            )
+        resource = ram.get_resource(
+            repo_url=repo_url,
+            path_inside_repo=xacro_path,
+            xacro_args=xacro_args,
+            resolve_packages=True,
         )
 
-        repo_path = ram.get_repo(repo_url)
-        self._default_mesh_path: str | None = str(repo_path)
-        self._default_description = RobotDescription(content=urdf_path, kind="path")
+        urdf_path = str(resource.path)
+
+        # Use repo root as mesh path
+        self._default_mesh_path = str(resource.root)
+        self._default_description = RobotDescription(
+            content=urdf_path, kind="path", mesh_path=self._default_mesh_path
+        )
 
         if not os.path.exists(urdf_path):
             raise FileNotFoundError(f"Franka URDF not found at {urdf_path}")
