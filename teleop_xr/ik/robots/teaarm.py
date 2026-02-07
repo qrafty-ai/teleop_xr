@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import io
 import json
 import os
 from pathlib import Path
@@ -16,35 +17,65 @@ from teleop_xr import ram
 
 
 class TeaArmRobot(BaseRobot):
-    def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
-        self.urdf_path: str
-        self.mesh_path: str | None
-        if urdf_string:
-            import io
+    def __init__(
+        self,
+        robot_description_override: str | None = None,
+        urdf_string: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        del kwargs
+        if robot_description_override is not None and urdf_string is not None:
+            raise ValueError(
+                "Provide only one of robot_description_override or urdf_string"
+            )
 
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-            self.mesh_path = None
-        else:
-            repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
-            path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
-            xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
+        repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
+        path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
+        xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
+        self._repo_root = repo_root
+        self._path_inside_repo = path_inside_repo
+        self._xacro_args = xacro_args
 
-            self.urdf_path = str(
+        self._default_robot_description: str | None = None
+        self._default_mesh_path = str(repo_root)
+        self.urdf_path = ""
+        self.mesh_path: str | None = None
+
+        super().__init__(robot_description_override or urdf_string)
+        self.reinitialize_from_description()
+
+    @property
+    @override
+    def robot_description(self) -> str:
+        if self._default_robot_description is None:
+            self._default_robot_description = str(
                 ram.get_resource(
-                    repo_root=repo_root,
-                    path_inside_repo=path_inside_repo,
-                    xacro_args=xacro_args,
+                    repo_root=self._repo_root,
+                    path_inside_repo=self._path_inside_repo,
+                    xacro_args=self._xacro_args,
                     resolve_packages=True,
                 )
             )
+        return self._default_robot_description
 
-            self.mesh_path = str(repo_root)
-
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"TeaArm URDF not found at {self.urdf_path}")
-
-            urdf = yourdfpy.URDF.load(self.urdf_path)
+    @override
+    def _initialize_from_description(self, robot_description: str) -> None:
+        if robot_description.lstrip().startswith("<"):
+            self.urdf_path = ""
+            self.mesh_path = None
+            urdf = yourdfpy.URDF.load(io.StringIO(robot_description))
+        elif os.path.exists(robot_description):
+            self.urdf_path = robot_description
+            if (
+                self._default_robot_description is not None
+                and robot_description == self._default_robot_description
+            ):
+                self.mesh_path = self._default_mesh_path
+            else:
+                self.mesh_path = os.path.dirname(robot_description)
+            urdf = yourdfpy.URDF.load(robot_description)
+        else:
+            raise FileNotFoundError(f"TeaArm URDF not found at {robot_description}")
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 

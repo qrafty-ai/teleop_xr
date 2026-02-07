@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import io
 import os
 from typing import Any, override
 
@@ -18,18 +19,21 @@ class UnitreeH1Robot(BaseRobot):
     Unitree H1_2 robot implementation for IK.
     """
 
-    def __init__(self) -> None:
-        # Load URDF from external repository via RAM
-        self.urdf_path = str(
-            ram.get_resource(
-                repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
-                path_inside_repo="assets/h1_2/h1_2.urdf",
+    def __init__(
+        self,
+        robot_description_override: str | None = None,
+        urdf_string: str | None = None,
+    ) -> None:
+        if robot_description_override is not None and urdf_string is not None:
+            raise ValueError(
+                "Provide only one of robot_description_override or urdf_string"
             )
-        )
-        self.mesh_path = os.path.dirname(self.urdf_path)
-        urdf = yourdfpy.URDF.load(self.urdf_path)
 
-        # Identify leg joints names to freeze
+        self._default_robot_description: str | None = None
+        self.urdf_path = ""
+        self.mesh_path: str | None = None
+
+        # Identify leg joint names to freeze
         self.leg_joint_names = [
             "left_hip_yaw_joint",
             "left_hip_pitch_joint",
@@ -44,6 +48,36 @@ class UnitreeH1Robot(BaseRobot):
             "right_ankle_pitch_joint",
             "right_ankle_roll_joint",
         ]
+
+        super().__init__(robot_description_override or urdf_string)
+        self.reinitialize_from_description()
+
+    @property
+    @override
+    def robot_description(self) -> str:
+        if self._default_robot_description is None:
+            self._default_robot_description = str(
+                ram.get_resource(
+                    repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
+                    path_inside_repo="assets/h1_2/h1_2.urdf",
+                )
+            )
+        return self._default_robot_description
+
+    @override
+    def _initialize_from_description(self, robot_description: str) -> None:
+        if robot_description.lstrip().startswith("<"):
+            self.urdf_path = ""
+            self.mesh_path = None
+            urdf = yourdfpy.URDF.load(io.StringIO(robot_description))
+        elif os.path.exists(robot_description):
+            self.urdf_path = robot_description
+            self.mesh_path = os.path.dirname(robot_description)
+            urdf = yourdfpy.URDF.load(robot_description)
+        else:
+            raise FileNotFoundError(
+                f"Unitree H1 robot description path not found: {robot_description}"
+            )
 
         for joint_name in self.leg_joint_names:
             if joint_name in urdf.joint_map:

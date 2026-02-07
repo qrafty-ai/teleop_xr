@@ -16,6 +16,49 @@ class BaseRobot(ABC):
     to compute kinematics and optimization costs.
     """
 
+    def __init__(self, robot_description_override: str | None = None) -> None:
+        self._robot_description_override = robot_description_override
+
+    @property
+    @abstractmethod
+    def robot_description(self) -> str:
+        """
+        Default robot description source.
+
+        Returns:
+            str: Either a filesystem path to a URDF file or a URDF XML string.
+        """
+        pass  # pragma: no cover
+
+    @property
+    def active_robot_description(self) -> str:
+        """Description currently used by the robot (override if present)."""
+        return self._robot_description_override or self.robot_description
+
+    def override_robot_description(self, robot_description: str | None) -> None:
+        """
+        Override the robot description and reinitialize URDF-dependent state.
+
+        Args:
+            robot_description: URDF file path or URDF XML string. Pass None to
+                clear the override and fall back to `robot_description`.
+        """
+        self._robot_description_override = robot_description
+        self.reinitialize_from_description()
+
+    def reinitialize_from_description(self) -> None:
+        """
+        Reinitialize URDF-dependent state from the active description.
+
+        Subclasses should override `_initialize_from_description` to rebuild
+        robot model state (kinematics, collision, link indices, etc.).
+        """
+        self._initialize_from_description(self.active_robot_description)
+
+    def _initialize_from_description(self, robot_description: str) -> None:
+        """Subclass hook for rebuilding URDF-dependent state."""
+        del robot_description
+
     @property
     def orientation(self) -> jaxlie.SO3:
         """

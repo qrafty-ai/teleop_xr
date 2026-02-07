@@ -18,6 +18,10 @@ from teleop_xr.messages import (
 
 
 class DummyRobot(BaseRobot):
+    @property
+    def robot_description(self) -> str:
+        return "<robot name='dummy'/>"
+
     def get_vis_config(self):
         return None
 
@@ -42,8 +46,11 @@ class DummyRobot(BaseRobot):
 
 class DummySolver(PyrokiSolver):
     def __init__(self, out: np.ndarray):
-        # We don't call super().__init__ because we don't want to trigger _warmup
         self.out = out
+        super().__init__(DummyRobot())
+
+    def _warmup(self) -> None:
+        return None
 
     def solve(self, target_L, target_R, target_Head, q_current):
         return jnp.asarray(self.out)

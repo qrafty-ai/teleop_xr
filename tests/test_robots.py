@@ -49,6 +49,10 @@ H1_URDF = """
 
 class MockBaseRobot(BaseRobot):
     @property
+    def robot_description(self) -> str:
+        return "<robot name='mock'/>"
+
+    @property
     def actuated_joint_names(self):
         return ["j1"]
 
@@ -144,6 +148,10 @@ def test_h1_robot(tmp_path):
             q_current=q,
         )
         assert len(costs) > 0
+        assert robot.get_vis_config() is not None
+        robot.override_robot_description(H1_URDF)
+        assert robot.get_vis_config() is None
+        robot.override_robot_description(None)
         assert robot.get_vis_config() is not None
         robot.urdf_path = ""
         assert robot.get_vis_config() is None

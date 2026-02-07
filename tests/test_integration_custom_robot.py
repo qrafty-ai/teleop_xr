@@ -1,5 +1,6 @@
 import pytest
 import jax.numpy as jnp
+from typing import cast
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.loader import load_robot_class, RobotLoadError
 from teleop_xr.config import RobotVisConfig
@@ -9,8 +10,13 @@ class MockCustomRobot(BaseRobot):
     """A minimal robot class for integration testing."""
 
     def __init__(self, urdf_string=None, custom_arg="default", **kwargs):
+        super().__init__()
         self.urdf_string = urdf_string
         self.custom_arg = custom_arg
+
+    @property
+    def robot_description(self) -> str:
+        return self.urdf_string or "<robot name='custom'/>"
 
     def get_vis_config(self) -> RobotVisConfig | None:
         return None
@@ -29,7 +35,8 @@ class MockCustomRobot(BaseRobot):
     def get_default_config(self) -> jnp.ndarray:
         return jnp.zeros(1)
 
-    def build_costs(self, target_L, target_R, target_Head):
+    def build_costs(self, target_L, target_R, target_Head, q_current=None):
+        del q_current
         return []
 
 
@@ -40,7 +47,8 @@ def test_load_custom_robot_from_module():
     assert cls == MockCustomRobot
 
     # Test instantiation with urdf_string and custom args
-    robot = cls(urdf_string="test_urdf", custom_arg="value")
+    custom_cls = cast(type[MockCustomRobot], cls)
+    robot = custom_cls(urdf_string="test_urdf", custom_arg="value")
     assert robot.urdf_string == "test_urdf"
     assert robot.custom_arg == "value"
 

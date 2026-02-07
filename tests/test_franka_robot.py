@@ -113,6 +113,22 @@ def test_franka_get_vis_config_none():
     assert robot.get_vis_config() is None
 
 
+def test_franka_override_robot_description(dummy_urdf_file, mock_ram):
+    mock_ram.get_resource.return_value = dummy_urdf_file
+    mock_ram.get_repo.return_value = dummy_urdf_file.parent
+
+    robot = FrankaRobot()
+    assert robot.get_vis_config() is not None
+
+    robot.override_robot_description(MINIMAL_FRANKA_URDF)
+    assert robot.get_vis_config() is None
+
+    robot.override_robot_description(None)
+    vis_config = robot.get_vis_config()
+    assert vis_config is not None
+    assert vis_config.urdf_path == str(dummy_urdf_file)
+
+
 def test_franka_init_error(tmp_path):
     with (
         patch("teleop_xr.ik.robots.franka.ram.get_resource") as mock_get,

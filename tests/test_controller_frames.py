@@ -18,7 +18,12 @@ from teleop_xr.messages import (
 
 class MockRobot(BaseRobot):
     def __init__(self, supported_frames={"left", "right", "head"}):
+        super().__init__()
         self._supported_frames = supported_frames
+
+    @property
+    def robot_description(self) -> str:
+        return "<robot name='mock'/>"
 
     @property
     def supported_frames(self):

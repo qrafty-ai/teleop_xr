@@ -19,38 +19,66 @@ class FrankaRobot(BaseRobot):
     Single-arm robot mapped to the 'right' controller.
     """
 
-    def __init__(self, urdf_string: str | None = None) -> None:
-        self.mesh_path = None
+    def __init__(
+        self,
+        robot_description_override: str | None = None,
+        urdf_string: str | None = None,
+    ) -> None:
+        if robot_description_override is not None and urdf_string is not None:
+            raise ValueError(
+                "Provide only one of robot_description_override or urdf_string"
+            )
 
-        if urdf_string:
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-        else:
-            # Load URDF via RAM
-            repo_url = "https://github.com/frankarobotics/franka_ros.git"
-            xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
-            # We need hand=true to include the gripper
-            xacro_args = {"hand": "true"}
+        repo_url = "https://github.com/frankarobotics/franka_ros.git"
+        xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
+        xacro_args = {"hand": "true"}
+        self._repo_url = repo_url
+        self._xacro_path = xacro_path
+        self._xacro_args = xacro_args
 
-            # Get resolved URDF for IK (absolute paths)
-            self.urdf_path = str(
+        self._default_robot_description: str | None = None
+        self._default_mesh_path: str | None = None
+        self.urdf_path = ""
+        self.mesh_path: str | None = None
+
+        super().__init__(robot_description_override or urdf_string)
+        self.reinitialize_from_description()
+
+    @property
+    @override
+    def robot_description(self) -> str:
+        if self._default_robot_description is None:
+            self._default_robot_description = str(
                 ram.get_resource(
-                    repo_url=repo_url,
-                    path_inside_repo=xacro_path,
-                    xacro_args=xacro_args,
+                    repo_url=self._repo_url,
+                    path_inside_repo=self._xacro_path,
+                    xacro_args=self._xacro_args,
                     resolve_packages=True,
                 )
             )
+            self._default_mesh_path = str(ram.get_repo(self._repo_url))
+        return self._default_robot_description
 
-            # Set mesh path to the repo root in RAM cache
-            # We can get it by asking for the repo dir
-            repo_path = ram.get_repo(repo_url)
-            self.mesh_path = str(repo_path)
-
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"Franka URDF not found at {self.urdf_path}")
-
-            urdf = yourdfpy.URDF.load(self.urdf_path)
+    @override
+    def _initialize_from_description(self, robot_description: str) -> None:
+        if robot_description.lstrip().startswith("<"):
+            self.urdf_path = ""
+            self.mesh_path = None
+            urdf = yourdfpy.URDF.load(io.StringIO(robot_description))
+        elif os.path.exists(robot_description):
+            self.urdf_path = robot_description
+            if (
+                self._default_robot_description is not None
+                and robot_description == self._default_robot_description
+            ):
+                self.mesh_path = self._default_mesh_path
+            else:
+                self.mesh_path = os.path.dirname(robot_description)
+            urdf = yourdfpy.URDF.load(robot_description)
+        else:
+            raise FileNotFoundError(
+                f"Franka robot description path not found: {robot_description}"
+            )
 
         self.robot = pk.Robot.from_urdf(urdf)
 
