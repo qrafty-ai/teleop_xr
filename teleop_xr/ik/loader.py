@@ -21,8 +21,10 @@ def load_robot_class(robot_spec: str | None = None) -> type[BaseRobot]:
     4. Otherwise, raise RobotLoadError.
 
     Robot Constructor Contract:
-    All robot classes must support the following constructor signature:
-    `def __init__(self, urdf_string: str | None = None, **kwargs)`
+    All robot classes must inherit from ``BaseRobot`` and implement the
+    ``description`` property and ``_init_from_description()`` method.
+    To override the robot description at runtime (e.g. from a ROS topic),
+    use ``robot.set_description(urdf_string)`` after construction.
 
     Args:
         robot_spec: The robot specification string or None.

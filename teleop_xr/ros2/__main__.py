@@ -393,17 +393,15 @@ def main():
         robot_cls = load_robot_class(cli.robot_class)
         robot_args = json.loads(cli.robot_args)
 
-        urdf_string = None
-        if not cli.no_urdf_topic:
-            urdf_string = get_urdf_from_topic(node, cli.urdf_topic, cli.urdf_timeout)
-
-        if urdf_string:
-            robot_args["urdf_string"] = urdf_string
-
         node.get_logger().info(
             f"Initializing {robot_cls.__name__} with args: {robot_args}"
         )
         robot = robot_cls(**robot_args)
+
+        if not cli.no_urdf_topic:
+            urdf_string = get_urdf_from_topic(node, cli.urdf_topic, cli.urdf_timeout)
+            if urdf_string:
+                robot.set_description(urdf_string)
         solver = PyrokiSolver(robot)
         controller = IKController(robot, solver)
         state_container["q"] = np.array(robot.get_default_config())

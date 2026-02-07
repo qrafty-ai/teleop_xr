@@ -1,8 +1,14 @@
 import json
 import os
+import tempfile
+from unittest.mock import mock_open, patch
+
 import pytest
-from unittest.mock import patch, mock_open
+
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
+
+_TMPDIR = tempfile.mkdtemp()
+
 
 TEAARM_URDF = """
 <robot name="teaarm">
@@ -25,77 +31,83 @@ def mock_asset_dir(tmp_path):
     return d
 
 
+def _make_teaarm_with_collision_mock(urdf_text, exists_side_effect, open_mock=None):
+    """Create TeaArmRobot with mocked RAM + collision file mocks.
+
+    Writes ``TEAARM_URDF`` to a real temp file so that ``yourdfpy.URDF.load``
+    succeeds during ``__init__``, then uses ``set_description()`` with the
+    collision mocks active for the reinitialisation.
+    """
+    urdf_file = os.path.join(_TMPDIR, "teaarm.urdf")
+    with open(urdf_file, "w") as f:
+        f.write(TEAARM_URDF)
+
+    with patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get:
+        mock_get.return_value = urdf_file
+        robot = TeaArmRobot()
+
+    with patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists:
+        mock_exists.side_effect = exists_side_effect
+        if open_mock is not None:
+            with open_mock:
+                robot.set_description(urdf_text)
+        else:
+            robot.set_description(urdf_text)
+    return robot
+
+
 def test_teaarm_load_collision_new_format(mock_asset_dir):
     collision_data = {
         "spheres": {"link1": {"centers": [[0, 0, 0]], "radii": [0.1]}},
         "collision_ignore_pairs": [["link1", "link2"]],
     }
-    collision_file = mock_asset_dir / "collision.json"
-    collision_file.write_text(json.dumps(collision_data))
 
-    with patch(
-        "teleop_xr.ik.robots.teaarm.os.path.join",
-        side_effect=lambda *args: "/".join(args)
-        if "assets" in args
-        else os.path.join(*args),
-    ):
-        with patch(
-            "teleop_xr.ik.robots.teaarm.os.path.dirname",
-            return_value=str(mock_asset_dir.parent.parent),
-        ):
-            # We need to be careful with os.path.join mocking.
-            # Better to mock os.path.exists and open.
-            pass
+    def exists_side_effect(path):
+        return "collision.json" in str(path)
 
-    # Simpler approach: mock os.path.exists and builtins.open
-    with patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists:
-
-        def exists_side_effect(path):
-            if "collision.json" in path:
-                return True
-            return False
-
-        mock_exists.side_effect = exists_side_effect
-
-        with patch("builtins.open", mock_open(read_data=json.dumps(collision_data))):
-            robot = TeaArmRobot(urdf_string=TEAARM_URDF)
-            assert hasattr(robot, "robot_coll")
-            # Verify it used from_sphere_decomposition (can check internal state or mock)
+    robot = _make_teaarm_with_collision_mock(
+        TEAARM_URDF,
+        exists_side_effect,
+        patch("builtins.open", mock_open(read_data=json.dumps(collision_data))),
+    )
+    assert hasattr(robot, "robot_coll")
 
 
 def test_teaarm_load_collision_legacy_format(mock_asset_dir):
     sphere_data = {"link1": {"centers": [[0, 0, 0]], "radii": [0.1]}}
 
-    with patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists:
+    def exists_side_effect(path):
+        return "sphere.json" in str(path)
 
-        def exists_side_effect(path):
-            if "collision.json" in path:
-                return False
-            if "sphere.json" in path:
-                return True
-            return False
-
-        mock_exists.side_effect = exists_side_effect
-
-        with patch("builtins.open", mock_open(read_data=json.dumps(sphere_data))):
-            robot = TeaArmRobot(urdf_string=TEAARM_URDF)
-            assert hasattr(robot, "robot_coll")
+    robot = _make_teaarm_with_collision_mock(
+        TEAARM_URDF,
+        exists_side_effect,
+        patch("builtins.open", mock_open(read_data=json.dumps(sphere_data))),
+    )
+    assert hasattr(robot, "robot_coll")
 
 
 def test_teaarm_load_collision_missing():
-    with patch("teleop_xr.ik.robots.teaarm.os.path.exists", return_value=False):
-        robot = TeaArmRobot(urdf_string=TEAARM_URDF)
-        assert hasattr(robot, "robot_coll")
+    robot = _make_teaarm_with_collision_mock(TEAARM_URDF, lambda _: False)
+    assert hasattr(robot, "robot_coll")
 
 
 def test_teaarm_load_collision_error_handling():
-    with patch("teleop_xr.ik.robots.teaarm.os.path.exists", return_value=True):
-        # Test JSON error
-        with patch("builtins.open", mock_open(read_data="invalid json")):
-            robot = TeaArmRobot(urdf_string=TEAARM_URDF)
-            assert hasattr(robot, "robot_coll")
+    def exists_side_effect(path):
+        return True
 
-        # Test KeyError
-        with patch("builtins.open", mock_open(read_data=json.dumps({"wrong_key": {}}))):
-            robot = TeaArmRobot(urdf_string=TEAARM_URDF)
-            assert hasattr(robot, "robot_coll")
+    # Test JSON error
+    robot = _make_teaarm_with_collision_mock(
+        TEAARM_URDF,
+        exists_side_effect,
+        patch("builtins.open", mock_open(read_data="invalid json")),
+    )
+    assert hasattr(robot, "robot_coll")
+
+    # Test KeyError
+    robot2 = _make_teaarm_with_collision_mock(
+        TEAARM_URDF,
+        exists_side_effect,
+        patch("builtins.open", mock_open(read_data=json.dumps({"wrong_key": {}}))),
+    )
+    assert hasattr(robot2, "robot_coll")

@@ -4,6 +4,7 @@ import jaxlie
 from abc import ABC
 from typing import Dict, List, Any
 from teleop_xr.ik import BaseRobot, PyrokiSolver, IKController
+from teleop_xr.ik.robot import RobotDescription
 
 
 def test_ik_api_imports():
@@ -23,12 +24,24 @@ def test_base_robot_is_abc():
         "get_default_config",
         "build_costs",
         "actuated_joint_names",
+        "description",
+        "_init_from_description",
     }
     assert expected_methods.issubset(abstract_methods)
 
 
 def test_pyroki_solver_instantiation():
     class MockRobot(BaseRobot):
+        def __init__(self):
+            self._description_override = None
+
+        @property
+        def description(self) -> RobotDescription:
+            return RobotDescription(content="<robot/>", kind="urdf_string")
+
+        def _init_from_description(self, description: RobotDescription) -> None:
+            pass
+
         def get_vis_config(self):
             return None
 
@@ -47,6 +60,7 @@ def test_pyroki_solver_instantiation():
             target_L: jaxlie.SE3 | None,
             target_R: jaxlie.SE3 | None,
             target_Head: jaxlie.SE3 | None,
+            q_current: jnp.ndarray | None = None,
         ) -> List[Any]:
             return []
 
@@ -61,6 +75,16 @@ def test_pyroki_solver_instantiation():
 
 def test_ik_controller_instantiation():
     class MockRobot(BaseRobot):
+        def __init__(self):
+            self._description_override = None
+
+        @property
+        def description(self) -> RobotDescription:
+            return RobotDescription(content="<robot/>", kind="urdf_string")
+
+        def _init_from_description(self, description: RobotDescription) -> None:
+            pass
+
         def get_vis_config(self):
             return None
 
@@ -74,7 +98,7 @@ def test_ik_controller_instantiation():
         def get_default_config(self) -> jnp.ndarray:
             return jnp.zeros(2)
 
-        def build_costs(self, target_L, target_R, target_Head):
+        def build_costs(self, target_L, target_R, target_Head, q_current=None):
             return []
 
         @property
@@ -90,6 +114,16 @@ def test_ik_controller_instantiation():
 
 def test_ik_controller_with_filter():
     class MockRobot(BaseRobot):
+        def __init__(self):
+            self._description_override = None
+
+        @property
+        def description(self) -> RobotDescription:
+            return RobotDescription(content="<robot/>", kind="urdf_string")
+
+        def _init_from_description(self, description: RobotDescription) -> None:
+            pass
+
         def get_vis_config(self):
             return None
 
@@ -103,7 +137,7 @@ def test_ik_controller_with_filter():
         def get_default_config(self) -> jnp.ndarray:
             return jnp.zeros(2)
 
-        def build_costs(self, target_L, target_R, target_Head):
+        def build_costs(self, target_L, target_R, target_Head, q_current=None):
             return []
 
         @property

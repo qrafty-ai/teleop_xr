@@ -3,9 +3,6 @@ from unittest.mock import patch
 import jax.numpy as jnp
 import jaxlie
 
-# Mock dependencies before importing FrankaRobot if they do heavy lifting at import time
-# FrankaRobot imports pyroki, yourdfpy, etc.
-
 from teleop_xr.ik.robots.franka import FrankaRobot
 
 MINIMAL_FRANKA_URDF = """
@@ -30,13 +27,6 @@ MINIMAL_FRANKA_URDF = """
 @pytest.fixture
 def mock_ram():
     with patch("teleop_xr.ik.robots.franka.ram") as mock_ram:
-        # Mock get_resource to return a path to a dummy URDF
-        # We need to write the URDF to a file because FrankaRobot loads it via filename if not string
-        # Actually FrankaRobot can take urdf_string in __init__, but the default path uses RAM.
-
-        # Let's mock get_resource to return a Path object that points to our dummy URDF
-        # However, FrankaRobot init calls ram.get_resource(...), converts to str, then checks os.path.exists
-
         yield mock_ram
 
 
@@ -47,36 +37,45 @@ def dummy_urdf_file(tmp_path):
     return p
 
 
-def test_franka_init_with_string():
-    """Test initialization with explicit URDF string."""
-    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+def _make_franka(mock_ram_obj, dummy_file):
+    """Helper: create a FrankaRobot with mocked RAM."""
+    mock_ram_obj.get_resource.return_value = dummy_file
+    mock_ram_obj.get_repo.return_value = dummy_file.parent
+    return FrankaRobot()
+
+
+def _make_franka_with_string(mock_ram_obj, dummy_file, urdf_str):
+    """Helper: create FrankaRobot via RAM then override with a URDF string."""
+    robot = _make_franka(mock_ram_obj, dummy_file)
+    robot.set_description(urdf_str)
+    return robot
+
+
+def test_franka_init_with_string(mock_ram, dummy_urdf_file):
+    """Test initialization with explicit URDF string via set_description."""
+    robot = _make_franka_with_string(mock_ram, dummy_urdf_file, MINIMAL_FRANKA_URDF)
     assert robot.ee_link_name == "panda_hand"
     assert robot.supported_frames == {"right"}
     assert len(robot.actuated_joint_names) == 1  # Only 1 revolute joint in minimal URDF
+    # Verify description override is set
+    assert robot.description.kind == "urdf_string"
 
 
 def test_franka_init_with_ram(mock_ram, dummy_urdf_file):
     """Test initialization using RAM (default)."""
-    # Setup mock to return the dummy file path
-    mock_ram.get_resource.return_value = dummy_urdf_file
-    mock_ram.get_repo.return_value = dummy_urdf_file.parent
-
-    robot = FrankaRobot()
+    robot = _make_franka(mock_ram, dummy_urdf_file)
 
     # Check RAM calls
-    assert mock_ram.get_resource.call_count == 1  # Once for IK (and Vis uses same)
+    assert mock_ram.get_resource.call_count == 1
     assert mock_ram.get_repo.called
 
     assert robot.urdf_path == str(dummy_urdf_file)
-    # assert robot.vis_urdf_path == str(dummy_urdf_file) # Removed property
-    assert robot.mesh_path == str(dummy_urdf_file.parent)
+    assert robot.description.kind == "path"
+    assert robot.description.content == str(dummy_urdf_file)
 
 
 def test_franka_get_vis_config(mock_ram, dummy_urdf_file):
-    mock_ram.get_resource.return_value = dummy_urdf_file
-    mock_ram.get_repo.return_value = dummy_urdf_file.parent
-
-    robot = FrankaRobot()
+    robot = _make_franka(mock_ram, dummy_urdf_file)
     vis_config = robot.get_vis_config()
 
     assert vis_config is not None
@@ -85,8 +84,8 @@ def test_franka_get_vis_config(mock_ram, dummy_urdf_file):
     assert vis_config.model_scale == 0.5
 
 
-def test_franka_forward_kinematics():
-    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+def test_franka_forward_kinematics(mock_ram, dummy_urdf_file):
+    robot = _make_franka_with_string(mock_ram, dummy_urdf_file, MINIMAL_FRANKA_URDF)
     q = jnp.zeros(1)
     fk = robot.forward_kinematics(q)
 
@@ -95,8 +94,8 @@ def test_franka_forward_kinematics():
     assert robot.joint_var_cls is not None
 
 
-def test_franka_build_costs():
-    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+def test_franka_build_costs(mock_ram, dummy_urdf_file):
+    robot = _make_franka_with_string(mock_ram, dummy_urdf_file, MINIMAL_FRANKA_URDF)
     target = jaxlie.SE3.identity()
 
     costs = robot.build_costs(
@@ -108,8 +107,9 @@ def test_franka_build_costs():
     assert len(costs_no_target) == 2
 
 
-def test_franka_get_vis_config_none():
-    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+def test_franka_get_vis_config_none(mock_ram, dummy_urdf_file):
+    robot = _make_franka_with_string(mock_ram, dummy_urdf_file, MINIMAL_FRANKA_URDF)
+    # After set_description with string, urdf_path is empty -> vis_config is None
     assert robot.get_vis_config() is None
 
 
@@ -126,8 +126,8 @@ def test_franka_init_error(tmp_path):
             FrankaRobot()
 
 
-def test_franka_default_config():
-    robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+def test_franka_default_config(mock_ram, dummy_urdf_file):
+    robot = _make_franka_with_string(mock_ram, dummy_urdf_file, MINIMAL_FRANKA_URDF)
     q = robot.get_default_config()
     # In minimal URDF we have 1 joint.
     # get_default_config hardcodes a 7-DOF pose and pads/truncates.
@@ -137,7 +137,7 @@ def test_franka_default_config():
     assert q[0] == 0.0  # First element of q_target is 0.0
 
 
-def test_franka_default_config_padding():
+def test_franka_default_config_padding(mock_ram, dummy_urdf_file):
     """Test get_default_config with more joints than target (padding)."""
     # Create URDF with 9 joints
     joints_xml = ""
@@ -146,7 +146,8 @@ def test_franka_default_config_padding():
 
     urdf = f'<robot name="many_joints"><link name="l0"/>{joints_xml}</robot>'
 
-    robot = FrankaRobot(urdf_string=urdf)
+    robot = _make_franka(mock_ram, dummy_urdf_file)
+    robot.set_description(urdf)
     q = robot.get_default_config()
 
     # Target has 7 elements. Robot has 9.

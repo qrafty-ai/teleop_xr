@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import io
 import os
 from typing import Any, override
 
@@ -8,7 +9,7 @@ import jaxlie
 import pyroki as pk
 import yourdfpy
 
-from teleop_xr.ik.robot import BaseRobot, Cost
+from teleop_xr.ik.robot import BaseRobot, Cost, RobotDescription
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
@@ -19,17 +20,18 @@ class UnitreeH1Robot(BaseRobot):
     """
 
     def __init__(self) -> None:
-        # Load URDF from external repository via RAM
-        self.urdf_path = str(
+        self._description_override: RobotDescription | None = None
+
+        # Resolve default URDF path via RAM
+        self._default_urdf_path = str(
             ram.get_resource(
                 repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
                 path_inside_repo="assets/h1_2/h1_2.urdf",
             )
         )
-        self.mesh_path = os.path.dirname(self.urdf_path)
-        urdf = yourdfpy.URDF.load(self.urdf_path)
+        self._default_mesh_path = os.path.dirname(self._default_urdf_path)
 
-        # Identify leg joints names to freeze
+        # Robot-specific constants (set before _init_from_description)
         self.leg_joint_names = [
             "left_hip_yaw_joint",
             "left_hip_pitch_joint",
@@ -44,7 +46,34 @@ class UnitreeH1Robot(BaseRobot):
             "right_ankle_pitch_joint",
             "right_ankle_roll_joint",
         ]
+        self.L_ee = "L_hand_base_link"
+        self.R_ee = "R_hand_base_link"
 
+        self._init_from_description(self.description)
+
+    # ------------------------------------------------------------------
+    # Description management
+    # ------------------------------------------------------------------
+
+    @property
+    @override
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content=self._default_urdf_path, kind="path")
+
+    @override
+    def _init_from_description(self, description: RobotDescription) -> None:
+        if description.kind == "path":
+            self.urdf_path = description.content
+            self.mesh_path = os.path.dirname(description.content)
+            urdf = yourdfpy.URDF.load(description.content)
+        else:
+            self.urdf_path = ""
+            self.mesh_path = self._default_mesh_path
+            urdf = yourdfpy.URDF.load(io.StringIO(description.content))
+
+        # Freeze leg joints
         for joint_name in self.leg_joint_names:
             if joint_name in urdf.joint_map:
                 urdf.joint_map[joint_name].type = "fixed"
@@ -53,9 +82,6 @@ class UnitreeH1Robot(BaseRobot):
         self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
 
         # End effector and torso link indices
-        # We use hand base links as end effectors (L_ee, R_ee frames)
-        self.L_ee = "L_hand_base_link"
-        self.R_ee = "R_hand_base_link"
         self.L_ee_link_idx = self.robot.links.names.index(self.L_ee)
         self.R_ee_link_idx = self.robot.links.names.index(self.R_ee)
         self.torso_link_idx = self.robot.links.names.index("torso_link")

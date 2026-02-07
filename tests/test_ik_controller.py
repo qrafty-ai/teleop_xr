@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import jaxlie
 from unittest.mock import patch, PropertyMock
 from loguru import logger
-from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.robot import BaseRobot, RobotDescription
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
 from teleop_xr.messages import (
@@ -18,6 +18,18 @@ from teleop_xr.messages import (
 
 
 class DummyRobot(BaseRobot):
+    def __init__(self):
+        self._description_override = None
+
+    @property
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content="<robot name='dummy'/>", kind="urdf_string")
+
+    def _init_from_description(self, description: RobotDescription) -> None:
+        pass
+
     def get_vis_config(self):
         return None
 

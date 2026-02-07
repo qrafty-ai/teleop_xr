@@ -4,7 +4,7 @@ import jaxlie
 from loguru import logger
 from unittest.mock import MagicMock
 from teleop_xr.ik.controller import IKController
-from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.robot import BaseRobot, RobotDescription
 from teleop_xr.messages import (
     XRState,
     XRInputSource,
@@ -18,7 +18,17 @@ from teleop_xr.messages import (
 
 class MockRobot(BaseRobot):
     def __init__(self, supported_frames={"left", "right", "head"}):
+        self._description_override = None
         self._supported_frames = supported_frames
+
+    @property
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content="<robot name='mock'/>", kind="urdf_string")
+
+    def _init_from_description(self, description: RobotDescription) -> None:
+        pass
 
     @property
     def supported_frames(self):

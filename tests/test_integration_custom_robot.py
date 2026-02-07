@@ -1,16 +1,24 @@
 import pytest
 import jax.numpy as jnp
-from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.robot import BaseRobot, RobotDescription
 from teleop_xr.ik.loader import load_robot_class, RobotLoadError
 from teleop_xr.config import RobotVisConfig
 
 
 class MockCustomRobot(BaseRobot):
-    """A minimal robot class for integration testing."""
-
-    def __init__(self, urdf_string=None, custom_arg="default", **kwargs):
-        self.urdf_string = urdf_string
+    def __init__(self, custom_arg="default", **kwargs):
+        self._description_override: RobotDescription | None = None
         self.custom_arg = custom_arg
+        self._init_from_description(self.description)
+
+    @property
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content="<robot name='mock'/>", kind="urdf_string")
+
+    def _init_from_description(self, description: RobotDescription) -> None:
+        self._current_description = description
 
     def get_vis_config(self) -> RobotVisConfig | None:
         return None
@@ -29,20 +37,22 @@ class MockCustomRobot(BaseRobot):
     def get_default_config(self) -> jnp.ndarray:
         return jnp.zeros(1)
 
-    def build_costs(self, target_L, target_R, target_Head):
+    def build_costs(self, target_L, target_R, target_Head, q_current=None):
         return []
 
 
 def test_load_custom_robot_from_module():
-    # Test loading this class from this module
     spec = "tests.test_integration_custom_robot:MockCustomRobot"
     cls = load_robot_class(spec)
     assert cls == MockCustomRobot
 
-    # Test instantiation with urdf_string and custom args
-    robot = cls(urdf_string="test_urdf", custom_arg="value")
-    assert robot.urdf_string == "test_urdf"
+    robot = MockCustomRobot(custom_arg="value")
     assert robot.custom_arg == "value"
+    assert robot.description.kind == "urdf_string"
+
+    robot.set_description("<robot name='overridden'/>")
+    assert robot.description.kind == "urdf_string"
+    assert "overridden" in robot.description.content
 
 
 def test_load_invalid_spec():

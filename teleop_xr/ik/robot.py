@@ -1,11 +1,33 @@
 import jax.numpy as jnp
 import jaxlie
 from abc import ABC, abstractmethod
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 from teleop_xr.config import RobotVisConfig
 
 # Cost is a jaxls.CostBase object (or similar depending on implementation)
 Cost = Any
+
+
+@dataclass
+class RobotDescription:
+    """Describes a robot's URDF source.
+
+    Attributes:
+        content: Either a filesystem path to a URDF file or a raw URDF XML string.
+        kind: Discriminator indicating how to interpret ``content``.
+    """
+
+    content: str
+    kind: Literal["path", "urdf_string"]
+
+
+def _detect_description_kind(content: str) -> Literal["path", "urdf_string"]:
+    """Auto-detect whether *content* is a URDF XML string or a file path."""
+    stripped = content.lstrip()
+    if stripped.startswith("<"):
+        return "urdf_string"
+    return "path"
 
 
 class BaseRobot(ABC):
@@ -14,7 +36,58 @@ class BaseRobot(ABC):
 
     This class defines the interface required by the IK solver and controller
     to compute kinematics and optimization costs.
+
+    Subclasses **must** implement:
+    - ``description`` property – returns the default :class:`RobotDescription`.
+    - ``_init_from_description`` – (re)initialises all URDF-dependent state.
     """
+
+    # ------------------------------------------------------------------
+    # Robot description management
+    # ------------------------------------------------------------------
+    _description_override: RobotDescription | None = None
+
+    @property
+    @abstractmethod
+    def description(self) -> RobotDescription:
+        """Return the current robot description.
+
+        Subclasses should check ``self._description_override`` first and fall
+        back to their default description when it is ``None``.
+        """
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def _init_from_description(self, description: RobotDescription) -> None:
+        """(Re)initialise all URDF-dependent state from *description*.
+
+        Called once during ``__init__`` and again whenever
+        :meth:`set_description` is used to override the description at
+        runtime.
+        """
+        pass  # pragma: no cover
+
+    def set_description(
+        self,
+        content: str,
+        kind: Literal["path", "urdf_string"] | None = None,
+    ) -> None:
+        """Override the robot description and reinitialise URDF-dependent state.
+
+        Args:
+            content: A filesystem path or raw URDF XML string.
+            kind: Explicit discriminator.  When ``None`` the kind is
+                auto-detected (strings starting with ``<`` are treated as
+                URDF XML).
+        """
+        if kind is None:
+            kind = _detect_description_kind(content)
+        self._description_override = RobotDescription(content=content, kind=kind)
+        self._init_from_description(self._description_override)
+
+    # ------------------------------------------------------------------
+    # Orientation helpers
+    # ------------------------------------------------------------------
 
     @property
     def orientation(self) -> jaxlie.SO3:

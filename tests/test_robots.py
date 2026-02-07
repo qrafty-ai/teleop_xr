@@ -2,7 +2,7 @@ import pytest
 import jax.numpy as jnp
 import jaxlie
 from unittest.mock import patch
-from teleop_xr.ik.robot import BaseRobot
+from teleop_xr.ik.robot import BaseRobot, RobotDescription
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
 
@@ -48,6 +48,18 @@ H1_URDF = """
 
 
 class MockBaseRobot(BaseRobot):
+    def __init__(self):
+        self._description_override = None
+
+    @property
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content="<robot name='mock'/>", kind="urdf_string")
+
+    def _init_from_description(self, description: RobotDescription) -> None:
+        pass  # No URDF-dependent state in mock
+
     @property
     def actuated_joint_names(self):
         return ["j1"]
@@ -78,8 +90,24 @@ def test_base_robot_properties():
     assert robot.default_speed_ratio == 1.0
 
 
+def _make_teaarm(tmp_path, urdf_text=None):
+    """Helper: create a TeaArmRobot with mocked RAM, optionally override description."""
+    urdf_file = tmp_path / "teaarm.urdf"
+    urdf_file.write_text(urdf_text or TEAARM_URDF)
+    with (
+        patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
+        patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
+    ):
+        mock_get.return_value = urdf_file
+        mock_exists.return_value = True
+        robot = TeaArmRobot()
+    return robot
+
+
 def test_teaarm_robot(tmp_path):
-    robot = TeaArmRobot(urdf_string=TEAARM_URDF)
+    robot = _make_teaarm(tmp_path)
+    # Override description with URDF string for the full 16-joint model
+    robot.set_description(TEAARM_URDF)
     assert robot.supported_frames == {"left", "right", "head"}
     assert len(robot.actuated_joint_names) == 16
     assert robot.joint_var_cls is not None
@@ -91,9 +119,11 @@ def test_teaarm_robot(tmp_path):
         jaxlie.SE3.identity(), jaxlie.SE3.identity(), jaxlie.SE3.identity(), q_current=q
     )
     assert len(costs) == 7
+    # After set_description with string, urdf_path is empty -> vis_config is None
     assert robot.get_vis_config() is None
 
-    dummy_urdf = tmp_path / "teaarm.urdf"
+    # Also test RAM-loaded path mode
+    dummy_urdf = tmp_path / "teaarm2.urdf"
     dummy_urdf.write_text(TEAARM_URDF)
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
@@ -108,11 +138,14 @@ def test_teaarm_robot(tmp_path):
 
 def test_teaarm_robot_errors(tmp_path):
     MISSING_L_EE_URDF = """<robot name="m"><link name="waist_link"/><link name="frame_right_arm_ee"/><joint name="w" type="revolute"><parent link="waist_link"/><child link="c"/><limit effort="1" lower="-1" upper="1" velocity="1"/></joint><link name="c"/></robot>"""
+    robot = _make_teaarm(tmp_path)
     with pytest.raises(ValueError, match="Link frame_left_arm_ee not found"):
-        TeaArmRobot(urdf_string=MISSING_L_EE_URDF)
+        robot.set_description(MISSING_L_EE_URDF)
+
     MISSING_R_EE_URDF = """<robot name="m"><link name="waist_link"/><link name="frame_left_arm_ee"/><joint name="w" type="revolute"><parent link="waist_link"/><child link="c"/><limit effort="1" lower="-1" upper="1" velocity="1"/></joint><link name="c"/></robot>"""
+    robot2 = _make_teaarm(tmp_path)
     with pytest.raises(ValueError, match="Link frame_right_arm_ee not found"):
-        TeaArmRobot(urdf_string=MISSING_R_EE_URDF)
+        robot2.set_description(MISSING_R_EE_URDF)
 
     with (
         patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,

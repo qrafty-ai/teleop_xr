@@ -1,4 +1,5 @@
 # pyright: reportCallIssue=false
+import io
 import json
 import os
 from pathlib import Path
@@ -10,41 +11,66 @@ import jaxlie
 import pyroki as pk
 import yourdfpy
 
-from teleop_xr.ik.robot import BaseRobot, Cost
+from teleop_xr.ik.robot import BaseRobot, Cost, RobotDescription
 from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
 
 class TeaArmRobot(BaseRobot):
-    def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
-        self.urdf_path: str
-        self.mesh_path: str | None
-        if urdf_string:
-            import io
+    def __init__(self, **kwargs: Any) -> None:
+        self._description_override: RobotDescription | None = None
 
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-            self.mesh_path = None
-        else:
-            repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
-            path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
-            xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
+        # Resolve default URDF path via RAM
+        repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
+        path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
+        xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
 
-            self.urdf_path = str(
-                ram.get_resource(
-                    repo_root=repo_root,
-                    path_inside_repo=path_inside_repo,
-                    xacro_args=xacro_args,
-                    resolve_packages=True,
-                )
+        self._default_urdf_path = str(
+            ram.get_resource(
+                repo_root=repo_root,
+                path_inside_repo=path_inside_repo,
+                xacro_args=xacro_args,
+                resolve_packages=True,
+            )
+        )
+        self._default_mesh_path: str | None = str(repo_root)
+
+        if not os.path.exists(self._default_urdf_path):
+            raise FileNotFoundError(
+                f"TeaArm URDF not found at {self._default_urdf_path}"
             )
 
-            self.mesh_path = str(repo_root)
+        # Robot-specific constants (set before _init_from_description)
+        self.L_ee: str = "frame_left_arm_ee"
+        self.R_ee: str = "frame_right_arm_ee"
 
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"TeaArm URDF not found at {self.urdf_path}")
+        self._init_from_description(self.description)
 
-            urdf = yourdfpy.URDF.load(self.urdf_path)
+    # ------------------------------------------------------------------
+    # Description management
+    # ------------------------------------------------------------------
+
+    @property
+    @override
+    def description(self) -> RobotDescription:
+        if self._description_override is not None:
+            return self._description_override
+        return RobotDescription(content=self._default_urdf_path, kind="path")
+
+    @override
+    def _init_from_description(self, description: RobotDescription) -> None:
+        if description.kind == "path":
+            self.urdf_path = description.content
+            self.mesh_path = (
+                os.path.dirname(description.content)
+                if description.content
+                else self._default_mesh_path
+            )
+            urdf = yourdfpy.URDF.load(description.content)
+        else:
+            self.urdf_path = ""
+            self.mesh_path = self._default_mesh_path
+            urdf = yourdfpy.URDF.load(io.StringIO(description.content))
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
@@ -59,9 +85,6 @@ class TeaArmRobot(BaseRobot):
             )
         else:
             self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
-
-        self.L_ee: str = "frame_left_arm_ee"
-        self.R_ee: str = "frame_right_arm_ee"
 
         if self.L_ee in self.robot.links.names:
             self.L_ee_link_idx: int = self.robot.links.names.index(self.L_ee)

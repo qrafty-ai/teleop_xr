@@ -1,4 +1,5 @@
 import jaxlie
+from unittest.mock import patch
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 
 TEAARM_URDF = """
@@ -15,8 +16,23 @@ TEAARM_URDF = """
 """
 
 
-def test_teaarm_build_costs_full_coverage():
-    robot = TeaArmRobot(urdf_string=TEAARM_URDF)
+def _make_teaarm(tmp_path, urdf_text=None):
+    """Helper: create a TeaArmRobot with mocked RAM, optionally override description."""
+    urdf_file = tmp_path / "teaarm.urdf"
+    urdf_file.write_text(urdf_text or TEAARM_URDF)
+    with (
+        patch("teleop_xr.ik.robots.teaarm.ram.get_resource") as mock_get,
+        patch("teleop_xr.ik.robots.teaarm.os.path.exists") as mock_exists,
+    ):
+        mock_get.return_value = urdf_file
+        mock_exists.return_value = True
+        robot = TeaArmRobot()
+    return robot
+
+
+def test_teaarm_build_costs_full_coverage(tmp_path):
+    robot = _make_teaarm(tmp_path)
+    robot.set_description(TEAARM_URDF)
     q = robot.get_default_config()
     target = jaxlie.SE3.identity()
 
