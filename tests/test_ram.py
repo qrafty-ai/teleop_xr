@@ -1,6 +1,6 @@
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import git
@@ -349,3 +349,181 @@ def test_resolve_package_repo_root_is_package(tmp_path):
     with ram._ram_repo_context(repo_root):
         path = ram._resolve_package("openarm_description")
         assert path == str(repo_root)
+
+
+def test_convert_dae_to_glb_success(tmp_path):
+    dae_path = tmp_path / "model.dae"
+    dae_path.write_text("dummy dae")
+    glb_path = tmp_path / "model.glb"
+
+    with patch("teleop_xr.ram.trimesh.load") as mock_load:
+        mock_scene = MagicMock()
+        mock_load.return_value = mock_scene
+        mock_scene.export.return_value = b"dummy glb content"
+
+        result = ram._convert_dae_to_glb(dae_path)
+
+        assert result == glb_path
+        assert glb_path.exists()
+        assert glb_path.read_bytes() == b"dummy glb content"
+
+
+def test_convert_dae_to_glb_failure(tmp_path):
+    dae_path = tmp_path / "model.dae"
+    dae_path.write_text("dummy dae")
+
+    with patch(
+        "teleop_xr.ram.trimesh.load", side_effect=Exception("conversion failed")
+    ):
+        result = ram._convert_dae_to_glb(dae_path)
+        assert result == dae_path
+
+
+def test_convert_dae_to_glb_already_exists(tmp_path):
+    dae_path = tmp_path / "model.dae"
+    glb_path = tmp_path / "model.glb"
+    glb_path.write_text("existing glb")
+
+    result = ram._convert_dae_to_glb(dae_path)
+    assert result == glb_path
+    with patch("teleop_xr.ram.trimesh.load") as mock_load:
+        ram._convert_dae_to_glb(dae_path)
+        mock_load.assert_not_called()
+
+
+def test_replace_dae_with_glb(tmp_path):
+    dae_path = tmp_path / "mesh.dae"
+    dae_path.write_text("dummy")
+    urdf_content = f'<mesh filename="{dae_path}"/>'
+
+    with patch("teleop_xr.ram._convert_dae_to_glb") as mock_convert:
+        mock_convert.return_value = tmp_path / "mesh.glb"
+
+        result = ram._replace_dae_with_glb(urdf_content)
+        assert 'filename="' + str(tmp_path / "mesh.glb") + '"' in result
+
+
+def test_resolve_package_with_package_xml(tmp_path):
+    repo_root = tmp_path / "some_repo_hash"
+    repo_root.mkdir()
+    (repo_root / "package.xml").write_text("<package><name>my_package</name></package>")
+
+    with ram._ram_repo_context(repo_root):
+        path = ram._resolve_package("my_package")
+        assert path == str(repo_root)
+
+
+def test_resolve_package_with_invalid_package_xml(tmp_path):
+    repo_root = tmp_path / "some_repo_hash"
+    repo_root.mkdir()
+    (repo_root / "package.xml").write_text("not xml")
+
+    with ram._ram_repo_context(repo_root):
+        with pytest.raises(ValueError, match="Package 'my_package' not found"):
+            ram._resolve_package("my_package")
+
+
+def test_get_resource_with_dae_conversion_xacro(tmp_path, mock_cache_dir):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    xacro_path = repo_root / "robot.xacro"
+    xacro_path.write_text('<robot name="r"/>')
+
+    with (
+        patch("teleop_xr.ram.process_xacro") as mock_process,
+        patch("teleop_xr.ram._replace_dae_with_glb") as mock_replace,
+    ):
+        mock_process.return_value = "processed xacro"
+        mock_replace.return_value = "replaced dae"
+
+        result_path = ram.get_resource(
+            repo_root=repo_root,
+            path_inside_repo="robot.xacro",
+            cache_dir=mock_cache_dir,
+            convert_dae_to_glb=True,
+        )
+
+        assert result_path.read_text() == "replaced dae"
+        mock_replace.assert_called_once_with("processed xacro")
+
+
+def test_get_resource_with_dae_conversion_urdf(tmp_path, mock_cache_dir):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    urdf_path = repo_root / "robot.urdf"
+    urdf_path.write_text('<mesh filename="model.dae"/>')
+
+    (repo_root / "model.dae").write_text("dummy")
+
+    with patch("teleop_xr.ram._replace_dae_with_glb") as mock_replace:
+        mock_replace.return_value = "replaced urdf"
+
+        result_path = ram.get_resource(
+            repo_root=repo_root,
+            path_inside_repo="robot.urdf",
+            cache_dir=mock_cache_dir,
+            convert_dae_to_glb=True,
+        )
+
+        assert "processed" in str(result_path)
+        assert result_path.read_text() == "replaced urdf"
+
+
+def test_get_resource_urdf_no_processing_needed(tmp_path, mock_cache_dir):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    urdf_path = repo_root / "robot.urdf"
+    urdf_path.write_text('<robot name="r"/>')
+
+    result_path = ram.get_resource(
+        repo_root=repo_root,
+        path_inside_repo="robot.urdf",
+        cache_dir=mock_cache_dir,
+        convert_dae_to_glb=True,
+        resolve_packages=True,
+    )
+
+    assert result_path == urdf_path
+
+
+def test_resolve_package_with_corrupt_package_xml(tmp_path):
+    repo_root = tmp_path / "some_repo_hash"
+    repo_root.mkdir()
+    (repo_root / "package.xml").write_text("<package>")
+
+    with ram._ram_repo_context(repo_root):
+        with patch("teleop_xr.ram.re.search", side_effect=Exception("regex error")):
+            with pytest.raises(ValueError):
+                ram._resolve_package("my_package")
+
+
+def test_convert_dae_to_glb_non_bytes(tmp_path):
+    dae_path = tmp_path / "model.dae"
+    dae_path.write_text("dummy dae")
+
+    with patch("teleop_xr.ram.trimesh.load") as mock_load:
+        mock_scene = MagicMock()
+        mock_load.return_value = mock_scene
+        mock_scene.export.return_value = {"not": "bytes or string"}
+
+        result = ram._convert_dae_to_glb(dae_path)
+        assert result == dae_path
+
+
+def test_replace_dae_with_glb_non_dae():
+    urdf_content = '<mesh filename="mesh.stl"/>'
+    result = ram._replace_dae_with_glb(urdf_content)
+    assert 'filename="mesh.stl"' in result
+
+
+def test_get_resource_errors():
+    with pytest.raises(
+        ValueError, match="Either repo_url or repo_root must be provided"
+    ):
+        ram.get_resource()
+    with pytest.raises(
+        ValueError, match="Only one of repo_url or repo_root can be provided"
+    ):
+        ram.get_resource(repo_url="http://foo", repo_root=Path("/foo"))
+    with pytest.raises(ValueError, match="path_inside_repo must be relative"):
+        ram.get_resource(repo_root=Path("/foo"), path_inside_repo="/abs/path")
