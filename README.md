@@ -17,8 +17,24 @@
 
 Use the built-in demo to verify connectivity and visualize the XR state data in real-time.
 
+### Installation
+
+**Basic installation (teleop mode only):**
 ```bash
 pip install teleop-xr
+```
+
+**With IK support (recommended):**
+
+The IK solver requires additional dependencies that must be installed separately:
+
+```bash
+pip install "teleop-xr[ik]"
+```
+
+### Running the Demo
+
+```bash
 python -m teleop_xr.demo
 ```
 
@@ -30,7 +46,7 @@ The demo supports two operation modes:
     ```bash
     python -m teleop_xr.demo --mode teleop
     ```
-*   **IK Mode**: Enables the high-performance IK solver (configured for Unitree H1 by default).
+*   **IK Mode**: Enables the high-performance IK solver (configured for Unitree H1 by default). **Requires IK dependencies installed.**
     ```bash
     python -m teleop_xr.demo --mode ik
     ```
@@ -52,7 +68,8 @@ For detailed guides on integrating TeleopXR into your own projects, including th
 For developers contributing to TeleopXR or customizing the frontend:
 
 ### Prerequisites
-*   [uv](https://github.com/astral-sh/uv) (for Python dependency management)
+*   Python 3.10+ with pip
+*   [uv](https://github.com/astral-sh/uv) (recommended for development)
 *   Node.js & npm (for WebXR frontend)
 
 ### Setup
@@ -64,8 +81,18 @@ For developers contributing to TeleopXR or customizing the frontend:
     ```
 
 2.  **Install Python dependencies:**
+
+    **Option A: Using uv (recommended)**
     ```bash
     uv sync
+    ```
+
+    **Option B: Using pip**
+    ```bash
+    pip install -e .
+    # For IK support:
+    pip install git+https://github.com/chungmin99/pyroki.git
+    pip install git+https://github.com/chungmin99/ballpark.git
     ```
 
 3.  **Build the WebXR frontend:**
@@ -79,8 +106,16 @@ For developers contributing to TeleopXR or customizing the frontend:
 4.  **Run from source:**
     ```bash
     # From the root directory
+    # With uv:
     uv run python -m teleop_xr.demo
+
+    # Or with pip:
+    python -m teleop_xr.demo
     ```
+
+### Note on IK Dependencies
+
+The IK solver requires `pyroki` and `ballpark`, which are not on PyPI. During development with `uv`, these are automatically installed from git. For pip-based installations, install them manually from GitHub as shown above.
 
 ## Acknowledgments
 

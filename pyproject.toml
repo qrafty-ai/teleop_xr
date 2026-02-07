@@ -12,6 +12,10 @@ source = "vcs"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.uv.sources]
+pyroki = { git = "https://github.com/chungmin99/pyroki.git" }
+ballpark = { git = "https://github.com/chungmin99/ballpark.git" }
+
 [tool.hatch.build.hooks.vcs]
 version-file = "teleop_xr/_version.py"
 
@@ -48,14 +52,6 @@ dependencies = [
   "tyro>=0.8.0",
   "pydantic>=2.0.0",
   "loguru>=0.7.3",
-  # ik
-  "spatialmath-python>=1.1.15",
-  "pyroki @ git+https://github.com/chungmin99/pyroki.git",
-  "ballpark @ git+https://github.com/chungmin99/ballpark.git",
-  "gitpython>=3.1.46",
-  "xacro>=2.1.1",
-  "filelock>=3.20.3",
-  "viser>=1.0.21",
   "jax>=0.6.2",
 ]
 
@@ -65,6 +61,15 @@ Source = "https://github.com/qrafty-ai/teleop_xr"
 Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 
 [project.optional-dependencies]
+ik = [
+  "pyroki @ git+https://github.com/chungmin99/pyroki.git@95afccc",
+  "ballpark @ git+https://github.com/chungmin99/ballpark.git@0069623",
+  "spatialmath-python>=1.1.15",
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
+  "viser>=1.0.21",
+]
 cuda = [
   "jax[cuda12]>=0.6.2",
 ]
