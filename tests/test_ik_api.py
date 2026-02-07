@@ -24,7 +24,6 @@ def test_base_robot_is_abc():
         "get_default_config",
         "build_costs",
         "actuated_joint_names",
-        "description",
         "_init_from_description",
     }
     assert expected_methods.issubset(abstract_methods)
@@ -33,11 +32,10 @@ def test_base_robot_is_abc():
 def test_pyroki_solver_instantiation():
     class MockRobot(BaseRobot):
         def __init__(self):
-            self._description_override = None
-
-        @property
-        def description(self) -> RobotDescription:
-            return RobotDescription(content="<robot/>", kind="urdf_string")
+            super().__init__()
+            self._default_description = RobotDescription(
+                content="<robot/>", kind="urdf_string"
+            )
 
         def _init_from_description(self, description: RobotDescription) -> None:
             pass
@@ -76,11 +74,10 @@ def test_pyroki_solver_instantiation():
 def test_ik_controller_instantiation():
     class MockRobot(BaseRobot):
         def __init__(self):
-            self._description_override = None
-
-        @property
-        def description(self) -> RobotDescription:
-            return RobotDescription(content="<robot/>", kind="urdf_string")
+            super().__init__()
+            self._default_description = RobotDescription(
+                content="<robot/>", kind="urdf_string"
+            )
 
         def _init_from_description(self, description: RobotDescription) -> None:
             pass
@@ -115,11 +112,10 @@ def test_ik_controller_instantiation():
 def test_ik_controller_with_filter():
     class MockRobot(BaseRobot):
         def __init__(self):
-            self._description_override = None
-
-        @property
-        def description(self) -> RobotDescription:
-            return RobotDescription(content="<robot/>", kind="urdf_string")
+            super().__init__()
+            self._default_description = RobotDescription(
+                content="<robot/>", kind="urdf_string"
+            )
 
         def _init_from_description(self, description: RobotDescription) -> None:
             pass

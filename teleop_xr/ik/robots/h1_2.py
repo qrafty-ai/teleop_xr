@@ -1,5 +1,4 @@
 # pyright: reportCallIssue=false
-import io
 import os
 from typing import Any, override
 
@@ -7,7 +6,6 @@ import jax
 import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
-import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost, RobotDescription
 from teleop_xr.config import RobotVisConfig
@@ -20,16 +18,17 @@ class UnitreeH1Robot(BaseRobot):
     """
 
     def __init__(self) -> None:
-        self._description_override: RobotDescription | None = None
+        super().__init__()
 
         # Resolve default URDF path via RAM
-        self._default_urdf_path = str(
+        urdf_path = str(
             ram.get_resource(
                 repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
                 path_inside_repo="assets/h1_2/h1_2.urdf",
             )
         )
-        self._default_mesh_path = os.path.dirname(self._default_urdf_path)
+        self._default_mesh_path = os.path.dirname(urdf_path)
+        self._default_description = RobotDescription(content=urdf_path, kind="path")
 
         # Robot-specific constants (set before _init_from_description)
         self.leg_joint_names = [
@@ -55,23 +54,11 @@ class UnitreeH1Robot(BaseRobot):
     # Description management
     # ------------------------------------------------------------------
 
-    @property
-    @override
-    def description(self) -> RobotDescription:
-        if self._description_override is not None:
-            return self._description_override
-        return RobotDescription(content=self._default_urdf_path, kind="path")
-
     @override
     def _init_from_description(self, description: RobotDescription) -> None:
-        if description.kind == "path":
-            self.urdf_path = description.content
-            self.mesh_path = os.path.dirname(description.content)
-            urdf = yourdfpy.URDF.load(description.content)
-        else:
-            self.urdf_path = ""
-            self.mesh_path = self._default_mesh_path
-            urdf = yourdfpy.URDF.load(io.StringIO(description.content))
+        urdf = self.load_urdf_model(
+            description, fallback_mesh_path=self._default_mesh_path
+        )
 
         # Freeze leg joints
         for joint_name in self.leg_joint_names:

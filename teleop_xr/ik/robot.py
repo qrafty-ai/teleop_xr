@@ -1,5 +1,8 @@
+import io
+import os
 import jax.numpy as jnp
 import jaxlie
+import yourdfpy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -37,25 +40,34 @@ class BaseRobot(ABC):
     This class defines the interface required by the IK solver and controller
     to compute kinematics and optimization costs.
 
-    Subclasses **must** implement:
-    - ``description`` property – returns the default :class:`RobotDescription`.
-    - ``_init_from_description`` – (re)initialises all URDF-dependent state.
+    Subclasses **must**:
+    - Call ``super().__init__()``
+    - Set ``self._default_description`` in ``__init__``
+    - Implement ``_init_from_description`` – (re)initialises all URDF-dependent state.
     """
+
+    def __init__(self) -> None:
+        self._description_override: RobotDescription | None = None
+        self._default_description: RobotDescription | None = None
 
     # ------------------------------------------------------------------
     # Robot description management
     # ------------------------------------------------------------------
-    _description_override: RobotDescription | None = None
 
     @property
-    @abstractmethod
     def description(self) -> RobotDescription:
         """Return the current robot description.
 
-        Subclasses should check ``self._description_override`` first and fall
-        back to their default description when it is ``None``.
+        Checks ``self._description_override`` first and falls back to
+        ``self._default_description``.
         """
-        pass  # pragma: no cover
+        if self._description_override is not None:
+            return self._description_override
+        if self._default_description is None:
+            raise ValueError(
+                "Robot subclass must set _default_description before accessing description"
+            )
+        return self._default_description
 
     @abstractmethod
     def _init_from_description(self, description: RobotDescription) -> None:
@@ -84,6 +96,30 @@ class BaseRobot(ABC):
             kind = _detect_description_kind(content)
         self._description_override = RobotDescription(content=content, kind=kind)
         self._init_from_description(self._description_override)
+
+    def load_urdf_model(
+        self, description: RobotDescription, fallback_mesh_path: str | None = None
+    ) -> yourdfpy.URDF:
+        """Helper to load a URDF model from a description.
+
+        Updates ``self.urdf_path`` and ``self.mesh_path`` as side effects.
+
+        Args:
+            description: The description to load from.
+            fallback_mesh_path: Path to use for mesh resolution if description
+                is a raw string (kind="urdf_string").
+
+        Returns:
+            The loaded yourdfpy.URDF object.
+        """
+        if description.kind == "path":
+            self.urdf_path = description.content
+            self.mesh_path = os.path.dirname(description.content)
+            return yourdfpy.URDF.load(description.content)
+        else:
+            self.urdf_path = ""
+            self.mesh_path = fallback_mesh_path
+            return yourdfpy.URDF.load(io.StringIO(description.content))
 
     # ------------------------------------------------------------------
     # Orientation helpers

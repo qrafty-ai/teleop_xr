@@ -1,4 +1,3 @@
-import io
 import os
 from typing import Any, override
 
@@ -6,7 +5,6 @@ import jax
 import jax.numpy as jnp
 import jaxlie
 import pyroki as pk
-import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost, RobotDescription
 from teleop_xr.config import RobotVisConfig
@@ -20,14 +18,14 @@ class FrankaRobot(BaseRobot):
     """
 
     def __init__(self) -> None:
-        self._description_override: RobotDescription | None = None
+        super().__init__()
 
         # Resolve default URDF path via RAM
         repo_url = "https://github.com/frankarobotics/franka_ros.git"
         xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
         xacro_args = {"hand": "true"}
 
-        self._default_urdf_path = str(
+        urdf_path = str(
             ram.get_resource(
                 repo_url=repo_url,
                 path_inside_repo=xacro_path,
@@ -38,11 +36,10 @@ class FrankaRobot(BaseRobot):
 
         repo_path = ram.get_repo(repo_url)
         self._default_mesh_path: str | None = str(repo_path)
+        self._default_description = RobotDescription(content=urdf_path, kind="path")
 
-        if not os.path.exists(self._default_urdf_path):
-            raise FileNotFoundError(
-                f"Franka URDF not found at {self._default_urdf_path}"
-            )
+        if not os.path.exists(urdf_path):
+            raise FileNotFoundError(f"Franka URDF not found at {urdf_path}")
 
         # Robot-specific constants (set before _init_from_description)
         self.ee_link_name = "panda_hand"
@@ -53,27 +50,11 @@ class FrankaRobot(BaseRobot):
     # Description management
     # ------------------------------------------------------------------
 
-    @property
-    @override
-    def description(self) -> RobotDescription:
-        if self._description_override is not None:
-            return self._description_override
-        return RobotDescription(content=self._default_urdf_path, kind="path")
-
     @override
     def _init_from_description(self, description: RobotDescription) -> None:
-        if description.kind == "path":
-            self.urdf_path = description.content
-            self.mesh_path = (
-                os.path.dirname(description.content)
-                if description.content
-                else self._default_mesh_path
-            )
-            urdf = yourdfpy.URDF.load(description.content)
-        else:
-            self.urdf_path = ""
-            self.mesh_path = self._default_mesh_path
-            urdf = yourdfpy.URDF.load(io.StringIO(description.content))
+        urdf = self.load_urdf_model(
+            description, fallback_mesh_path=self._default_mesh_path
+        )
 
         self.robot = pk.Robot.from_urdf(urdf)
 
