@@ -31,7 +31,7 @@ class OpenArmRobot(BaseRobot):
             xacro_path = "urdf/robot/v10.urdf.xacro"
             xacro_args = {
                 "bimanual": "true",
-                "hand": "false",
+                "hand": "true",
                 "ros2_control": "false",
             }
 
@@ -48,9 +48,7 @@ class OpenArmRobot(BaseRobot):
             self.mesh_path = str(repo_path)
 
             if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(
-                    f"OpenArm URDF not found at {self.urdf_path}"
-                )
+                raise FileNotFoundError(f"OpenArm URDF not found at {self.urdf_path}")
 
             urdf = yourdfpy.URDF.load(self.urdf_path)
 
@@ -109,7 +107,35 @@ class OpenArmRobot(BaseRobot):
 
     @override
     def get_default_config(self) -> jax.Array:
-        return jnp.zeros(len(self.actuated_joint_names))
+        joint_names = self.actuated_joint_names
+        jnp.zeros(len(joint_names))
+
+        default_pose = {
+            "openarm_left_joint1": 0.0,
+            "openarm_left_joint2": -0.8,
+            "openarm_left_joint3": 0.0,
+            "openarm_left_joint4": 1.2,
+            "openarm_left_joint5": 0.0,
+            "openarm_left_joint6": 0.0,
+            "openarm_left_joint7": 0.0,
+            "openarm_right_joint1": 0.0,
+            "openarm_right_joint2": 0.8,
+            "openarm_right_joint3": 0.0,
+            "openarm_right_joint4": 1.2,
+            "openarm_right_joint5": 0.0,
+            "openarm_right_joint6": 0.0,
+            "openarm_right_joint7": 0.0,
+            "openarm_left_finger_joint1": 0.0,
+            "openarm_left_finger_joint2": 0.0,
+            "openarm_right_finger_joint1": 0.0,
+            "openarm_right_finger_joint2": 0.0,
+        }
+
+        config_list = []
+        for name in joint_names:
+            config_list.append(default_pose.get(name, 0.0))
+
+        return jnp.array(config_list)
 
     @override
     def build_costs(
@@ -135,9 +161,7 @@ class OpenArmRobot(BaseRobot):
             pk.costs.manipulability_cost(
                 self.robot,
                 JointVar(0),
-                jnp.array(
-                    [self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32
-                ),
+                jnp.array([self.L_ee_link_idx, self.R_ee_link_idx], dtype=jnp.int32),
                 weight=0.01,
             )
         )
@@ -166,9 +190,7 @@ class OpenArmRobot(BaseRobot):
                 )
             )
 
-        costs.append(
-            pk.costs.limit_cost(self.robot, JointVar(0), weight=100.0)
-        )
+        costs.append(pk.costs.limit_cost(self.robot, JointVar(0), weight=100.0))
 
         costs.append(
             pk.costs.self_collision_cost(
