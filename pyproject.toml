@@ -66,6 +66,8 @@ ik = [
   "xacro>=2.1.1",
   "filelock>=3.20.3",
   "viser>=1.0.21",
+  "yourdfpy>=0.0.60",
+  "trimesh[easy]>=4.0.0",
 ]
 cuda = [
   "jax[cuda12]>=0.6.2",
@@ -75,6 +77,7 @@ cuda = [
 h1 = "teleop_xr.ik.robots.h1_2:UnitreeH1Robot"
 franka = "teleop_xr.ik.robots.franka:FrankaRobot"
 teaarm = "teleop_xr.ik.robots.teaarm:TeaArmRobot"
+openarm = "teleop_xr.ik.robots.openarm:OpenArmRobot"
 
 [dependency-groups]
 dev = [
