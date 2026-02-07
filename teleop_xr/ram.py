@@ -42,6 +42,19 @@ def _resolve_package(package_name: str) -> str:
         if _CURRENT_REPO_ROOT.name == package_name:
             return str(_CURRENT_REPO_ROOT)
 
+        # 4. Check if repo root contains a package.xml with the matching name
+        #    This handles cases where the repo folder has a hash suffix (e.g. repo_hash)
+        #    but contains the package we are looking for.
+        package_xml = _CURRENT_REPO_ROOT / "package.xml"
+        if package_xml.exists():
+            try:
+                content = package_xml.read_text()
+                match = re.search(r"<name>\s*([^<\s]+)\s*</name>", content)
+                if match and match.group(1) == package_name:
+                    return str(_CURRENT_REPO_ROOT)
+            except Exception:
+                pass  # Ignore parsing errors
+
     # Fallback: ignore or raise?
     raise ValueError(
         f"Package '{package_name}' not found in RAM repo {_CURRENT_REPO_ROOT}"
