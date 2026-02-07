@@ -9,7 +9,9 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"test": "vitest run"
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@iwsdk/core": "0.2.2",
@@ -44,6 +46,7 @@
 		"@types/react": "^19.2.10",
 		"@types/react-dom": "^19.2.3",
 		"@types/three": "^0.178.1",
+		"@vitest/coverage-v8": "^4.0.18",
 		"autoprefixer": "^10.4.24",
 		"draco3dgltf": "^1.5.7",
 		"fs-extra": "^11.3.3",
