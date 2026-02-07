@@ -150,9 +150,7 @@ def test_openarm_build_costs():
     # rest + manipulability + L + R + limits + self_collision = 6
     assert len(costs) == 6
 
-    costs_no_target = robot.build_costs(
-        target_L=None, target_R=None, target_Head=None
-    )
+    costs_no_target = robot.build_costs(target_L=None, target_R=None, target_Head=None)
     # manipulability + limits + self_collision = 3
     assert len(costs_no_target) == 3
 
