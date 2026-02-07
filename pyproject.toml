@@ -9,9 +9,8 @@ artifacts = ["teleop_xr/cert.pem", "teleop_xr/key.pem"]
 [tool.hatch.version]
 source = "vcs"
 
-[tool.uv.sources]
-pyroki = { git = "https://github.com/chungmin99/pyroki.git" }
-ballpark = { git = "https://github.com/chungmin99/ballpark.git" }
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.hooks.vcs]
 version-file = "teleop_xr/_version.py"
@@ -49,6 +48,15 @@ dependencies = [
   "tyro>=0.8.0",
   "pydantic>=2.0.0",
   "loguru>=0.7.3",
+  # ik
+  "spatialmath-python>=1.1.15",
+  "pyroki @ git+https://github.com/chungmin99/pyroki.git",
+  "ballpark @ git+https://github.com/chungmin99/ballpark.git",
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
+  "viser>=1.0.21",
+  "jax>=0.6.2",
 ]
 
 [project.urls]
@@ -59,15 +67,6 @@ Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 [project.optional-dependencies]
 cuda = [
   "jax[cuda12]>=0.6.2",
-]
-ik = [
-  "ballpark",
-  "pyroki",
-  "spatialmath-python>=1.1.15",
-  "gitpython>=3.1.46",
-  "xacro>=2.1.1",
-  "filelock>=3.20.3",
-  "viser>=1.0.21",
 ]
 
 [project.entry-points."teleop_xr.robots"]
