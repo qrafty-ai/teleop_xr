@@ -1,8 +1,15 @@
 # pyright: reportCallIssue=false
 import json
 import os
+import sys
 from pathlib import Path
-from typing import Any, override
+from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 
 import jax
 import jax.numpy as jnp

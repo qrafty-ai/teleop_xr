@@ -1,8 +1,7 @@
 # TeleopXR
 
+Transform your VR/AR headset into a powerful, precise robot controller. TeleopXR provides a lightweight, installation-free teleoperation interface with low-latency video streaming and full WebXR state tracking. Check full documentation [here](https://qrafty-ai.github.io/teleop_xr).
 ![TeleopXR Cover](./assets/teleop_xr.jpg)
-
-**TeleopXR** transforms your VR/AR headset into a powerful, precise robot controller. It provides a lightweight, installation-free teleoperation interface with low-latency video streaming and full WebXR state tracking.
 
 ## Key Features
 
@@ -39,9 +38,9 @@ pip install git+https://github.com/chungmin99/ballpark.git
 
 > **Note**: `pyroki` and `ballpark` are not available on PyPI, so `pip install teleop-xr[ik]` will not work. You must install them manually from GitHub as shown above.
 
-Alternatively, you can use `uv` to install from source:
+Alternatively, if you have `npm` installed, you can also install the whole package from source:
 ```bash
-uv pip install "teleop-xr[ik]@git+https://github.com/qrafty-ai/teleop_xr"
+pip install "teleop-xr[ik]@git+https://github.com/qrafty-ai/teleop_xr"
 ```
 
 ### Running the Demo

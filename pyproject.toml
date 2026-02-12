@@ -50,6 +50,7 @@ dependencies = [
   "pydantic>=2.0.0",
   "loguru>=0.7.3",
   "jax>=0.6.2",
+  "typing-extensions>=4.0.0; python_version < '3.12'",
 ]
 
 [project.urls]

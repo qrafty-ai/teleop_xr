@@ -49,6 +49,10 @@ class CustomBuildHook(BuildHookInterface):
             ensure_placeholder()
             return
 
+        if os.environ.get("SKIP_WEBXR_BUILD"):
+            print("Skipping WebXR build via SKIP_WEBXR_BUILD env var", file=sys.stderr)
+            return
+
         # Check if npm is available
         if shutil.which("npm") is None:
             print("Warning: npm not found, skipping WebXR build", file=sys.stderr)

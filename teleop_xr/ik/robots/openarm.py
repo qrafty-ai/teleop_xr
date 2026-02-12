@@ -1,7 +1,14 @@
 # pyright: reportCallIssue=false
 import io
 import os
-from typing import Any, override
+import sys
+from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 
 import jax
 import jax.numpy as jnp
