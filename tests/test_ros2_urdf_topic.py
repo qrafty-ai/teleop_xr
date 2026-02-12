@@ -1,4 +1,5 @@
 import sys
+import jax.numpy as jnp
 from unittest.mock import MagicMock, patch
 
 # Mock ROS2 modules before importing teleop_xr.ros2.__main__
@@ -56,7 +57,7 @@ import importlib  # noqa: E402
 import teleop_xr.ros2.__main__  # noqa: E402
 
 importlib.reload(teleop_xr.ros2.__main__)
-from teleop_xr.ros2.__main__ import main, TeleopNode  # noqa: E402
+from teleop_xr.ros2.__main__ import main, TeleopNode, Ros2CLI  # noqa: E402
 
 from teleop_xr.ik.robot import BaseRobot  # noqa: E402
 
@@ -70,17 +71,19 @@ class MockRobot(BaseRobot):
             self.urdf_path = "/tmp/mock_overridden.urdf"
         else:
             self.urdf_path = "/path/to/default.urdf"
-        self.actuated_joint_names = ["joint1"]
+        self._actuated_joint_names = ["joint1"]
 
     def _load_default_urdf(self):
         return MagicMock()
 
     def get_default_config(self):
-        return [0.0]
+        return jnp.array([0.0])
 
+    @property
     def actuated_joint_names(self):
-        return ["joint1"]
+        return self._actuated_joint_names
 
+    @property
     def joint_var_cls(self):
         return MagicMock()
 
@@ -104,42 +107,37 @@ def test_urdf_topic_integration(
     mock_load_robot.return_value = MockRobot
     mock_get_urdf.return_value = "<robot name='overridden'/>"
 
-    # We want to use the real TeleopNode class but control its parameters
-    # Since we mocked rclpy.node.Node, TeleopNode will inherit from our MockNode
-    node_instance = TeleopNode()
-    # Set node parameters
-    node_instance._parameters["mode"] = "ik"
-    node_instance._parameters["robot_class"] = "MockRobot"
-    node_instance._parameters["urdf_topic"] = "/robot_description"
-    node_instance._parameters["no_urdf_topic"] = False
-    node_instance._parameters["host"] = "0.0.0.0"
-    node_instance._parameters["port"] = 4443
-    node_instance._parameters["input_mode"] = "controller"
-    node_instance._parameters["extra_streams_json"] = "{}"
-    node_instance._parameters["head_topic"] = ""
-    node_instance._parameters["wrist_left_topic"] = ""
-    node_instance._parameters["wrist_right_topic"] = ""
-    node_instance._parameters["robot_args_json"] = "{}"
-    node_instance._parameters["urdf_timeout"] = 5.0
+    # Create a CLI object
+    cli = Ros2CLI(
+        mode="ik",
+        robot_class="MockRobot",
+        urdf_topic="/robot_description",
+        no_urdf_topic=False,
+    )
 
-    with patch("teleop_xr.ros2.__main__.TeleopNode", return_value=node_instance):
-        # Run main
-        # We need to catch SystemExit or prevent infinite loops if teleop.run() blocks
-        mock_teleop_instance = mock_teleop.return_value
-        # Prevent teleop.run() from blocking
-        mock_teleop_instance.run.return_value = None
+    node_instance = TeleopNode(cli)
 
-        main()
+    with patch("teleop_xr.ros2.__main__.tyro.cli", return_value=cli):
+        with patch("teleop_xr.ros2.__main__.TeleopNode", return_value=node_instance):
+            # Run main
+            # We need to catch SystemExit or prevent infinite loops if teleop.run() blocks
+            mock_teleop_instance = mock_teleop.return_value
+            # Prevent teleop.run() from blocking
+            mock_teleop_instance.run.return_value = None
 
-        # Verify get_urdf_from_topic was called
-        mock_get_urdf.assert_called_once_with(node_instance, "/robot_description", 5.0)
+            main()
 
-        # Verify Teleop call
-        args, kwargs = mock_teleop.call_args
-        settings = kwargs["settings"]
-        assert settings.robot_vis is not None
-        # In our MockRobot, we set urdf_path to /tmp/mock_overridden.urdf if urdf_string is provided
-        assert settings.robot_vis.urdf_path == "/tmp/mock_overridden.urdf"
+            # Verify get_urdf_from_topic was called
+            mock_get_urdf.assert_called_once_with(
+                node_instance, "/robot_description", 5.0
+            )
+
+            # Verify Teleop call
+            args, kwargs = mock_teleop.call_args
+            settings = kwargs["settings"]
+            assert settings.robot_vis is not None
+            # In our MockRobot, we set urdf_path to /tmp/mock_overridden.urdf if urdf_string is provided
+            assert settings.robot_vis.urdf_path == "/tmp/mock_overridden.urdf"
 
 
 @patch("teleop_xr.ros2.__main__.load_robot_class")
@@ -154,32 +152,26 @@ def test_no_urdf_topic_integration(
     # Setup mocks
     mock_load_robot.return_value = MockRobot
 
-    node_instance = TeleopNode()
-    # Set node parameters
-    node_instance._parameters["mode"] = "ik"
-    node_instance._parameters["robot_class"] = "MockRobot"
-    node_instance._parameters["no_urdf_topic"] = True  # Disable URDF topic
-    node_instance._parameters["host"] = "0.0.0.0"
-    node_instance._parameters["port"] = 4443
-    node_instance._parameters["input_mode"] = "controller"
-    node_instance._parameters["extra_streams_json"] = "{}"
-    node_instance._parameters["head_topic"] = ""
-    node_instance._parameters["wrist_left_topic"] = ""
-    node_instance._parameters["wrist_right_topic"] = ""
-    node_instance._parameters["robot_args_json"] = "{}"
+    cli = Ros2CLI(
+        mode="ik",
+        robot_class="MockRobot",
+        no_urdf_topic=True,  # Disable URDF topic
+    )
+    node_instance = TeleopNode(cli)
 
-    with patch("teleop_xr.ros2.__main__.TeleopNode", return_value=node_instance):
-        mock_teleop_instance = mock_teleop.return_value
-        mock_teleop_instance.run.return_value = None
+    with patch("teleop_xr.ros2.__main__.tyro.cli", return_value=cli):
+        with patch("teleop_xr.ros2.__main__.TeleopNode", return_value=node_instance):
+            mock_teleop_instance = mock_teleop.return_value
+            mock_teleop_instance.run.return_value = None
 
-        main()
+            main()
 
-        # Verify get_urdf_from_topic was NOT called
-        mock_get_urdf.assert_not_called()
+            # Verify get_urdf_from_topic was NOT called
+            mock_get_urdf.assert_not_called()
 
-        # Verify Teleop call
-        args, kwargs = mock_teleop.call_args
-        settings = kwargs["settings"]
-        assert settings.robot_vis is not None
-        # In our MockRobot, we set urdf_path to /path/to/default.urdf if NO urdf_string is provided
-        assert settings.robot_vis.urdf_path == "/path/to/default.urdf"
+            # Verify Teleop call
+            args, kwargs = mock_teleop.call_args
+            settings = kwargs["settings"]
+            assert settings.robot_vis is not None
+            # In our MockRobot, we set urdf_path to /path/to/default.urdf if NO urdf_string is provided
+            assert settings.robot_vis.urdf_path == "/path/to/default.urdf"

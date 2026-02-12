@@ -43,51 +43,51 @@ if "rclpy" not in sys.modules:
     sys.modules["tf2_ros"] = MagicMock()
     sys.modules["builtin_interfaces.msg"] = MagicMock()
 
-from teleop_xr.ros2.__main__ import TeleopNode  # noqa: E402
+from teleop_xr.ros2.__main__ import TeleopNode, Ros2CLI  # noqa: E402
+from teleop_xr.config import InputMode
 
 
 def test_teleop_node_params():
-    node = TeleopNode()
-
-    assert node.get_parameter("mode").value == "teleop"
-    assert node.get_parameter("host").value == "0.0.0.0"
-    assert node.get_parameter("port").value == 4443
-    assert node.get_parameter("input_mode").value == "controller"
-    assert node.get_parameter("head_topic").value == ""
-    assert node.get_parameter("wrist_left_topic").value == ""
-    assert node.get_parameter("wrist_right_topic").value == ""
-    assert node.get_parameter("extra_streams_json").value == "{}"
-    assert node.get_parameter("frame_id").value == "xr_local"
-    assert node.get_parameter("publish_hand_tf").value is False
-    assert node.get_parameter("robot_class").value == ""
-    assert node.get_parameter("robot_args_json").value == "{}"
-    assert node.get_parameter("urdf_topic").value == "/robot_description"
-    assert node.get_parameter("urdf_timeout").value == 5.0
-    assert node.get_parameter("no_urdf_topic").value is False
+    cli = Ros2CLI()
+    node = TeleopNode(cli)
 
     assert node.mode == "teleop"
+    assert node.host == "0.0.0.0"
     assert node.port == 4443
+    assert node.input_mode == InputMode.CONTROLLER
+    assert node.head_topic == ""
+    assert node.wrist_left_topic == ""
+    assert node.wrist_right_topic == ""
+    assert node.extra_streams == {}
+    assert node.frame_id == "xr_local"
+    assert node.publish_hand_tf is False
+    assert node.robot_class == ""
     assert node.robot_args == {}
+    assert node.urdf_topic == "/robot_description"
+    assert node.urdf_timeout == 5.0
+    assert node.no_urdf_topic is False
 
     node.destroy_node()
 
 
 def test_teleop_node_param_override():
-    node = TeleopNode()
-    node.declare_parameter("mode", "ik")
+    cli = Ros2CLI(mode="ik")
+    node = TeleopNode(cli)
     assert node.mode == "ik"
     node.destroy_node()
 
 
 def test_teleop_node_json_params():
-    node = TeleopNode()
-    node.declare_parameter("extra_streams_json", '{"cam1": "/topic1"}')
-    node.declare_parameter("robot_args_json", '{"arg1": 123}')
+    cli = Ros2CLI(
+        extra_streams={"cam1": "/topic1"},
+        robot_args='{"arg1": 123}',
+    )
+    node = TeleopNode(cli)
 
     assert node.extra_streams == {"cam1": "/topic1"}
     assert node.robot_args == {"arg1": 123}
 
-    node.declare_parameter("extra_streams_json", "{invalid}")
-    assert node.extra_streams == {}
+    cli.robot_args = "{invalid}"
+    assert node.robot_args == {}
 
     node.destroy_node()
