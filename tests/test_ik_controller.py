@@ -18,6 +18,9 @@ from teleop_xr.messages import (
 
 
 class DummyRobot(BaseRobot):
+    def _load_default_urdf(self):
+        return None
+
     def get_vis_config(self):
         return None
 

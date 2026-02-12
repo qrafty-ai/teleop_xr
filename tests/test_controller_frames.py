@@ -20,6 +20,9 @@ class MockRobot(BaseRobot):
     def __init__(self, supported_frames={"left", "right", "head"}):
         self._supported_frames = supported_frames
 
+    def _load_default_urdf(self):
+        return None
+
     @property
     def supported_frames(self):
         return self._supported_frames

@@ -43,7 +43,7 @@ if "rclpy" not in sys.modules:
     sys.modules["tf2_ros"] = MagicMock()
     sys.modules["builtin_interfaces.msg"] = MagicMock()
 
-from teleop_xr.ros2.__main__ import TeleopNode
+from teleop_xr.ros2.__main__ import TeleopNode  # noqa: E402
 
 
 def test_teleop_node_params():

@@ -157,8 +157,10 @@ def test_openarm_build_costs():
 
 
 def test_openarm_get_vis_config_none():
-    """Test vis config is None when initialized with string."""
+    """Test vis config is not None when initialized with string."""
     robot = OpenArmRobot(urdf_string=MINIMAL_OPENARM_URDF)
+    assert robot.get_vis_config() is not None
+    robot.urdf_path = ""
     assert robot.get_vis_config() is None
 
 

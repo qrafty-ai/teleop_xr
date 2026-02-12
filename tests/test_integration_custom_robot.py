@@ -15,6 +15,9 @@ class MockCustomRobot(BaseRobot):
     def get_vis_config(self) -> RobotVisConfig | None:
         return None
 
+    def _load_default_urdf(self):
+        return None
+
     @property
     def actuated_joint_names(self) -> list[str]:
         return ["joint1"]

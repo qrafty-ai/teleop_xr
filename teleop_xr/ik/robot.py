@@ -55,6 +55,8 @@ class BaseRobot(ABC):
             Subclasses should use `self.orientation` to populate
             `RobotVisConfig.initial_rotation_euler`.
         """
+        if not self.urdf_path:
+            return None
         return RobotVisConfig(
             urdf_path=self.urdf_path,
             mesh_path=self.mesh_path,

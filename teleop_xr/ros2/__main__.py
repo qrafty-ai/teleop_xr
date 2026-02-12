@@ -14,7 +14,7 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent, XRButton
 from teleop_xr.ik.robot import BaseRobot
-from teleop_xr.ik.loader import load_robot_class, list_available_robots
+from teleop_xr.ik.loader import load_robot_class
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
 import transforms3d as t3d
@@ -410,16 +410,6 @@ class IKWorker(threading.Thread):
 
 def main():
     jax.config.update("jax_platform_name", "cpu")
-
-    # 0. Handle CLI flags that are not ROS parameters
-    if "--list-robots" in sys.argv:
-        robots = list_available_robots()
-        logger.info("Available robots (via entry points):")
-        if not robots:
-            logger.info("  None")
-        for name, path in robots.items():
-            logger.info(f"  {name}: {path}")
-        return
 
     # 1. Initialize ROS2
     rclpy.init(args=sys.argv)

@@ -110,6 +110,8 @@ def test_franka_build_costs():
 
 def test_franka_get_vis_config_none():
     robot = FrankaRobot(urdf_string=MINIMAL_FRANKA_URDF)
+    assert robot.get_vis_config() is not None
+    robot.urdf_path = ""
     assert robot.get_vis_config() is None
 
 

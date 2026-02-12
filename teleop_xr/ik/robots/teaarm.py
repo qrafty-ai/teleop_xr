@@ -18,40 +18,13 @@ import pyroki as pk
 import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
 
 class TeaArmRobot(BaseRobot):
     def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
-        self.urdf_path: str
-        self.mesh_path: str | None
-        if urdf_string:
-            import io
-
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-            self.mesh_path = None
-        else:
-            repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
-            path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
-            xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
-
-            self.urdf_path = str(
-                ram.get_resource(
-                    repo_root=repo_root,
-                    path_inside_repo=path_inside_repo,
-                    xacro_args=xacro_args,
-                    resolve_packages=True,
-                )
-            )
-
-            self.mesh_path = str(repo_root)
-
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"TeaArm URDF not found at {self.urdf_path}")
-
-            urdf = yourdfpy.URDF.load(self.urdf_path)
+        super().__init__()
+        urdf = self._load_urdf(urdf_string)
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
 
@@ -81,6 +54,32 @@ class TeaArmRobot(BaseRobot):
             raise ValueError(f"Link {self.R_ee} not found in URDF")
 
         self.waist_link_idx: int = self.robot.links.names.index("waist_link")
+
+    def _load_default_urdf(self) -> yourdfpy.URDF:
+        repo_root = Path("/home/cc/codes/tea/ros2_wksp/src/tea-ros2")
+        path_inside_repo = "tea_description/urdf/teaarm.urdf.xacro"
+        xacro_args = {"with_obstacles": "false", "visual_mesh_ext": "glb"}
+
+        self.urdf_path = str(
+            ram.get_resource(
+                repo_root=repo_root,
+                path_inside_repo=path_inside_repo,
+                xacro_args=xacro_args,
+                resolve_packages=True,
+            )
+        )
+
+        self.mesh_path = str(repo_root)
+
+        if not os.path.exists(self.urdf_path):
+            raise FileNotFoundError(f"TeaArm URDF not found at {self.urdf_path}")
+
+        return yourdfpy.URDF.load(self.urdf_path)
+
+    @property
+    @override
+    def model_scale(self) -> float:
+        return 1.0
 
     @staticmethod
     def _load_collision_data() -> (
@@ -132,19 +131,6 @@ class TeaArmRobot(BaseRobot):
     @override
     def supported_frames(self) -> set[str]:
         return {"left", "right", "head"}
-
-    @override
-    def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.urdf_path:
-            return None
-        return RobotVisConfig(
-            urdf_path=self.urdf_path,
-            mesh_path=self.mesh_path,
-            model_scale=1.0,
-            initial_rotation_euler=[
-                float(x) for x in self.orientation.as_rpy_radians()
-            ],
-        )
 
     @property
     @override

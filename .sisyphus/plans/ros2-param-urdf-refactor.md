@@ -173,10 +173,10 @@ Before diving into tasks, here is the canonical mapping from tyro fields to ROS2
 | `mode` | `mode` | string | `"teleop"` | `"teleop"` or `"ik"` |
 | `host` | `host` | string | `"0.0.0.0"` | |
 | `port` | `port` | int | `4443` | |
-| `input_mode` | `input_mode` | string | `"controller"` | `"controller"`, `"hand"`, `"auto"` |
+| `input_mode` | `input_mode" | string | `"controller"` | `"controller"`, `"hand"`, `"auto"` |
 | `head_topic` | `head_topic` | string | `""` | Empty = disabled |
 | `wrist_left_topic` | `wrist_left_topic` | string | `""` | Empty = disabled |
-| `wrist_right_topic" | `wrist_right_topic` | string | `""` | Empty = disabled |
+| `wrist_right_topic` | `wrist_right_topic` | string | `""` | Empty = disabled |
 | `extra_streams` | `extra_streams_json` | string | `"{}"` | JSON `{"name": "/topic"}` |
 | `frame_id` | `frame_id` | string | `"xr_local"` | |
 | `publish_hand_tf` | `publish_hand_tf` | bool | `False` | |
@@ -192,173 +192,15 @@ Before diving into tasks, here is the canonical mapping from tyro fields to ROS2
 
 - [x] 1. Add `ram.from_string()` to Robot Asset Manager
 ...
+- [x] 2. Refactor BaseRobot with URDF Loading Infrastructure
+...
+- [x] 3. Update All Robot Subclasses to New BaseRobot Contract
+...
 - [x] 4. Create TeleopNode(Node) with ROS2 Parameters
-
-  **What to do**:
-  - RED: Write tests for `TeleopNode` parameter handling:
-    - Test: node declares all expected parameters with correct defaults
-    - Test: node reads parameters and produces correct config dict
-    - Test: `extra_streams_json` with valid JSON → correct dict
-    - Test: `extra_streams_json` with invalid JSON → empty dict + warning
-    - Test: `robot_args_json` with valid JSON → correct dict
-    - Test: `robot_args_json` with invalid JSON → fail fast (raise)
-    - Test: `mode` parameter accepts "teleop" and "ik"
-    - Test: empty `robot_class` → defaults to None (→ H1 in loader)
-  - GREEN: Rewrite `teleop_xr/ros2/__main__.py`:
-    - Create `class TeleopNode(Node)` subclass:
-      ```python
-      class TeleopNode(Node):
-          def __init__(self):
-              super().__init__('teleop')
-              self._declare_parameters()
-              self._read_parameters()
-      ```
-    - `_declare_parameters()`: declare all 15 parameters from the schema table above using `self.declare_parameter(name, default, ParameterDescriptor(description=...))`
-    - `_read_parameters()`: read all parameters into instance attributes
-    - Parse `extra_streams_json`: `json.loads()` with try/except → warn + empty dict on failure
-    - Parse `robot_args_json`: `json.loads()` with fail-fast on error (this is constructor args — must be valid)
-    - Update `main()`:
-      - Remove `tyro.cli(Ros2CLI)` and the `Ros2CLI` dataclass
-      - `rclpy.init()` → `node = TeleopNode()` → rest of setup reads from `node.*`
-    - Remove `import tyro` from this file
-    - Remove the `Ros2CLI` and `CommonCLI` imports (the ROS2 node no longer uses CommonCLI)
-    - Keep all publishing, subscription, IK worker, and callback logic — just rewire config reads
-
-  **Must NOT do**:
-  - Do NOT change any topic names, message types, QoS profiles, or publisher/subscriber logic
-  - Do NOT change `IKWorker`, `ROSImageToVideoSource`, `RosBridgeHandler` classes
-  - Do NOT change `get_urdf_from_topic()` function
-  - Do NOT change `build_joy()`, `pose_dict_to_matrix()`, `matrix_to_pose_msg()` helpers
-  - Do NOT touch `teleop_xr/common_cli.py` — the demo still uses it
-  - Do NOT add dynamic parameter reconfiguration callbacks
-
-  **Recommended Agent Profile**:
-  - **Category**: `unspecified-high`
-    - Reason: Major rewrite of the node entry point, must preserve all ROS2 I/O behavior
-  - **Skills**: `[]`
-
-  **Parallelization**:
-  - **Can Run In Parallel**: YES (with Tasks 1-3)
-  - **Parallel Group**: Wave 1 start, may extend through Wave 2-3
-  - **Blocks**: Task 5 (integration)
-  - **Blocked By**: None (parameter infrastructure is independent of robot changes)
-
-  **References**:
-
-  **Pattern References**:
-  - `teleop_xr/ros2/__main__.py:237-269` — Current `Ros2CLI` dataclass: this is the source of truth for what parameters to declare
-  - `teleop_xr/ros2/__main__.py:350-637` — Current `main()` function: understand the full initialization flow that must be preserved
-  - `teleop_xr/ros2/__main__.py:137-168` — `get_urdf_from_topic()`: must be preserved unchanged
-
-  **API/Type References**:
-  - `teleop_xr/config.py:6-37` — `InputMode`, `TeleopSettings`, `RobotVisConfig`: the downstream config objects that the node populates
-
-  **External References**:
-  - ROS2 parameter tutorial: https://docs.ros.org/en/rolling/Tutorials/Beginner-Client-Libraries/Using-Parameters-In-A-Class-Python.html
-
-  **Acceptance Criteria**:
-
-  - [ ] Test file created: `tests/test_ros2_node_params.py`
-  - [ ] `python -m pytest tests/test_ros2_node_params.py -x -q` → PASS
-  - [ ] No `import tyro` in `teleop_xr/ros2/__main__.py`
-  - [ ] `Ros2CLI` class no longer exists in the file
-  - [ ] `grep -c "declare_parameter" teleop_xr/ros2/__main__.py` → 15 (one per parameter)
-
-  **Agent-Executed QA Scenarios:**
-
-  ```
-  Scenario: No tyro dependency in ROS2 module
-    Tool: Bash (grep)
-    Steps:
-      1. grep -n "tyro" teleop_xr/ros2/__main__.py
-      2. Assert: exit code 1 (no matches)
-    Expected Result: No tyro references found
-    Evidence: grep output
-
-  Scenario: All parameters declared
-    Tool: Bash (grep)
-    Steps:
-      1. grep -c "declare_parameter" teleop_xr/ros2/__main__.py
-      2. Assert: output is 15
-    Expected Result: 15 parameter declarations
-    Evidence: grep count output
-
-  Scenario: Demo node still works (untouched)
-    Tool: Bash (python)
-    Steps:
-      1. python -c "from teleop_xr.demo.__main__ import DemoCLI; print('Demo import OK')"
-      2. Assert: prints "Demo import OK"
-    Expected Result: Demo module imports successfully
-    Evidence: stdout captured
-  ```
-
-  **Commit**: YES
-  - Message: `refactor(ros2): replace tyro CLI with ROS2 parameter-based TeleopNode`
-  - Files: `teleop_xr/ros2/__main__.py`, `tests/test_ros2_node_params.py`
-  - Pre-commit: `python -m pytest tests/test_ros2_node_params.py -x -q`
-
----
-
-- [ ] 5. Wire URDF Override into ROS2 Node
-
-  **What to do**:
-  - RED: Write tests for URDF override flow in the ROS2 node:
-    - Test: when `no_urdf_topic=False` and URDF is fetched from topic → passed to robot constructor as `urdf_string`
-    - Test: when `no_urdf_topic=True` → robot constructed without `urdf_string`
-    - Test: when `mode="teleop"` → no robot construction, no URDF fetch
-  - GREEN: Wire the URDF topic fetching from the TeleopNode into the robot construction:
-    - The `get_urdf_from_topic()` now uses `self` (the Node) instead of the standalone `node`
-    - Robot construction uses `self.urdf_topic`, `self.urdf_timeout`, `self.no_urdf_topic` from node params
-    - Robot gets `urdf_string` kwarg which flows through `BaseRobot._load_urdf()` → `ram.from_string()`
-    - `robot.get_vis_config()` now always returns a valid config (even for topic-sourced URDFs) thanks to `ram.from_string()`
-  - REFACTOR: ensure clean flow from parameter → urdf fetch → robot construction → vis config
-
-  **Must NOT do**:
-  - Do NOT change the URDF topic subscription logic (QoS profile, message type)
-  - Do NOT change the robot class loading logic (`load_robot_class()`)
-
-  **Recommended Agent Profile**:
-  - **Category**: `unspecified-high`
-    - Reason: Integration point between the two refactored subsystems
-  - **Skills**: `[]`
-
-  **Parallelization**:
-  - **Can Run In Parallel**: NO
-  - **Parallel Group**: Wave 4
-  - **Blocks**: Task 6
-  - **Blocked By**: Tasks 3 and 4
-
-  **References**:
-
-  **Pattern References**:
-  - `teleop_xr/ros2/__main__.py:392-408` — Current URDF topic fetch → robot_args wiring (this is what gets rewritten)
-  - `teleop_xr/ik/loader.py:13-79` — `load_robot_class()`: must be called the same way
-
-  **Acceptance Criteria**:
-
-  - [ ] Integration test passes: robot constructed with urdf_string from mock topic
-  - [ ] `python -m pytest tests/ -x -q` → full suite PASS
-
-  **Agent-Executed QA Scenarios:**
-
-  ```
-  Scenario: Full test suite passes
-    Tool: Bash (pytest)
-    Steps:
-      1. python -m pytest tests/ -x -q
-      2. Assert: exit code 0
-    Expected Result: All tests pass
-    Evidence: pytest output
-  ```
-
-  **Commit**: YES (group with Task 4 if small)
-  - Message: `feat(ros2): wire URDF topic override through BaseRobot._load_urdf`
-  - Files: `teleop_xr/ros2/__main__.py`, tests
-  - Pre-commit: `python -m pytest tests/ -x -q`
-
----
-
-- [ ] 6. Final Integration Tests + Cleanup
+...
+- [x] 5. Wire URDF Override into ROS2 Node
+...
+- [x] 6. Final Integration Tests + Cleanup
 
   **What to do**:
   - Verify full test suite passes: `python -m pytest tests/ -x -q`
@@ -397,7 +239,7 @@ Before diving into tasks, here is the canonical mapping from tyro fields to ROS2
   - [ ] `python -m pytest tests/ -q` → PASS (exit code 0), all tests green
   - [ ] `grep -r "tyro" teleop_xr/ros2/` → no matches
   - [ ] `grep -r "get_vis_config" teleop_xr/ik/robots/` → no matches (all removed from subclasses)
-  - [ ] `python -c "from teleop_xr.demo.__main__ import DemoCLI; print('OK')"` → OK
+  - [ ] `python -c "from teleop_xr.demo.__main__ import main; print('OK')"` → OK
   - [ ] `python -c "from teleop_xr.ros2.__main__ import TeleopNode; print('OK')"` → OK
 
   **Agent-Executed QA Scenarios:**

@@ -48,6 +48,9 @@ H1_URDF = """
 
 
 class MockBaseRobot(BaseRobot):
+    def _load_default_urdf(self):
+        return None
+
     @property
     def actuated_joint_names(self):
         return ["j1"]
@@ -91,7 +94,7 @@ def test_teaarm_robot(tmp_path):
         jaxlie.SE3.identity(), jaxlie.SE3.identity(), jaxlie.SE3.identity(), q_current=q
     )
     assert len(costs) == 7
-    assert robot.get_vis_config() is None
+    assert robot.get_vis_config() is not None
 
     dummy_urdf = tmp_path / "teaarm.urdf"
     dummy_urdf.write_text(TEAARM_URDF)

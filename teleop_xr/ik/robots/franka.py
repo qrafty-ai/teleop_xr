@@ -1,4 +1,3 @@
-import io
 import os
 import sys
 from typing import Any
@@ -16,7 +15,6 @@ import pyroki as pk
 import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
 
@@ -26,39 +24,9 @@ class FrankaRobot(BaseRobot):
     Single-arm robot mapped to the 'right' controller.
     """
 
-    def __init__(self, urdf_string: str | None = None) -> None:
-        self.mesh_path = None
-
-        if urdf_string:
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-        else:
-            # Load URDF via RAM
-            repo_url = "https://github.com/frankarobotics/franka_ros.git"
-            xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
-            # We need hand=true to include the gripper
-            xacro_args = {"hand": "true"}
-
-            # Get resolved URDF for IK (absolute paths)
-            self.urdf_path = str(
-                ram.get_resource(
-                    repo_url=repo_url,
-                    path_inside_repo=xacro_path,
-                    xacro_args=xacro_args,
-                    resolve_packages=True,
-                )
-            )
-
-            # Set mesh path to the repo root in RAM cache
-            # We can get it by asking for the repo dir
-            repo_path = ram.get_repo(repo_url)
-            self.mesh_path = str(repo_path)
-
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"Franka URDF not found at {self.urdf_path}")
-
-            urdf = yourdfpy.URDF.load(self.urdf_path)
-
+    def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
+        super().__init__()
+        urdf = self._load_urdf(urdf_string)
         self.robot = pk.Robot.from_urdf(urdf)
 
         # End effector link index
@@ -69,6 +37,38 @@ class FrankaRobot(BaseRobot):
             # Fallback if hand not present (e.g. simplified URDF), use last link
             self.ee_link_idx = len(self.robot.links.names) - 1
 
+    def _load_default_urdf(self) -> yourdfpy.URDF:
+        # Load URDF via RAM
+        repo_url = "https://github.com/frankarobotics/franka_ros.git"
+        xacro_path = "franka_description/robots/panda/panda.urdf.xacro"
+        # We need hand=true to include the gripper
+        xacro_args = {"hand": "true"}
+
+        # Get resolved URDF for IK (absolute paths)
+        self.urdf_path = str(
+            ram.get_resource(
+                repo_url=repo_url,
+                path_inside_repo=xacro_path,
+                xacro_args=xacro_args,
+                resolve_packages=True,
+            )
+        )
+
+        # Set mesh path to the repo root in RAM cache
+        # We can get it by asking for the repo dir
+        repo_path = ram.get_repo(repo_url)
+        self.mesh_path = str(repo_path)
+
+        if not os.path.exists(self.urdf_path):
+            raise FileNotFoundError(f"Franka URDF not found at {self.urdf_path}")
+
+        return yourdfpy.URDF.load(self.urdf_path)
+
+    @property
+    @override
+    def model_scale(self) -> float:
+        return 0.5
+
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
@@ -78,19 +78,6 @@ class FrankaRobot(BaseRobot):
     @override
     def supported_frames(self) -> set[str]:
         return {"right"}
-
-    @override
-    def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.urdf_path:
-            return None
-        return RobotVisConfig(
-            urdf_path=self.urdf_path,
-            mesh_path=self.mesh_path,
-            model_scale=0.5,
-            initial_rotation_euler=[
-                float(x) for x in self.orientation.as_rpy_radians()
-            ],
-        )
 
     @property
     @override
