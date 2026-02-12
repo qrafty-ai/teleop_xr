@@ -3,8 +3,12 @@ import pytest
 try:
     import jaxls  # noqa: F401
     import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
 except ImportError:
-    pytest.skip("jaxls or pyroki not installed", allow_module_level=True)
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
 
 import jax.numpy as jnp  # noqa: E402
 from teleop_xr.ik.robot import BaseRobot  # noqa: E402
@@ -36,7 +40,7 @@ class MockCustomRobot(BaseRobot):
     def get_default_config(self) -> jnp.ndarray:
         return jnp.zeros(1)
 
-    def build_costs(self, target_L, target_R, target_Head):
+    def build_costs(self, target_L, target_R, target_Head, q_current=None):
         return []
 
 

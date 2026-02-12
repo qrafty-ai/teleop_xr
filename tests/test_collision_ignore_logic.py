@@ -3,8 +3,12 @@ import pytest
 try:
     import pyroki as pk  # noqa: F401
     import yourdfpy  # noqa: F401
+    import jaxls  # noqa: F401
+    import jaxlie  # noqa: F401
 except ImportError:
-    pytest.skip("pyroki or yourdfpy not installed", allow_module_level=True)
+    pytest.skip(
+        "pyroki, yourdfpy, jaxls, or jaxlie not installed", allow_module_level=True
+    )
 
 import io  # noqa: E402
 

@@ -125,7 +125,7 @@ def test_process_xacro(temp_git_repo):
 def test_get_cache_root():
     """Test get_cache_root returns the default path."""
     cache_root = ram.get_cache_root()
-    assert cache_root == Path.home() / ".cache" / "ram"
+    assert cache_root.resolve() == (Path.home() / ".cache" / "ram").resolve()
     assert cache_root.exists()
 
 
@@ -134,10 +134,11 @@ def test_get_repo_default_cache(temp_git_repo, monkeypatch):
     # Mock home directory to avoid polluting real home
     with tempfile.TemporaryDirectory() as tmp_home:
         monkeypatch.setenv("HOME", tmp_home)
+        monkeypatch.setenv("USERPROFILE", tmp_home)
         repo_url = f"file://{temp_git_repo}"
         repo_dir = ram.get_repo(repo_url)
         assert repo_dir.exists()
-        assert str(repo_dir).startswith(tmp_home)
+        assert Path(repo_dir).resolve().is_relative_to(Path(tmp_home).resolve())
 
 
 def test_update_existing_repo(temp_git_repo, mock_cache_dir):
@@ -198,10 +199,11 @@ def test_get_resource_default_cache(temp_git_repo, monkeypatch):
     """Test get_resource uses default cache if not provided."""
     with tempfile.TemporaryDirectory() as tmp_home:
         monkeypatch.setenv("HOME", tmp_home)
+        monkeypatch.setenv("USERPROFILE", tmp_home)
         repo_url = f"file://{temp_git_repo}"
         asset_path = ram.get_resource(repo_url, "robot.urdf")
         assert asset_path.exists()
-        assert str(asset_path).startswith(tmp_home)
+        assert Path(asset_path).resolve().is_relative_to(Path(tmp_home).resolve())
 
 
 def test_asset_not_found(temp_git_repo, mock_cache_dir):
@@ -330,7 +332,7 @@ def test_package_uri_resolution_full(temp_git_repo):
     content = '<mesh filename="package://my_pkg/mesh.stl"/>'
     with ram._ram_repo_context(temp_git_repo):
         resolved = ram._replace_package_uris(content, temp_git_repo)
-        assert str((temp_git_repo / "my_pkg" / "mesh.stl").absolute()) in resolved
+        assert (temp_git_repo / "my_pkg" / "mesh.stl").resolve().as_posix() in resolved
 
 
 def test_process_xacro_no_resolve(temp_git_repo):
@@ -345,7 +347,7 @@ def test_package_uri_fallback(temp_git_repo):
     content = '<mesh filename="package://unknown_pkg/mesh.stl"/>'
     with ram._ram_repo_context(temp_git_repo):
         resolved = ram._replace_package_uris(content, temp_git_repo)
-        assert str(temp_git_repo / "mesh.stl") in resolved
+        assert (temp_git_repo / "mesh.stl").resolve().as_posix() in resolved
 
 
 def test_get_resource_local_processed_with_package_uri(temp_git_repo, mock_cache_dir):
@@ -425,7 +427,7 @@ def test_replace_dae_with_glb(tmp_path):
         mock_convert.return_value = tmp_path / "mesh.glb"
 
         result = ram._replace_dae_with_glb(urdf_content)
-        assert 'filename="' + str(tmp_path / "mesh.glb") + '"' in result
+        assert 'filename="' + (tmp_path / "mesh.glb").as_posix() + '"' in result
 
 
 def test_resolve_package_with_package_xml(tmp_path):

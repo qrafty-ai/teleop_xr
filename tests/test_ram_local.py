@@ -61,8 +61,8 @@ def test_get_resource_local_xacro(local_repo, mock_cache_dir):
     assert "test_xacro" in asset_path.read_text()
 
     # Check that it's in the processed cache, not the local repo
-    assert str(mock_cache_dir / "processed") in str(asset_path)
-    assert str(local_repo) not in str(asset_path)
+    assert (mock_cache_dir / "processed").as_posix() in asset_path.as_posix()
+    assert local_repo.as_posix() not in asset_path.as_posix()
 
 
 def test_get_resource_local_xacro_args_caching(local_repo, mock_cache_dir):

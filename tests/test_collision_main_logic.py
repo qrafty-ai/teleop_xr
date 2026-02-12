@@ -3,8 +3,9 @@ import pytest
 try:
     import viser  # noqa: F401
     import ballpark  # noqa: F401
+    import yourdfpy  # noqa: F401
 except ImportError:
-    pytest.skip("viser or ballpark not installed", allow_module_level=True)
+    pytest.skip("viser, ballpark, or yourdfpy not installed", allow_module_level=True)
 
 from unittest.mock import MagicMock, patch, mock_open  # noqa: E402
 import numpy as np  # noqa: E402

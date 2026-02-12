@@ -3,8 +3,9 @@ import pytest
 try:
     import yourdfpy  # noqa: F401
     import ballpark  # noqa: F401
+    import viser  # noqa: F401
 except ImportError:
-    pytest.skip("yourdfpy or ballpark not installed", allow_module_level=True)
+    pytest.skip("yourdfpy, ballpark, or viser not installed", allow_module_level=True)
 
 import io  # noqa: E402
 import yourdfpy  # noqa: E402
