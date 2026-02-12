@@ -1,6 +1,8 @@
 {
 	"active_plan": "/home/cc/codes/teleop_xr-worktrees/feat-urdf_override/.sisyphus/plans/ros2-param-urdf-refactor.md",
 	"started_at": "2026-02-12T06:20:47.343Z",
+	"completed_at": "2026-02-12T07:55:00.000Z",
 	"session_ids": ["ses_3af965c9affejG0F6k3GbAKpD0"],
-	"plan_name": "ros2-param-urdf-refactor"
+	"plan_name": "ros2-param-urdf-refactor",
+	"status": "completed"
 }
