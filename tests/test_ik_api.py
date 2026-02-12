@@ -1,4 +1,7 @@
 import numpy as np
+import pytest
+
+pytest.importorskip("pyroki")
 import jax.numpy as jnp
 import jaxlie
 from abc import ABC

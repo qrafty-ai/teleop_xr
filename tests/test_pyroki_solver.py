@@ -1,4 +1,7 @@
 from typing import Any, cast
+import pytest
+
+pytest.importorskip("pyroki")
 
 from teleop_xr.ik.solver import PyrokiSolver
 

@@ -1,4 +1,7 @@
 import jaxlie
+import pytest
+
+pytest.importorskip("pyroki")
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 
 TEAARM_URDF = """

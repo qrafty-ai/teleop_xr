@@ -14,3 +14,8 @@
 - `PureWindowsPath` is useful for simulating Windows-style paths on Linux for unit testing.
 - When testing path stripping logic, ensure that the absolute path prefix being stripped is also normalized to posix style, especially if the source URDF was generated with forward slashes.
 - Mocking `pathlib.Path` in tests is necessary when simulating a different OS's path behavior, as `Path` is platform-dependent.
+
+### 2026-02-12 (CI/Dependencies)
+- `pin` (Pinocchio) and its dependency `cmeel-assimp` lack Windows wheels on PyPI, causing installation failures on Windows.
+- `pyroki` is a git dependency that relies on Linux-centric robotics packages.
+- core `teleop_xr` (WebXR, basic streaming) is cross-platform, but `ik` features are currently Linux-only.

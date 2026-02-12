@@ -1,4 +1,6 @@
 import pytest
+
+pytest.importorskip("pyroki")
 from unittest.mock import patch
 import jax.numpy as jnp
 import jaxlie

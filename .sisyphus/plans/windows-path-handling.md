@@ -31,6 +31,7 @@ PR #55 (https://github.com/qrafty-ai/teleop_xr/pull/55) attempts to fix Windows 
 - User wants robot_vis.py cleaned: should only handle relative paths since package:// removal is ram.py's job
 - Drop the hardcoded openarm_description hack from PR #55
 - Add Windows CI runner
+- **CI Fix**: Exclude `cuda` extra on Windows runners as `jax[cuda12]` lacks Windows wheels for the environment.
 
 **Research Findings**:
 - `Path.as_posix()` is the canonical Python method — no-op on Linux, converts backslashes on Windows

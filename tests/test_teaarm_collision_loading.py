@@ -1,6 +1,8 @@
 import json
-import os
 import pytest
+
+pytest.importorskip("pyroki")
+import os
 from unittest.mock import patch, mock_open
 from teleop_xr.ik.robots.teaarm import TeaArmRobot
 

@@ -1,4 +1,6 @@
 import pytest
+
+pytest.importorskip("pyroki")
 from teleop_xr.ik.loader import load_robot_class, list_available_robots, RobotLoadError
 from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
 
