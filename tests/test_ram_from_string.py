@@ -75,20 +75,18 @@ def test_from_string_package_uri(tmp_path, monkeypatch):
     </link>
 </robot>"""
 
-    # Correctly mock ament_index_python.get_package_share_directory
-    mock_module = types.ModuleType("ament_index_python.get_package_share_directory")
+    # Correctly mock ament_index_python.packages.get_package_share_directory
+    mock_packages = types.ModuleType("ament_index_python.packages")
 
     def get_pkg_share(pkg):
         if pkg == "my_pkg":
             return str(pkg_path)
         raise Exception("Package not found")
 
-    mock_module.get_package_share_directory = get_pkg_share
+    mock_packages.get_package_share_directory = get_pkg_share
 
     monkeypatch.setitem(sys.modules, "ament_index_python", MagicMock())
-    monkeypatch.setitem(
-        sys.modules, "ament_index_python.get_package_share_directory", mock_module
-    )
+    monkeypatch.setitem(sys.modules, "ament_index_python.packages", mock_packages)
 
     cache_dir = tmp_path / "cache"
     urdf_path, mesh_path = ram.from_string(urdf_content, cache_dir=cache_dir)
