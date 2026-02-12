@@ -549,7 +549,6 @@ def main():
 
     if ik_worker:
         ik_worker.teleop = teleop
-        ik_worker.set_teleop_loop(asyncio.get_event_loop())
 
     broadcaster = TransformBroadcaster(node)
 
