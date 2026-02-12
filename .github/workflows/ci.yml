@@ -19,6 +19,8 @@ jobs:
   quality:
     name: Quality Checks (pre-commit)
     runs-on: ubuntu-latest
+    env:
+      TELEOP_XR_SKIP_WEBXR_BUILD: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -35,6 +37,8 @@ jobs:
   tests:
     name: Tests (pytest) on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      TELEOP_XR_SKIP_WEBXR_BUILD: "1"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]

@@ -21,6 +21,16 @@ class CustomBuildHook(BuildHookInterface):
         is_git_repo = os.path.exists(os.path.join(root_dir, ".git"))
         artifacts_exist = os.path.exists(os.path.join(teleop_xr_dir, "dist"))
 
+        # Check for skip env var
+        if os.environ.get("TELEOP_XR_SKIP_WEBXR_BUILD") in ("1", "true", "True"):
+            print(
+                "Skipping WebXR build due to TELEOP_XR_SKIP_WEBXR_BUILD",
+                file=sys.stderr,
+            )
+            if artifacts_exist:
+                build_data["artifacts"].append("teleop_xr/dist")
+            return
+
         if not is_git_repo and artifacts_exist:
             print(
                 "Not in git repo and artifacts exist, skipping WebXR build.",
@@ -37,11 +47,19 @@ class CustomBuildHook(BuildHookInterface):
 
         # Run npm install and build
         print(f"Building WebXR in {webxr_dir}...", file=sys.stderr)
+        is_windows = os.name == "nt"
         try:
-            subprocess.check_call(["npm", "install"], cwd=webxr_dir)
-            subprocess.check_call(["npm", "run", "build"], cwd=webxr_dir)
+            subprocess.check_call(["npm", "install"], cwd=webxr_dir, shell=is_windows)
+            subprocess.check_call(
+                ["npm", "run", "build"], cwd=webxr_dir, shell=is_windows
+            )
         except subprocess.CalledProcessError as e:
-            print(f"Error building WebXR: {e}", file=sys.stderr)
+            print(
+                f"Error building WebXR (exit code {e.returncode}): {e}", file=sys.stderr
+            )
+            sys.exit(1)
+        except Exception as e:
+            print(f"Unexpected error during WebXR build: {e}", file=sys.stderr)
             sys.exit(1)
 
         # Copy artifacts
