@@ -1,4 +1,5 @@
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -531,5 +532,7 @@ def test_get_resource_errors():
         ValueError, match="Only one of repo_url or repo_root can be provided"
     ):
         ram.get_resource(repo_url="http://foo", repo_root=Path("/foo"))
-    with pytest.raises(ValueError, match="path_inside_repo must be relative"):
-        ram.get_resource(repo_root=Path("/foo"), path_inside_repo="/abs/path")
+        with pytest.raises(ValueError, match="path_inside_repo must be relative"):
+            # Use a truly absolute path that works on all platforms
+            abs_path = os.path.abspath("robot.urdf")
+            ram.get_resource(repo_root=Path("/foo"), path_inside_repo=abs_path)

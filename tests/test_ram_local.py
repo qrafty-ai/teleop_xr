@@ -1,4 +1,5 @@
 import pytest
+import os
 
 try:
     import git  # noqa: F401
@@ -86,8 +87,9 @@ def test_get_resource_local_xacro_args_caching(local_repo, mock_cache_dir):
 def test_get_resource_absolute_path_error(local_repo, mock_cache_dir):
     """Test that path_inside_repo must be relative."""
     with pytest.raises(ValueError, match="path_inside_repo must be relative"):
+        abs_path = os.path.abspath("robot.urdf")
         ram.get_resource(
-            path_inside_repo="/absolute/path.urdf",
+            path_inside_repo=abs_path,
             repo_root=local_repo,
             cache_dir=mock_cache_dir,
         )
