@@ -13,13 +13,24 @@ class CustomBuildHook(BuildHookInterface):
         root_dir = self.root
         webxr_dir = os.path.join(root_dir, "webxr")
         teleop_xr_dir = os.path.join(root_dir, "teleop_xr")
+        pkg_dist_dir = os.path.join(teleop_xr_dir, "dist")
+
+        def ensure_placeholder():
+            if not os.path.exists(pkg_dist_dir):
+                os.makedirs(pkg_dist_dir, exist_ok=True)
+            index_path = os.path.join(pkg_dist_dir, "index.html")
+            if not os.path.exists(index_path):
+                with open(index_path, "w") as f:
+                    f.write("<!-- placeholder -->")
+            if "teleop_xr/dist" not in build_data["artifacts"]:
+                build_data["artifacts"].append("teleop_xr/dist")
 
         # Check if we should skip the build
         # We skip if:
         # 1. We are not in a git repo (likely building from sdist in isolated env)
         # 2. AND the artifacts already exist
         is_git_repo = os.path.exists(os.path.join(root_dir, ".git"))
-        artifacts_exist = os.path.exists(os.path.join(teleop_xr_dir, "dist"))
+        artifacts_exist = os.path.exists(pkg_dist_dir)
 
         # Check for skip env var
         if os.environ.get("TELEOP_XR_SKIP_WEBXR_BUILD") in ("1", "true", "True"):
@@ -27,8 +38,7 @@ class CustomBuildHook(BuildHookInterface):
                 "Skipping WebXR build due to TELEOP_XR_SKIP_WEBXR_BUILD",
                 file=sys.stderr,
             )
-            if artifacts_exist:
-                build_data["artifacts"].append("teleop_xr/dist")
+            ensure_placeholder()
             return
 
         if not is_git_repo and artifacts_exist:
@@ -36,13 +46,13 @@ class CustomBuildHook(BuildHookInterface):
                 "Not in git repo and artifacts exist, skipping WebXR build.",
                 file=sys.stderr,
             )
-            # Ensure build_data knows about them
-            build_data["artifacts"].append("teleop_xr/dist")
+            ensure_placeholder()
             return
 
         # Check if npm is available
         if shutil.which("npm") is None:
             print("Warning: npm not found, skipping WebXR build", file=sys.stderr)
+            ensure_placeholder()
             return
 
         # Run npm install and build
@@ -69,7 +79,6 @@ class CustomBuildHook(BuildHookInterface):
             sys.exit(1)
 
         # Destination: teleop_xr/dist
-        pkg_dist_dir = os.path.join(teleop_xr_dir, "dist")
         if os.path.exists(pkg_dist_dir):
             shutil.rmtree(pkg_dist_dir)
 
