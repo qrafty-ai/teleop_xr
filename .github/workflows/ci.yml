@@ -43,9 +43,15 @@ jobs:
     env:
       TELEOP_XR_SKIP_WEBXR_BUILD: "1"
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        exclude:
+          - python-version: ${{ github.event_name == 'pull_request' && '3.10' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.11' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.13' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.14' || 'none' }}
     steps:
       - uses: actions/checkout@v4
         with:
