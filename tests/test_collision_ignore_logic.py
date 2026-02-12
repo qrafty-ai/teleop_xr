@@ -1,6 +1,9 @@
 import pyroki as pk
 import yourdfpy
 import io
+import pytest
+
+pytest.importorskip("pyroki")
 
 
 def create_mock_urdf():

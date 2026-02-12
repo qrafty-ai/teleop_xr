@@ -15,6 +15,9 @@ from teleop_xr.messages import (
     XRPose,
     XRState,
 )
+import pytest
+
+pytest.importorskip("pyroki")
 
 
 class DummyRobot(BaseRobot):

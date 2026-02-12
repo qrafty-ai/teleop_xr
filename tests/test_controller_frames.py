@@ -14,6 +14,9 @@ from teleop_xr.messages import (
     XRGamepad,
     XRButtonState,
 )
+import pytest
+
+pytest.importorskip("pyroki")
 
 
 class MockRobot(BaseRobot):

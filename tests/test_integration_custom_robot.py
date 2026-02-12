@@ -4,6 +4,8 @@ from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.loader import load_robot_class, RobotLoadError
 from teleop_xr.config import RobotVisConfig
 
+pytest.importorskip("pyroki")
+
 
 class MockCustomRobot(BaseRobot):
     """A minimal robot class for integration testing."""
