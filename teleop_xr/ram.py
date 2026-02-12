@@ -55,6 +55,11 @@ def _resolve_package(package_name: str) -> str:
                     return str(_CURRENT_REPO_ROOT)
             except Exception:
                 pass  # Ignore parsing errors
+        
+        # 5. Special case: if package_name is "openarm_description" and the repo name is similar,
+        # check if this is the right repo
+        if package_name == "openarm_description" and "openarm_description" in str(_CURRENT_REPO_ROOT):
+            return str(_CURRENT_REPO_ROOT)
 
     # Fallback: ignore or raise?
     raise ValueError(
@@ -63,9 +68,11 @@ def _resolve_package(package_name: str) -> str:
 
 
 def _mock_eval_find(package_name):
-    """Mock implementation of $(find pkg) for xacro."""
+    """Mock implementation of $(pkg) for xacro."""
     # xacro calls _eval_find(pkg) directly, passing the string.
-    return _resolve_package(package_name)
+    resolved_path = _resolve_package(package_name)
+    # Convert backslashes to forward slashes to prevent Python escape sequence errors
+    return resolved_path.replace('\\', '/')
 
 
 # Apply patch
@@ -113,10 +120,13 @@ def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
         # Try to resolve package path first
         try:
             pkg_path = Path(_resolve_package(match.group(1)))
-            return str((pkg_path / sub_path).absolute())
+            # Convert to forward slashes to avoid Python escape sequences in Windows
+            resolved_path = (pkg_path / sub_path).absolute()
+            return str(resolved_path).replace('\\', '/')
         except ValueError:
             # Fallback to simple root join if resolution fails
-            return str((repo_root / sub_path).absolute())
+            resolved_path = (repo_root / sub_path).absolute()
+            return str(resolved_path).replace('\\', '/')
 
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
@@ -278,10 +288,11 @@ def get_resource(
                 file_path.parent / f"{file_path.stem}_{arg_hash[:6]}.urdf"
             )
 
-        # Process xacro
-        urdf_content = process_xacro(
-            file_path, repo_dir, mappings=xacro_args, resolve_packages=resolve_packages
-        )
+        # Process xacro with forward slash paths to avoid Windows path issues
+        with _ram_repo_context(Path(str(repo_dir).replace('\\', '/'))):
+            urdf_content = process_xacro(
+                file_path, repo_dir, mappings=xacro_args, resolve_packages=resolve_packages
+            )
 
         if convert_dae_to_glb:
             urdf_content = _replace_dae_with_glb(urdf_content)
@@ -314,7 +325,7 @@ def get_resource(
                         file_path.parent / f"{file_path.stem}{suffix}.urdf"
                     )
 
-                with _ram_repo_context(repo_dir):
+                with _ram_repo_context(Path(str(repo_dir).replace('\\', '/'))):
                     if resolve_packages:
                         content = _replace_package_uris(content, repo_dir)
 
