@@ -90,10 +90,12 @@ def test_from_string_ram_internal_resolve(tmp_path):
 
 def test_from_string_ros_resolve(tmp_path, monkeypatch):
     # Case where from_string uses ROS resolver
-    mock_packages = types.ModuleType("ament_index_python.packages")
+    mock_parent = MagicMock()
+    mock_packages = MagicMock()
     mock_packages.get_package_share_directory = MagicMock(return_value="/opt/ros/pkg")
+    mock_parent.packages = mock_packages
 
-    monkeypatch.setitem(sys.modules, "ament_index_python", MagicMock())
+    monkeypatch.setitem(sys.modules, "ament_index_python", mock_parent)
     monkeypatch.setitem(sys.modules, "ament_index_python.packages", mock_packages)
 
     urdf_content = "package://my_pkg/mesh.stl"
