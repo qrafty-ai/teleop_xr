@@ -8,12 +8,13 @@ import sys
 def ensure_ik_dependencies():
     """
     Check and configure JAX for IK mode.
-    
+
     Raises:
         SystemExit: If JAX is not installed, exits with code 1.
     """
     try:
         import jax
+
         jax.config.update("jax_platform_name", "cpu")
     except ImportError:
         print(
@@ -27,7 +28,7 @@ def ensure_ik_dependencies():
 def list_robots_or_exit():
     """
     List available robots and exit.
-    
+
     Raises:
         SystemExit: Always exits after listing robots (or on error).
     """
@@ -43,10 +44,9 @@ def list_robots_or_exit():
             logger.info(f"  {name}: {path}")
     except ImportError:
         from loguru import logger
-        
+
         logger.error(
-            "IK dependencies not installed. "
-            "Install with: pip install 'teleop-xr[ik]'"
+            "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
         )
         sys.exit(1)
     sys.exit(0)

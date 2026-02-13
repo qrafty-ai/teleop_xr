@@ -3,7 +3,7 @@ import json
 import time
 import sys
 import asyncio
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from dataclasses import asdict
 import cv2
 import numpy as np
@@ -17,6 +17,10 @@ from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
 from teleop_xr.ik_utils import ensure_ik_dependencies, list_robots_or_exit
 import transforms3d as t3d
+
+if TYPE_CHECKING:
+    from teleop_xr.ik.robot import BaseRobot
+    from teleop_xr.ik.controller import IKController
 
 try:
     import rclpy
