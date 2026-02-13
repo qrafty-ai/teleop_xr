@@ -12,7 +12,7 @@ def test_resolve_package_metapackage_subdir(tmp_path):
     (pkg_dir / "package.xml").write_text("<name>my_pkg</name>")
 
     with ram._ram_repo_context(repo_root):
-        assert ram._resolve_package("my_pkg") == str(pkg_dir)
+        assert ram._resolve_package("my_pkg") == pkg_dir.as_posix()
 
 
 def test_resolve_package_ros_env(monkeypatch):
@@ -44,7 +44,7 @@ def test_replace_dae_conversion_failure(tmp_path, monkeypatch):
     # Mock _convert_dae_to_glb to return original path
     monkeypatch.setattr(ram, "_convert_dae_to_glb", lambda p: p)
 
-    urdf = f'<mesh filename="{dae_file}"/>'
+    urdf = f'<mesh filename="{dae_file.as_posix()}"/>'
     result = ram._replace_dae_with_glb(urdf)
     assert result == urdf  # No change if glb_path == original_path
 
@@ -74,7 +74,7 @@ def test_from_string_ram_internal_resolve(tmp_path):
         urdf_path, mesh_path = ram.from_string(
             urdf_content, cache_dir=tmp_path / "cache"
         )
-        assert str(pkg_dir / "mesh.stl") in urdf_path.read_text()
+        assert pkg_dir.as_posix() in urdf_path.read_text().replace("\\", "/")
 
 
 def test_from_string_ros_resolve(tmp_path, monkeypatch):
@@ -89,7 +89,7 @@ def test_from_string_ros_resolve(tmp_path, monkeypatch):
         urdf_path, mesh_path = ram.from_string(
             urdf_content, cache_dir=tmp_path / "cache"
         )
-        assert "/opt/ros/pkg/mesh.stl" in urdf_path.read_text()
+        assert "/opt/ros/pkg/mesh.stl" in urdf_path.read_text().replace("\\", "/")
 
 
 def test_from_string_commonpath_error(tmp_path, monkeypatch):

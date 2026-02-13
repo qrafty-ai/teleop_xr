@@ -38,9 +38,17 @@ class RobotVisModule:
                         if not mesh_path_abs.endswith("/"):
                             mesh_path_abs += "/"
 
-                        # Simple string replacement of absolute path prefix
-                        if mesh_path_abs in content:
-                            new_content = content.replace(mesh_path_abs, "")
+                        # Handle both forward and backslashes in URDF
+                        # (Relevant for Windows where raw URDFs might have backslashes)
+                        mesh_path_native = mesh_path_abs.replace("/", os.sep)
+
+                        new_content = content
+                        if mesh_path_abs in new_content:
+                            new_content = new_content.replace(mesh_path_abs, "")
+                        if mesh_path_native in new_content:
+                            new_content = new_content.replace(mesh_path_native, "")
+
+                        if new_content != content:
                             return Response(
                                 content=new_content, media_type="application/xml"
                             )

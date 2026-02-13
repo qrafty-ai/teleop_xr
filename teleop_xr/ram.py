@@ -394,7 +394,7 @@ def from_string(
             pkg_path = _get_ros_package_share_directory(pkg_name)
 
         if pkg_path:
-            abs_path = str((Path(pkg_path) / sub_path).absolute())
+            abs_path = (Path(pkg_path) / sub_path).resolve().as_posix()
             all_mesh_paths.append(abs_path)
             return abs_path
 

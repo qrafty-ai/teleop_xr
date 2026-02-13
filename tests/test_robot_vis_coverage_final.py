@@ -19,7 +19,7 @@ def test_urdf_path_rewriting(test_app, tmp_path):
       <link name='l'>
         <visual>
           <geometry>
-            <mesh filename='{mesh_dir}/test.stl'/>
+            <mesh filename='{mesh_dir.as_posix()}/test.stl'/>
           </geometry>
         </visual>
       </link>
@@ -33,7 +33,7 @@ def test_urdf_path_rewriting(test_app, tmp_path):
 
     response = client.get("/robot_assets/robot.urdf")
     assert response.status_code == 200
-    assert f"{mesh_dir}/" not in response.text
+    assert mesh_dir.as_posix() not in response.text
     assert "test.stl" in response.text
 
 
