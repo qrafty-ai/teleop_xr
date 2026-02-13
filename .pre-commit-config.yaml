@@ -30,3 +30,9 @@ repos:
   rev: v2.1.2  # Use the latest released tag or your desired version
   hooks:
     - id: biome-check
+
+# markdown
+- repo: https://github.com/DavidAnson/markdownlint-cli2
+  rev: v0.20.0
+  hooks:
+  - id: markdownlint-cli2

@@ -1,0 +1,4 @@
+{
+	"files": ["**/*.md"],
+	"ignores": [".sisyphus/**", "**/AGENTS.md"]
+}
