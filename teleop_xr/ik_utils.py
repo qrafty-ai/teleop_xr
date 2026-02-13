@@ -32,10 +32,9 @@ def list_robots_or_exit():
     Raises:
         SystemExit: Always exits after listing robots (or on error).
     """
-    try:
-        from teleop_xr.ik.loader import list_available_robots
-        from loguru import logger
+    from loguru import logger
 
+    try:
         robots = list_available_robots()
         logger.info("Available robots (via entry points):")
         if not robots:
@@ -43,10 +42,18 @@ def list_robots_or_exit():
         for name, path in robots.items():
             logger.info(f"  {name}: {path}")
     except ImportError:
-        from loguru import logger
-
         logger.error(
             "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
         )
         sys.exit(1)
     sys.exit(0)
+
+
+def list_available_robots():
+    """Return the robots entry points exposed by the IK module."""
+    try:
+        from teleop_xr.ik.loader import list_available_robots as _load_robots
+
+        return _load_robots()
+    except ImportError:
+        raise

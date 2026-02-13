@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import json
 import time
@@ -15,12 +17,43 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.ros2.cli import Ros2CLI
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
-from teleop_xr.ik_utils import ensure_ik_dependencies, list_robots_or_exit
+from teleop_xr.ik_utils import (
+    ensure_ik_dependencies,
+    list_available_robots as _default_list_available_robots,
+)
 import transforms3d as t3d
 
 if TYPE_CHECKING:
     from teleop_xr.ik.robot import BaseRobot
     from teleop_xr.ik.controller import IKController
+
+
+def list_available_robots() -> dict[str, str]:
+    """Return the robots entry points exposed by the IK module."""
+    return _default_list_available_robots()
+
+
+def list_robots_or_exit() -> None:
+    try:
+        robots = list_available_robots()
+        logger.info("Available robots (via entry points):")
+        if not robots:
+            logger.info("  None")
+        for name, path in robots.items():
+            logger.info(f"  {name}: {path}")
+    except ImportError:
+        logger.error(
+            "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
+        )
+        sys.exit(1)
+    return
+
+
+def load_robot_class(robot_spec: str | None = None) -> type[BaseRobot]:
+    from teleop_xr.ik.loader import load_robot_class as _load_robot_class
+
+    return _load_robot_class(robot_spec)
+
 
 try:
     import rclpy
@@ -334,6 +367,7 @@ def main():
 
     if cli.list_robots:
         list_robots_or_exit()
+        return
 
     # 1. Initialize ROS2
     rclpy.init(args=["--ros-args"] + cli.ros_args)
@@ -368,7 +402,6 @@ def main():
     if node.cli.mode == "ik":
         # Import IK modules only when needed
         try:
-            from teleop_xr.ik.loader import load_robot_class
             from teleop_xr.ik.solver import PyrokiSolver
             from teleop_xr.ik.controller import IKController
         except ImportError as e:
