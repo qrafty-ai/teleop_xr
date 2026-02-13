@@ -228,7 +228,7 @@ def build_joy(gamepad):
         return None, None
     buttons_list = gamepad.get("buttons", [])
     buttons = [1 if b.get("pressed") else 0 for b in buttons_list]
-    axes = list(gamepad.get("axes", [])) + [
+    axes = [float(val) for val in gamepad.get("axes", [])] + [
         float(b.get("value", 0.0)) for b in buttons_list
     ]
     touched = [1 if b.get("touched") else 0 for b in buttons_list]
@@ -422,19 +422,6 @@ class IKWorker(threading.Thread):
 
                     self.publisher.publish(msg)
 
-                    # Publish back to WebXR for visualization
-                    if self.teleop and self.teleop_loop:
-                        joint_dict = dict(
-                            zip(
-                                self.robot.actuated_joint_names,
-                                [float(val) for val in new_config],
-                            )
-                        )
-                        asyncio.run_coroutine_threadsafe(
-                            self.teleop.publish_joint_state(joint_dict),
-                            self.teleop_loop,
-                        )
-
             except Exception as e:
                 self.node.get_logger().error(f"Error in IK Worker: {e}")
 
@@ -505,26 +492,22 @@ def main():
         ik_pub = node.create_publisher(JointTrajectory, "/joint_trajectory", 10)
 
         def joint_state_callback(msg: JointState):
-            # Only update q from robot if not actively engaging IK or if we want to follow real robot
-            # For now, we update q if not active to avoid drift before starting
-            if not state_container.get("active", False):
-                current_q = state_container["q"].copy()
-                actuated_names = robot.actuated_joint_names
-                for i, name in enumerate(actuated_names):
-                    if name in msg.name:
-                        idx = msg.name.index(name)
-                        current_q[i] = msg.position[idx]
-                state_container["q"] = current_q
+            current_q = state_container["q"].copy()
+            actuated_names = robot.actuated_joint_names
+            for i, name in enumerate(actuated_names):
+                if name in msg.name:
+                    idx = msg.name.index(name)
+                    current_q[i] = msg.position[idx]
+            state_container["q"] = current_q
 
-                # If IK is not active, publish real robot joints for visualization
-                if ik_worker and ik_worker.teleop and ik_worker.teleop_loop:
-                    joint_dict = dict(
-                        zip(actuated_names, [float(val) for val in current_q])
-                    )
-                    asyncio.run_coroutine_threadsafe(
-                        ik_worker.teleop.publish_joint_state(joint_dict),
-                        ik_worker.teleop_loop,
-                    )
+            if ik_worker and ik_worker.teleop and ik_worker.teleop_loop:
+                joint_dict = dict(
+                    zip(actuated_names, [float(val) for val in current_q])
+                )
+                asyncio.run_coroutine_threadsafe(
+                    ik_worker.teleop.publish_joint_state(joint_dict),
+                    ik_worker.teleop_loop,
+                )
 
         node.create_subscription(JointState, "/joint_states", joint_state_callback, 10)
         ik_worker = IKWorker(controller, robot, ik_pub, state_container, node)
