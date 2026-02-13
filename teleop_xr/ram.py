@@ -41,8 +41,10 @@ def _resolve_package(package_name: str) -> str:
         # 3. Check if repo root itself IS the package
         #    (common for single-package repos like openarm_description)
         #    Also check if repo root starts with package_name (handles hash suffixes)
-        if (_CURRENT_REPO_ROOT.name == package_name or
-            _CURRENT_REPO_ROOT.name.startswith(package_name + "_")):
+        if (
+            _CURRENT_REPO_ROOT.name == package_name
+            or _CURRENT_REPO_ROOT.name.startswith(package_name + "_")
+        ):
             return _CURRENT_REPO_ROOT.as_posix()
 
         # 4. Check if repo root contains a package.xml with the matching name
@@ -51,7 +53,7 @@ def _resolve_package(package_name: str) -> str:
         package_xml = _CURRENT_REPO_ROOT / "package.xml"
         if package_xml.exists():
             try:
-                content = package_xml.read_text(encoding='utf-8')
+                content = package_xml.read_text(encoding="utf-8")
                 match = re.search(r"<name>\s*([^<\s]+)\s*</name>", content)
                 if match and match.group(1) == package_name:
                     return _CURRENT_REPO_ROOT.as_posix()
