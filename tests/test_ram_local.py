@@ -1,5 +1,12 @@
 import pytest
-from teleop_xr import ram
+import os
+
+try:
+    import git  # noqa: F401
+except ImportError:
+    pytest.skip("git not installed", allow_module_level=True)
+
+from teleop_xr import ram  # noqa: E402
 
 
 @pytest.fixture
@@ -55,8 +62,8 @@ def test_get_resource_local_xacro(local_repo, mock_cache_dir):
     assert "test_xacro" in asset_path.read_text()
 
     # Check that it's in the processed cache, not the local repo
-    assert str(mock_cache_dir / "processed") in str(asset_path)
-    assert str(local_repo) not in str(asset_path)
+    assert (mock_cache_dir / "processed").as_posix() in asset_path.as_posix()
+    assert local_repo.as_posix() not in asset_path.as_posix()
 
 
 def test_get_resource_local_xacro_args_caching(local_repo, mock_cache_dir):
@@ -80,8 +87,9 @@ def test_get_resource_local_xacro_args_caching(local_repo, mock_cache_dir):
 def test_get_resource_absolute_path_error(local_repo, mock_cache_dir):
     """Test that path_inside_repo must be relative."""
     with pytest.raises(ValueError, match="path_inside_repo must be relative"):
+        abs_path = os.path.abspath("robot.urdf")
         ram.get_resource(
-            path_inside_repo="/absolute/path.urdf",
+            path_inside_repo=abs_path,
             repo_root=local_repo,
             cache_dir=mock_cache_dir,
         )

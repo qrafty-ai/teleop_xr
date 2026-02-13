@@ -1,6 +1,17 @@
 import pytest
-from teleop_xr.ik.loader import load_robot_class, list_available_robots, RobotLoadError
-from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+from teleop_xr.ik.loader import load_robot_class, list_available_robots, RobotLoadError  # noqa: E402
+from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot  # noqa: E402
 
 
 def test_load_robot_class_none():

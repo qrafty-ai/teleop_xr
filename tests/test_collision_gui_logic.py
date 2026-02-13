@@ -1,7 +1,15 @@
-import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-from scripts.configure_sphere_collision import _SpheresGui, BallparkConfig, SpherePreset
+
+try:
+    import viser  # noqa: F401
+    import ballpark  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip("viser, ballpark, or yourdfpy not installed", allow_module_level=True)
+
+import numpy as np  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
+from scripts.configure_sphere_collision import _SpheresGui, BallparkConfig, SpherePreset  # noqa: E402
 
 
 @pytest.fixture

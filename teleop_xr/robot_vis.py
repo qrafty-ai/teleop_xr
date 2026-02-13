@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+from pathlib import Path
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
@@ -33,9 +34,9 @@ class RobotVisModule:
                         with open(full_path, "r") as f:
                             content = f.read()
 
-                        mesh_path_abs = os.path.abspath(self.config.mesh_path)
-                        if not mesh_path_abs.endswith(os.sep):
-                            mesh_path_abs += os.sep
+                        mesh_path_abs = Path(self.config.mesh_path).resolve().as_posix()
+                        if not mesh_path_abs.endswith("/"):
+                            mesh_path_abs += "/"
 
                         # Simple string replacement of absolute path prefix
                         if mesh_path_abs in content:

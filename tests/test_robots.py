@@ -1,10 +1,21 @@
 import pytest
-import jax.numpy as jnp
-import jaxlie
-from unittest.mock import patch
-from teleop_xr.ik.robot import BaseRobot
-from teleop_xr.ik.robots.teaarm import TeaArmRobot
-from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+import jax.numpy as jnp  # noqa: E402
+import jaxlie  # noqa: E402
+from unittest.mock import patch  # noqa: E402
+from teleop_xr.ik.robot import BaseRobot  # noqa: E402
+from teleop_xr.ik.robots.teaarm import TeaArmRobot  # noqa: E402
+from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot  # noqa: E402
 
 TEAARM_URDF = """
 <robot name="teaarm">

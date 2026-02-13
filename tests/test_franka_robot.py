@@ -1,12 +1,23 @@
 import pytest
-from unittest.mock import patch
-import jax.numpy as jnp
-import jaxlie
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+from unittest.mock import patch  # noqa: E402
+import jax.numpy as jnp  # noqa: E402
+import jaxlie  # noqa: E402
 
 # Mock dependencies before importing FrankaRobot if they do heavy lifting at import time
 # FrankaRobot imports pyroki, yourdfpy, etc.
 
-from teleop_xr.ik.robots.franka import FrankaRobot
+from teleop_xr.ik.robots.franka import FrankaRobot  # noqa: E402
 
 MINIMAL_FRANKA_URDF = """
 <robot name="panda">

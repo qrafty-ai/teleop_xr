@@ -1,6 +1,18 @@
-from typing import Any, cast
+import pytest
 
-from teleop_xr.ik.solver import PyrokiSolver
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+from typing import Any, cast  # noqa: E402
+
+from teleop_xr.ik.solver import PyrokiSolver  # noqa: E402
 
 
 def test_pyroki_solver_warmup_handles_robot_errors():

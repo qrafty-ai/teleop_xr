@@ -1,8 +1,16 @@
 import pytest
-from unittest.mock import MagicMock
-import numpy as np
-from scripts.configure_sphere_collision import _SphereVisuals, SPHERE_COLORS
-from ballpark import RobotSpheresResult, Sphere
+
+try:
+    import ballpark  # noqa: F401
+    import viser  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip("ballpark, viser, or yourdfpy not installed", allow_module_level=True)
+
+from unittest.mock import MagicMock  # noqa: E402
+import numpy as np  # noqa: E402
+from scripts.configure_sphere_collision import _SphereVisuals, SPHERE_COLORS  # noqa: E402
+from ballpark import RobotSpheresResult, Sphere  # noqa: E402
 
 
 @pytest.fixture

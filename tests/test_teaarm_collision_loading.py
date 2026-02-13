@@ -1,8 +1,19 @@
-import json
-import os
 import pytest
-from unittest.mock import patch, mock_open
-from teleop_xr.ik.robots.teaarm import TeaArmRobot
+
+try:
+    import yourdfpy  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxls  # noqa: F401
+    import jaxlie  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "yourdfpy, pyroki, jaxls, or jaxlie not installed", allow_module_level=True
+    )
+
+import json  # noqa: E402
+import os  # noqa: E402
+from unittest.mock import patch, mock_open  # noqa: E402
+from teleop_xr.ik.robots.teaarm import TeaArmRobot  # noqa: E402
 
 TEAARM_URDF = """
 <robot name="teaarm">

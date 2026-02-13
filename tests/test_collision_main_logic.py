@@ -1,7 +1,15 @@
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
-import numpy as np
-from scripts.configure_sphere_collision import (
+
+try:
+    import viser  # noqa: F401
+    import ballpark  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip("viser, ballpark, or yourdfpy not installed", allow_module_level=True)
+
+from unittest.mock import MagicMock, patch, mock_open  # noqa: E402
+import numpy as np  # noqa: E402
+from scripts.configure_sphere_collision import (  # noqa: E402
     _export_collision_data,
     _run_loop_step,
     RobotSpheresResult,

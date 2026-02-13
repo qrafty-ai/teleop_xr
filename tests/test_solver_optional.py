@@ -1,6 +1,18 @@
-import jaxlie
-from teleop_xr.ik.solver import PyrokiSolver
-from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot
+import pytest
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+import jaxlie  # noqa: E402
+from teleop_xr.ik.solver import PyrokiSolver  # noqa: E402
+from teleop_xr.ik.robots.h1_2 import UnitreeH1Robot  # noqa: E402
 
 
 def test_solver_optional_targets():

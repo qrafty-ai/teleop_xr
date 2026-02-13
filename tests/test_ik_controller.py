@@ -1,12 +1,20 @@
-import numpy as np
-import jax.numpy as jnp
-import jaxlie
-from unittest.mock import patch, PropertyMock
-from loguru import logger
-from teleop_xr.ik.robot import BaseRobot
-from teleop_xr.ik.solver import PyrokiSolver
-from teleop_xr.ik.controller import IKController
-from teleop_xr.messages import (
+import pytest
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+except ImportError:
+    pytest.skip("jaxls or pyroki not installed", allow_module_level=True)
+
+import numpy as np  # noqa: E402
+import jax.numpy as jnp  # noqa: E402
+import jaxlie  # noqa: E402
+from unittest.mock import patch, PropertyMock  # noqa: E402
+from loguru import logger  # noqa: E402
+from teleop_xr.ik.robot import BaseRobot  # noqa: E402
+from teleop_xr.ik.solver import PyrokiSolver  # noqa: E402
+from teleop_xr.ik.controller import IKController  # noqa: E402
+from teleop_xr.messages import (  # noqa: E402
     XRButtonState,
     XRDeviceRole,
     XRGamepad,

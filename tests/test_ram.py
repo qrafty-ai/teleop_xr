@@ -1,10 +1,16 @@
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
-import git
-from teleop_xr import ram
+
+try:
+    import git  # noqa: F401
+except ImportError:
+    pytest.skip("git not installed", allow_module_level=True)
+
+from teleop_xr import ram  # noqa: E402
 
 
 @pytest.fixture
@@ -38,16 +44,16 @@ def temp_git_repo():
         (mesh_dir / "base.stl").write_text("dummy mesh content")
 
         # Initialize git repo
-        repo = git.Repo.init(repo_path)
-        repo.index.add(["robot.urdf", "robot.xacro", "meshes/base.stl"])
-        repo.index.commit("Initial commit")
+        with git.Repo.init(repo_path) as repo:
+            repo.index.add(["robot.urdf", "robot.xacro", "meshes/base.stl"])
+            repo.index.commit("Initial commit")
 
         yield repo_path
 
 
 def test_get_repo(temp_git_repo, mock_cache_dir):
     """Test get_repo function."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
     repo_dir = ram.get_repo(repo_url, cache_dir=mock_cache_dir)
     assert repo_dir.exists()
     assert (repo_dir / "robot.urdf").exists()
@@ -55,7 +61,7 @@ def test_get_repo(temp_git_repo, mock_cache_dir):
 
 def test_fetch_git_repo(temp_git_repo, mock_cache_dir):
     """Test that RAM can fetch a git repo into cache via get_resource."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
     asset_path = ram.get_resource(
         repo_url=repo_url, path_inside_repo="robot.urdf", cache_dir=mock_cache_dir
     )
@@ -78,11 +84,11 @@ def test_package_path_replacement(temp_git_repo, mock_cache_dir):
     </link>
 </robot>"""
     (repo_path / "robot_pkg.urdf").write_text(urdf_content)
-    repo = git.Repo(repo_path)
-    repo.index.add(["robot_pkg.urdf"])
-    repo.index.commit("Add pkg urdf")
+    with git.Repo(repo_path) as repo:
+        repo.index.add(["robot_pkg.urdf"])
+        repo.index.commit("Add pkg urdf")
 
-    repo_url = f"file://{repo_path}"
+    repo_url = repo_path.as_uri()
     asset_path = ram.get_resource(
         repo_url=repo_url, path_inside_repo="robot_pkg.urdf", cache_dir=mock_cache_dir
     )
@@ -95,7 +101,7 @@ def test_package_path_replacement(temp_git_repo, mock_cache_dir):
 
 def test_xacro_conversion(temp_git_repo, mock_cache_dir):
     """Test that xacro files are automatically converted to URDF."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
     asset_path = ram.get_resource(
         repo_url=repo_url, path_inside_repo="robot.xacro", cache_dir=mock_cache_dir
     )
@@ -114,7 +120,7 @@ def test_process_xacro(temp_git_repo):
 def test_get_cache_root():
     """Test get_cache_root returns the default path."""
     cache_root = ram.get_cache_root()
-    assert cache_root == Path.home() / ".cache" / "ram"
+    assert cache_root.resolve() == (Path.home() / ".cache" / "ram").resolve()
     assert cache_root.exists()
 
 
@@ -123,15 +129,16 @@ def test_get_repo_default_cache(temp_git_repo, monkeypatch):
     # Mock home directory to avoid polluting real home
     with tempfile.TemporaryDirectory() as tmp_home:
         monkeypatch.setenv("HOME", tmp_home)
-        repo_url = f"file://{temp_git_repo}"
+        monkeypatch.setenv("USERPROFILE", tmp_home)
+        repo_url = temp_git_repo.as_uri()
         repo_dir = ram.get_repo(repo_url)
         assert repo_dir.exists()
-        assert str(repo_dir).startswith(tmp_home)
+        assert repo_dir.resolve().is_relative_to(Path(tmp_home).resolve())
 
 
 def test_update_existing_repo(temp_git_repo, mock_cache_dir):
     """Test that RAM correctly updates an existing repo in cache."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
 
     # First fetch
     repo_dir = ram.get_repo(repo_url, cache_dir=mock_cache_dir)
@@ -139,9 +146,9 @@ def test_update_existing_repo(temp_git_repo, mock_cache_dir):
     # Modify the source repo
     new_file = temp_git_repo / "new_file.txt"
     new_file.write_text("new content")
-    repo = git.Repo(temp_git_repo)
-    repo.index.add(["new_file.txt"])
-    repo.index.commit("Add new file")
+    with git.Repo(temp_git_repo) as repo:
+        repo.index.add(["new_file.txt"])
+        repo.index.commit("Add new file")
 
     # Second fetch should update
     repo_dir2 = ram.get_repo(repo_url, cache_dir=mock_cache_dir)
@@ -151,20 +158,19 @@ def test_update_existing_repo(temp_git_repo, mock_cache_dir):
 
 def test_update_with_branch(temp_git_repo, mock_cache_dir):
     """Test updating an existing repo with a specific branch."""
-    repo_url = f"file://{temp_git_repo}"
-    repo = git.Repo(temp_git_repo)
+    repo_url = temp_git_repo.as_uri()
+    with git.Repo(temp_git_repo) as repo:
+        # Identify default branch (master or main)
+        default_branch = repo.active_branch.name
 
-    # Identify default branch (master or main)
-    default_branch = repo.active_branch.name
-
-    # Create a new branch
-    repo.create_head("feature")
-    repo.git.checkout("feature")
-    feature_file = temp_git_repo / "feature.txt"
-    feature_file.write_text("feature content")
-    repo.index.add(["feature.txt"])
-    repo.index.commit("Add feature file")
-    repo.git.checkout(default_branch)  # Switch back to default
+        # Create a new branch
+        repo.create_head("feature")
+        repo.git.checkout("feature")
+        feature_file = temp_git_repo / "feature.txt"
+        feature_file.write_text("feature content")
+        repo.index.add(["feature.txt"])
+        repo.index.commit("Add feature file")
+        repo.git.checkout(default_branch)  # Switch back to default
 
     # Fetch default branch
     ram.get_repo(repo_url, branch=default_branch, cache_dir=mock_cache_dir)
@@ -182,15 +188,16 @@ def test_get_resource_default_cache(temp_git_repo, monkeypatch):
     """Test get_resource uses default cache if not provided."""
     with tempfile.TemporaryDirectory() as tmp_home:
         monkeypatch.setenv("HOME", tmp_home)
-        repo_url = f"file://{temp_git_repo}"
+        monkeypatch.setenv("USERPROFILE", tmp_home)
+        repo_url = temp_git_repo.as_uri()
         asset_path = ram.get_resource(repo_url, "robot.urdf")
         assert asset_path.exists()
-        assert str(asset_path).startswith(tmp_home)
+        assert asset_path.resolve().is_relative_to(Path(tmp_home).resolve())
 
 
 def test_asset_not_found(temp_git_repo, mock_cache_dir):
     """Test that RAM raises FileNotFoundError if asset is missing."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
     with pytest.raises(FileNotFoundError):
         ram.get_resource(
             repo_url=repo_url, path_inside_repo="missing.urdf", cache_dir=mock_cache_dir
@@ -199,7 +206,7 @@ def test_asset_not_found(temp_git_repo, mock_cache_dir):
 
 def test_get_asset_alias(temp_git_repo, mock_cache_dir):
     """Test that get_asset is indeed an alias for get_resource."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
     asset_path = ram.get_asset(
         repo_url=repo_url, path_inside_repo="robot.urdf", cache_dir=mock_cache_dir
     )
@@ -208,15 +215,15 @@ def test_get_asset_alias(temp_git_repo, mock_cache_dir):
 
 def test_checkout_new_remote_branch(temp_git_repo, mock_cache_dir):
     """Test that RAM fetches if checkout fails (e.g. new remote branch)."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
 
     # 1. Initial fetch of default branch
     ram.get_repo(repo_url, cache_dir=mock_cache_dir)
 
     # 2. Create a new branch in the SOURCE repo
-    repo = git.Repo(temp_git_repo)
-    new_branch_name = "new-remote-branch"
-    repo.create_head(new_branch_name)
+    with git.Repo(temp_git_repo) as repo:
+        new_branch_name = "new-remote-branch"
+        repo.create_head(new_branch_name)
 
     # 3. Fetch the new branch.
     # Local cache repo doesn't know about it yet, so initial checkout fails.
@@ -225,8 +232,8 @@ def test_checkout_new_remote_branch(temp_git_repo, mock_cache_dir):
     assert repo_dir.exists()
 
     # Verify we are on the correct branch
-    cache_repo = git.Repo(repo_dir)
-    assert cache_repo.active_branch.name == new_branch_name
+    with git.Repo(repo_dir) as cache_repo:
+        assert cache_repo.active_branch.name == new_branch_name
 
 
 def test_resolve_package_in_repo(temp_git_repo, monkeypatch):
@@ -238,7 +245,7 @@ def test_resolve_package_in_repo(temp_git_repo, monkeypatch):
     # Mock _CURRENT_REPO_ROOT
     with ram._ram_repo_context(temp_git_repo):
         path = ram._resolve_package("my_pkg")
-        assert path == str(temp_git_repo / "my_pkg")
+        assert Path(path) == temp_git_repo / "my_pkg"
 
 
 def test_resolve_package_not_found(temp_git_repo):
@@ -258,15 +265,15 @@ def test_mock_eval_find():
 
 def test_get_resource_no_resolve_packages(temp_git_repo, mock_cache_dir):
     """Test get_resource with resolve_packages=False."""
-    repo_url = f"file://{temp_git_repo}"
+    repo_url = temp_git_repo.as_uri()
 
     # Create a urdf with package://
     (temp_git_repo / "pkg.urdf").write_text(
         '<mesh filename="package://my_pkg/mesh.stl"/>'
     )
-    repo = git.Repo(temp_git_repo)
-    repo.index.add(["pkg.urdf"])
-    repo.index.commit("Add pkg urdf")
+    with git.Repo(temp_git_repo) as repo:
+        repo.index.add(["pkg.urdf"])
+        repo.index.commit("Add pkg urdf")
 
     # Fetch without resolution
     path = ram.get_resource(
@@ -282,7 +289,7 @@ def test_resolve_package_at_root(temp_git_repo):
     (temp_git_repo / "my_pkg").mkdir()
     with ram._ram_repo_context(temp_git_repo):
         path = ram._resolve_package("my_pkg")
-        assert path == str(temp_git_repo / "my_pkg")
+        assert Path(path) == temp_git_repo / "my_pkg"
 
 
 def test_resolve_package_metapackage(temp_git_repo):
@@ -291,12 +298,12 @@ def test_resolve_package_metapackage(temp_git_repo):
 
     with ram._ram_repo_context(temp_git_repo):
         path = ram._resolve_package("my_pkg")
-        assert path == str(temp_git_repo / "subdir" / "my_pkg")
+        assert Path(path) == temp_git_repo / "subdir" / "my_pkg"
 
     (temp_git_repo / "direct_pkg").mkdir()
     with ram._ram_repo_context(temp_git_repo):
         path = ram._resolve_package("direct_pkg")
-        assert path == str(temp_git_repo / "direct_pkg")
+        assert Path(path) == temp_git_repo / "direct_pkg"
 
 
 def test_package_uri_resolution_full(temp_git_repo):
@@ -305,7 +312,7 @@ def test_package_uri_resolution_full(temp_git_repo):
     content = '<mesh filename="package://my_pkg/mesh.stl"/>'
     with ram._ram_repo_context(temp_git_repo):
         resolved = ram._replace_package_uris(content, temp_git_repo)
-        assert str((temp_git_repo / "my_pkg" / "mesh.stl").absolute()) in resolved
+        assert (temp_git_repo / "my_pkg" / "mesh.stl").resolve().as_posix() in resolved
 
 
 def test_process_xacro_no_resolve(temp_git_repo):
@@ -320,7 +327,7 @@ def test_package_uri_fallback(temp_git_repo):
     content = '<mesh filename="package://unknown_pkg/mesh.stl"/>'
     with ram._ram_repo_context(temp_git_repo):
         resolved = ram._replace_package_uris(content, temp_git_repo)
-        assert str(temp_git_repo / "mesh.stl") in resolved
+        assert (temp_git_repo / "mesh.stl").resolve().as_posix() in resolved
 
 
 def test_get_resource_local_processed_with_package_uri(temp_git_repo, mock_cache_dir):
@@ -348,7 +355,7 @@ def test_resolve_package_repo_root_is_package(tmp_path):
 
     with ram._ram_repo_context(repo_root):
         path = ram._resolve_package("openarm_description")
-        assert path == str(repo_root)
+        assert Path(path) == repo_root
 
 
 def test_convert_dae_to_glb_success(tmp_path):
@@ -400,7 +407,7 @@ def test_replace_dae_with_glb(tmp_path):
         mock_convert.return_value = tmp_path / "mesh.glb"
 
         result = ram._replace_dae_with_glb(urdf_content)
-        assert 'filename="' + str(tmp_path / "mesh.glb") + '"' in result
+        assert 'filename="' + (tmp_path / "mesh.glb").as_posix() + '"' in result
 
 
 def test_resolve_package_with_package_xml(tmp_path):
@@ -410,7 +417,7 @@ def test_resolve_package_with_package_xml(tmp_path):
 
     with ram._ram_repo_context(repo_root):
         path = ram._resolve_package("my_package")
-        assert path == str(repo_root)
+        assert Path(path) == repo_root
 
 
 def test_resolve_package_with_invalid_package_xml(tmp_path):
@@ -525,5 +532,7 @@ def test_get_resource_errors():
         ValueError, match="Only one of repo_url or repo_root can be provided"
     ):
         ram.get_resource(repo_url="http://foo", repo_root=Path("/foo"))
-    with pytest.raises(ValueError, match="path_inside_repo must be relative"):
-        ram.get_resource(repo_root=Path("/foo"), path_inside_repo="/abs/path")
+        with pytest.raises(ValueError, match="path_inside_repo must be relative"):
+            # Use a truly absolute path that works on all platforms
+            abs_path = os.path.abspath("robot.urdf")
+            ram.get_resource(repo_root=Path("/foo"), path_inside_repo=abs_path)

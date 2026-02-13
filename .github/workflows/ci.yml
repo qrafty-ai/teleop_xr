@@ -16,31 +16,11 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Quality + Pytest
+  quality:
+    name: Quality Checks
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - name: pre-commit
-            task: pre-commit
-            python-version: "3.12"
-          - name: pytest-3.10
-            task: pytest
-            python-version: "3.10"
-          - name: pytest-3.11
-            task: pytest
-            python-version: "3.11"
-          - name: pytest-3.12
-            task: pytest
-            python-version: "3.12"
-          - name: pytest-3.13
-            task: pytest
-            python-version: "3.13"
-          - name: pytest-3.14
-            task: pytest
-            python-version: "3.14"
+    env:
+      TELEOP_XR_SKIP_WEBXR_BUILD: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,44 +30,65 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          allow-prereleases: ${{ matrix.task == 'pytest' }}
+          python-version-file: "pyproject.toml"
       - name: Install dependencies
-        run: |
-          if [ "${{ matrix.task }}" = "pytest" ]; then
-            uv sync --all-extras --dev --python ${{ matrix.python-version }}
-          else
-            uv sync --all-extras --dev
-          fi
-      - name: Run task
-        run: |
-          if [ "${{ matrix.task }}" = "pre-commit" ]; then
-            uv run pre-commit run --all-files
-          else
-            uv run pytest --cov --cov-branch --cov-report=xml
-          fi
+        run: uv sync --all-extras --dev
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files
+
+  tests:
+    name: Tests (pytest) on ${{ matrix.os }} (${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    needs: quality
+    env:
+      TELEOP_XR_SKIP_WEBXR_BUILD: "1"
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        exclude:
+          - python-version: ${{ github.event_name == 'pull_request' && '3.10' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.11' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.13' || 'none' }}
+          - python-version: ${{ github.event_name == 'pull_request' && '3.14' || 'none' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - name: Install dependencies
+        run: uv sync ${{ matrix.os != 'windows-latest' && '--all-extras' || '--extra ram' }} --dev --python ${{ matrix.python-version }}
+      - name: Run pytest with coverage
+        run: uv run pytest --cov --cov-branch --cov-report=xml
       - name: Upload coverage reports to Codecov
-        if: matrix.task == 'pytest'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: qrafty-ai/teleop_xr
       - name: Upload coverage report
-        if: matrix.task == 'pytest'
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ matrix.python-version }}
+          name: coverage-report-${{ matrix.os }}-${{ matrix.python-version }}
           path: coverage.xml
           if-no-files-found: warn
 
   build:
     name: Build Package (uv)
     runs-on: ubuntu-latest
-    needs: checks
+    needs: quality
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for hatch-vcs to read tags
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Set up Python
@@ -115,7 +116,7 @@ jobs:
       name: pypi
       url: https://pypi.org/p/teleop-xr
     permissions:
-      id-token: write  # Required for Trusted Publishing
+      id-token: write
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -126,3 +127,4 @@ jobs:
         uses: astral-sh/setup-uv@v5
       - name: Publish
         run: uv publish
+

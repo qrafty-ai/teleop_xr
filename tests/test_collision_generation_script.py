@@ -1,8 +1,16 @@
-import io
 import pytest
-import yourdfpy
-from ballpark import Robot
-from scripts.configure_sphere_collision import (
+
+try:
+    import yourdfpy  # noqa: F401
+    import ballpark  # noqa: F401
+    import viser  # noqa: F401
+except ImportError:
+    pytest.skip("yourdfpy, ballpark, or viser not installed", allow_module_level=True)
+
+import io  # noqa: E402
+import yourdfpy  # noqa: E402
+from ballpark import Robot  # noqa: E402
+from scripts.configure_sphere_collision import (  # noqa: E402
     compute_collision_ignore_pairs,
     _process_chunk_worker,
 )

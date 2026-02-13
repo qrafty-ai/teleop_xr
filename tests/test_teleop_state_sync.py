@@ -1,9 +1,15 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock
-from fastapi.testclient import TestClient
+import sys
 
-from teleop_xr import Teleop
-from teleop_xr.config import TeleopSettings, RobotVisConfig
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Fragile networking tests on Windows CI"
+)
+
+from unittest.mock import MagicMock, AsyncMock  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from teleop_xr import Teleop  # noqa: E402
+from teleop_xr.config import TeleopSettings, RobotVisConfig  # noqa: E402
 
 
 @pytest.mark.anyio

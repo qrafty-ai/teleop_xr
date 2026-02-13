@@ -40,22 +40,26 @@ def _resolve_package(package_name: str) -> str:
         # 1. Check root
         candidate = _CURRENT_REPO_ROOT / package_name
         if candidate.exists():
-            return str(candidate)
+            return candidate.as_posix()
 
         # 2. Check immediate subdirectories (common for metapackages)
         for child in _CURRENT_REPO_ROOT.iterdir():
             if child.is_dir():
                 if child.name == package_name:  # pragma: no cover
-                    return str(child)
+                    return child.as_posix()
                 # Check one level deeper
                 candidate = child / package_name
                 if candidate.exists():
-                    return str(candidate)
+                    return candidate.as_posix()
 
         # 3. Check if repo root itself IS the package
         #    (common for single-package repos like openarm_description)
-        if _CURRENT_REPO_ROOT.name == package_name:
-            return str(_CURRENT_REPO_ROOT)
+        #    Also check if repo root starts with package_name (handles hash suffixes)
+        if (
+            _CURRENT_REPO_ROOT.name == package_name
+            or _CURRENT_REPO_ROOT.name.startswith(package_name + "_")
+        ):
+            return _CURRENT_REPO_ROOT.as_posix()
 
         # 4. Check if repo root contains a package.xml with the matching name
         #    This handles cases where the repo folder has a hash suffix (e.g. repo_hash)
@@ -63,10 +67,10 @@ def _resolve_package(package_name: str) -> str:
         package_xml = _CURRENT_REPO_ROOT / "package.xml"
         if package_xml.exists():
             try:
-                content = package_xml.read_text()
+                content = package_xml.read_text(encoding="utf-8")
                 match = re.search(r"<name>\s*([^<\s]+)\s*</name>", content)
                 if match and match.group(1) == package_name:
-                    return str(_CURRENT_REPO_ROOT)
+                    return _CURRENT_REPO_ROOT.as_posix()
             except Exception:
                 pass  # Ignore parsing errors
 
@@ -132,10 +136,11 @@ def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
         # Try to resolve package path first
         try:
             pkg_path = Path(_resolve_package(match.group(1)))
-            return str((pkg_path / sub_path).absolute())
+            # Use as_posix() to ensure forward slashes, important for Windows
+            return (pkg_path / sub_path).resolve().as_posix()
         except ValueError:
             # Fallback to simple root join if resolution fails
-            return str((repo_root / sub_path).absolute())
+            return (repo_root / sub_path).resolve().as_posix()
 
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
@@ -171,9 +176,9 @@ def _replace_dae_with_glb(urdf_content: str) -> str:
         if original_path.suffix.lower() == ".dae" and original_path.exists():
             glb_path = _convert_dae_to_glb(original_path)
             if glb_path != original_path:
-                return f'filename="{glb_path}"'
+                return f'filename="{glb_path.as_posix()}"'
 
-        return f'filename="{original_path_str}"'
+        return f'filename="{Path(original_path_str).as_posix()}"'
 
     return re.sub(r'filename="([^"]+)"', replace_match, urdf_content)
 
@@ -197,19 +202,23 @@ def get_repo(
     with FileLock(lock_path):
         if not repo_dir.exists():
             # Clone repo
-            git.Repo.clone_from(repo_url, repo_dir, branch=branch)
+            repo = git.Repo.clone_from(repo_url, repo_dir, branch=branch)
+            repo.close()
         else:
             # Update repo
             repo = git.Repo(repo_dir)
-            if branch:
-                try:
-                    repo.git.checkout(branch)
-                except git.GitCommandError:
-                    # If checkout fails, try fetching first
-                    repo.remotes.origin.fetch()
-                    repo.git.checkout(branch)
+            try:
+                if branch:
+                    try:
+                        repo.git.checkout(branch)
+                    except git.GitCommandError:
+                        # If checkout fails, try fetching first
+                        repo.remotes.origin.fetch()
+                        repo.git.checkout(branch)
 
-            repo.remotes.origin.pull()
+                repo.remotes.origin.pull()
+            finally:
+                repo.close()
 
     return repo_dir
 

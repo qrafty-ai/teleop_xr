@@ -1,5 +1,17 @@
-import jaxlie
-from teleop_xr.ik.robots.teaarm import TeaArmRobot
+import pytest
+
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+import jaxlie  # noqa: E402
+from teleop_xr.ik.robots.teaarm import TeaArmRobot  # noqa: E402
 
 TEAARM_URDF = """
 <robot name="teaarm">

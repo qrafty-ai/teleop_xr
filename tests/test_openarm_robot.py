@@ -1,10 +1,21 @@
 import pytest
-from unittest.mock import patch
-import jax
-import jax.numpy as jnp
-import jaxlie
 
-from teleop_xr.ik.robots.openarm import OpenArmRobot
+try:
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import jaxlie  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip(
+        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
+    )
+
+from unittest.mock import patch  # noqa: E402
+import jax  # noqa: E402
+import jax.numpy as jnp  # noqa: E402
+import jaxlie  # noqa: E402
+
+from teleop_xr.ik.robots.openarm import OpenArmRobot  # noqa: E402
 
 # Minimal bimanual URDF matching the link/joint naming convention of openarm
 MINIMAL_OPENARM_URDF = """

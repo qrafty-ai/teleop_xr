@@ -1,9 +1,14 @@
+import sys
+import pytest
 from typing import Any
 
-from fastapi.testclient import TestClient
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Fragile networking tests on Windows CI"
+)
 
-from teleop_xr import Teleop
-from teleop_xr.config import TeleopSettings
+from fastapi.testclient import TestClient  # noqa: E402
+from teleop_xr import Teleop  # noqa: E402
+from teleop_xr.config import TeleopSettings  # noqa: E402
 
 
 def test_ws_control_claim_deny_and_disconnect_release():

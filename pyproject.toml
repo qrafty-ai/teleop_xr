@@ -59,16 +59,20 @@ Source = "https://github.com/qrafty-ai/teleop_xr"
 Tracker = "https://github.com/qrafty-ai/teleop_xr/issues"
 
 [project.optional-dependencies]
+ram = [
+  "gitpython>=3.1.46",
+  "xacro>=2.1.1",
+  "filelock>=3.20.3",
+  "trimesh[easy]>=4.0.0",
+]
 ik = [
   "pyroki",
   "ballpark",
   "spatialmath-python>=1.1.15",
-  "gitpython>=3.1.46",
-  "xacro>=2.1.1",
-  "filelock>=3.20.3",
   "viser>=1.0.21",
   "yourdfpy>=0.0.60",
-  "trimesh[easy]>=4.0.0",
+  "pin",
+  "teleop-xr[ram]",
 ]
 cuda = [
   "jax[cuda12]>=0.6.2",
@@ -86,7 +90,7 @@ dev = [
   "mkdocs-material",
   "mkdocstrings[python]",
   "pytest-cov>=6.0.0",
-  "pin",
+  "httpx",
 ]
 
 [tool.pytest.ini_options]
