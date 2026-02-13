@@ -8,7 +8,7 @@ import numpy as np
 import tyro
 from loguru import logger as loguru_logger
 from dataclasses import dataclass, field
-from typing import Any, Deque, Optional, Union, Dict, Literal
+from typing import Any, Deque, Optional, Union, Dict, Literal, TYPE_CHECKING
 from collections import deque
 
 from rich.console import Console, Group
@@ -24,6 +24,7 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
 from teleop_xr.camera_views import build_camera_views_config
+from teleop_xr.ik_utils import ensure_ik_dependencies, list_robots_or_exit
 from teleop_xr.events import (
     EventProcessor,
     EventSettings,
@@ -31,6 +32,10 @@ from teleop_xr.events import (
     ButtonEventType,
     XRButton,
 )
+
+if TYPE_CHECKING:
+    from teleop_xr.ik.robot import BaseRobot
+    from teleop_xr.ik.controller import IKController
 
 
 # Maximum number of events to display in the event log
@@ -254,8 +259,8 @@ def generate_ik_status_table(
     solve_time: float,
     parse_time: float,
     xr_state: XRState | None,
-    controller: Any,  # IKController - typing changed to avoid import
-    robot: Any,  # BaseRobot - typing changed to avoid import
+    controller: "IKController",
+    robot: "BaseRobot",
     current_q: np.ndarray,
 ) -> Panel:
     table = Table(box=box.ROUNDED, expand=True)
@@ -348,8 +353,8 @@ class IKWorker(threading.Thread):
 
     def __init__(
         self,
-        controller: Any,  # IKController - typing changed to avoid import
-        robot: Any,  # BaseRobot - typing changed to avoid import
+        controller: "IKController",
+        robot: "BaseRobot",
         teleop: Teleop,
         state_container: dict,
         logger: logging.Logger,
@@ -442,31 +447,10 @@ def main():
 
     # Configure JAX only if in IK mode
     if cli.mode == "ik":
-        try:
-            import jax
-            jax.config.update("jax_platform_name", "cpu")
-        except ImportError:
-            print(
-                "Error: JAX is required for IK mode. Install with: pip install 'teleop-xr[ik]'",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        ensure_ik_dependencies()
 
     if cli.list_robots:
-        try:
-            from teleop_xr.ik.loader import list_available_robots
-            robots = list_available_robots()
-            loguru_logger.info("Available robots (via entry points):")
-            if not robots:
-                loguru_logger.info("  None")
-            for name, path in robots.items():
-                loguru_logger.info(f"  {name}: {path}")
-        except ImportError:
-            loguru_logger.error(
-                "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
-            )
-            sys.exit(1)
-        return
+        list_robots_or_exit()
 
     log_queue: Deque[str] = deque(maxlen=50)
     event_log: deque[ButtonEvent] = deque(maxlen=MAX_EVENT_LOG_SIZE)

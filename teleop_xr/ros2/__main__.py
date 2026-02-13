@@ -15,6 +15,7 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.ros2.cli import Ros2CLI
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
+from teleop_xr.ik_utils import ensure_ik_dependencies, list_robots_or_exit
 import transforms3d as t3d
 
 try:
@@ -325,30 +326,10 @@ def main():
 
     # Configure JAX only if in IK mode
     if cli.mode == "ik":
-        try:
-            import jax
-            jax.config.update("jax_platform_name", "cpu")
-        except ImportError:
-            logger.error(
-                "JAX is required for IK mode. Install with: pip install 'teleop-xr[ik]'"
-            )
-            sys.exit(1)
+        ensure_ik_dependencies()
 
     if cli.list_robots:
-        try:
-            from teleop_xr.ik.loader import list_available_robots
-            robots = list_available_robots()
-            logger.info("Available robots (via entry points):")
-            if not robots:
-                logger.info("  None")
-            for name, path in robots.items():
-                logger.info(f"  {name}: {path}")
-        except ImportError:
-            logger.error(
-                "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
-            )
-            sys.exit(1)
-        return
+        list_robots_or_exit()
 
     # 1. Initialize ROS2
     rclpy.init(args=["--ros-args"] + cli.ros_args)
