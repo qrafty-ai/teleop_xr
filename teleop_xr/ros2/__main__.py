@@ -3,8 +3,8 @@ import json
 import time
 import sys
 import asyncio
-from typing import Any, Dict, List, Optional, Literal
-from dataclasses import dataclass, field, asdict
+from typing import Any, Optional
+from dataclasses import asdict
 import cv2
 import numpy as np
 import tyro
@@ -13,7 +13,7 @@ from loguru import logger
 from teleop_xr import Teleop
 from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
-from teleop_xr.common_cli import CommonCLI
+from teleop_xr.ros2.cli import Ros2CLI
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
 from teleop_xr.ik.robot import BaseRobot
@@ -233,53 +233,6 @@ def build_joy(gamepad):
     ]
     touched = [1 if b.get("touched") else 0 for b in buttons_list]
     return (buttons, axes), touched
-
-
-@dataclass
-class Ros2CLI(CommonCLI):
-    mode: Literal["teleop", "ik"] = "teleop"
-    """Operation mode: 'teleop' for standard ROS2 streaming, 'ik' for IK-based control."""
-
-    # Explicit topics
-    head_topic: Optional[str] = None
-    wrist_left_topic: Optional[str] = None
-    wrist_right_topic: Optional[str] = None
-
-    # Custom streams
-    extra_streams: Dict[str, str] = field(default_factory=dict)
-
-    frame_id: str = "xr_local"
-    publish_hand_tf: bool = False
-
-    # Robot Loader args
-    robot_class: Optional[str] = None
-    """Robot class to load (e.g., 'teleop_xr.ik.robots.h1_2:UnitreeH1Robot' or entry point name)."""
-    robot_args: str = "{}"
-    """JSON string of arguments to pass to the robot constructor."""
-    list_robots: bool = False
-    """List available robots and exit."""
-    urdf_topic: str = "/robot_description"
-    """Topic to fetch URDF from."""
-    urdf_timeout: float = 5.0
-    """Timeout for fetching URDF in seconds."""
-    no_urdf_topic: bool = False
-    """Disable fetching URDF from topic."""
-
-    # output
-    output_topic: str = "/joint_trajectory"
-    """ROS2 topic to publish JointTrajectory messages to."""
-
-    # ROS args (passed as remainder, but Tyro can capture list if explicit)
-    # We will use this to pass args to rclpy
-    ros_args: List[str] = field(default_factory=list)
-
-    @property
-    def robot_args_dict(self) -> Dict[str, Any]:
-        try:
-            return json.loads(self.robot_args)
-        except json.JSONDecodeError:
-            logger.error(f"Failed to parse robot_args: {self.robot_args}")
-            return {}
 
 
 class TeleopNode(Node):

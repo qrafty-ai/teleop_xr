@@ -102,9 +102,9 @@ This page provides a detailed reference for every module in the
 
 ## ROS2 Interface
 
-### teleop_xr.ros2
+### teleop_xr.ros2.cli
 
-::: teleop_xr.ros2.__main__
+::: teleop_xr.ros2.cli
     options:
         show_root_heading: true
 

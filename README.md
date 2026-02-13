@@ -23,7 +23,7 @@ guides and API references.
   intuitive control through advanced Whole-Body Inverse Kinematics, enabling
   complex coordination with minimal effort.
 
-![ROS 2 Demo](./assets/ros2_demo.gif)
+![ROS 2 Demo](https://qrafty-ai.github.io/teleop_xr/assets/ros2_demo.gif)
 
 ---
 
