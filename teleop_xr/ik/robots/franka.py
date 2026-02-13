@@ -27,6 +27,13 @@ class FrankaRobot(BaseRobot):
     def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
         super().__init__()
         urdf = self._load_urdf(urdf_string)
+
+        for joint_name in ("panda_finger_joint1", "panda_finger_joint2"):
+            if joint_name in urdf.joint_map:
+                urdf.joint_map[joint_name].type = "fixed"
+                urdf.joint_map[joint_name].mimic = None
+        urdf._update_actuated_joints()
+
         self.robot = pk.Robot.from_urdf(urdf)
 
         # End effector link index

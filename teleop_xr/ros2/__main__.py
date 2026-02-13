@@ -15,7 +15,7 @@ from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
-from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent, XRButton
+from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.loader import load_robot_class, list_available_robots
 from teleop_xr.ik.solver import PyrokiSolver
@@ -575,23 +575,8 @@ def main():
 
     event_processor = EventProcessor(EventSettings())
 
-    from teleop_xr.events import ButtonEventType
-
     def publish_button_event(event: ButtonEvent):
         try:
-            # Robot Reset: Double-press on deadman switch (SQUEEZE)
-            if (
-                event.type == ButtonEventType.DOUBLE_PRESS
-                and event.button == XRButton.SQUEEZE
-            ):
-                if node.cli.mode == "ik" and robot and ik_worker and controller:
-                    default_q = np.array(robot.get_default_config())
-                    state_container["q"] = default_q
-                    controller.reset()
-                    node.get_logger().info(
-                        "Resetting Robot Joint State and IK Snapshots"
-                    )
-
             msg = String()
             msg.data = json.dumps(asdict(event))
             get_publisher(String, f"xr/events/{event.type.value}").publish(msg)
