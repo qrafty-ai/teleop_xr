@@ -3,6 +3,9 @@ import shutil
 import stat
 import sys
 
+if os.name == "nt":
+    os.environ.setdefault("TELEOP_XR_ALLOW_NO_ROS", "1")
+
 
 def pytest_configure(config):
     if os.name == "nt":
