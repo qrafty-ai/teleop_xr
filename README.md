@@ -49,20 +49,10 @@ pip install teleop-xr
 The IK solver requires additional dependencies. Install them with:
 
 ```bash
-pip install teleop-xr
-# Install IK dependencies from PyPI
-pip install spatialmath-python>=1.1.15 gitpython>=3.1.46 xacro>=2.1.1 \
-    filelock>=3.20.3 viser>=1.0.21
-# Install pyroki and ballpark from GitHub (not available on PyPI)
-pip install git+https://github.com/chungmin99/pyroki.git
-pip install git+https://github.com/chungmin99/ballpark.git
+pip install "teleop-xr[ik]"
 ```
 
-> **Note**: `pyroki` and `ballpark` are not available on PyPI, so
-> `pip install teleop-xr[ik]` will not work. Install them manually from
-> GitHub as shown above.
-
-Alternatively, if you have `npm` installed, install everything from source:
+Alternatively, install everything from source:
 
 ```bash
 pip install "teleop-xr[ik]@git+https://github.com/qrafty-ai/teleop_xr"
@@ -136,10 +126,7 @@ For developers contributing to TeleopXR or customizing the frontend:
    pip install -e .
 
    # For IK support, install additional dependencies:
-   pip install spatialmath-python>=1.1.15 gitpython>=3.1.46 xacro>=2.1.1 \
-       filelock>=3.20.3 viser>=1.0.21
-   pip install git+https://github.com/chungmin99/pyroki.git
-   pip install git+https://github.com/chungmin99/ballpark.git
+   pip install -e ".[ik]"
    ```
 
 3. **Build the WebXR frontend:**
