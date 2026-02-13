@@ -2,7 +2,7 @@
 	"files": ["**/*.md"],
 	"ignores": [".sisyphus/**", "**/AGENTS.md"],
 	"config": {
-    	"default": true,     // Keep other rules enabled
-    	"MD033": false      // no-inline-html
-  }
+		"default": true, // Keep other rules enabled
+		"MD033": false // no-inline-html
+	}
 }
