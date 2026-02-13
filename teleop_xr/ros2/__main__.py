@@ -2,6 +2,7 @@ import threading
 import json
 import time
 import sys
+import asyncio
 from typing import Any, Dict, List, Optional, Literal
 from dataclasses import dataclass, field, asdict
 import cv2
@@ -14,7 +15,7 @@ from teleop_xr.video_stream import ExternalVideoSource
 from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
-from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent, XRButton
+from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.loader import load_robot_class, list_available_robots
 from teleop_xr.ik.solver import PyrokiSolver
@@ -227,7 +228,7 @@ def build_joy(gamepad):
         return None, None
     buttons_list = gamepad.get("buttons", [])
     buttons = [1 if b.get("pressed") else 0 for b in buttons_list]
-    axes = list(gamepad.get("axes", [])) + [
+    axes = [float(val) for val in gamepad.get("axes", [])] + [
         float(b.get("value", 0.0)) for b in buttons_list
     ]
     touched = [1 if b.get("touched") else 0 for b in buttons_list]
@@ -264,9 +265,27 @@ class Ros2CLI(CommonCLI):
     no_urdf_topic: bool = False
     """Disable fetching URDF from topic."""
 
+    # output
+    output_topic: str = "/joint_trajectory"
+    """ROS2 topic to publish JointTrajectory messages to."""
+
     # ROS args (passed as remainder, but Tyro can capture list if explicit)
     # We will use this to pass args to rclpy
     ros_args: List[str] = field(default_factory=list)
+
+    @property
+    def robot_args_dict(self) -> Dict[str, Any]:
+        try:
+            return json.loads(self.robot_args)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse robot_args: {self.robot_args}")
+            return {}
+
+
+class TeleopNode(Node):
+    def __init__(self, cli: Ros2CLI):
+        super().__init__("teleop")
+        self.cli = cli
 
 
 class IKWorker(threading.Thread):
@@ -283,6 +302,7 @@ class IKWorker(threading.Thread):
         publisher: "rclpy.publisher.Publisher",
         state_container: dict,
         node: "rclpy.node.Node",
+        teleop: Optional[Teleop] = None,
     ):
         super().__init__(daemon=True)
         self.controller = controller
@@ -290,9 +310,14 @@ class IKWorker(threading.Thread):
         self.publisher = publisher
         self.state_container = state_container
         self.node = node
+        self.teleop = teleop
+        self.teleop_loop = None
         self.latest_xr_state: Optional[XRState] = None
         self.new_state_event = threading.Event()
         self.running = True
+
+    def set_teleop_loop(self, loop):
+        self.teleop_loop = loop
 
     def update_state(self, state: XRState):
         """Thread-safe update of the latest state."""
@@ -360,17 +385,18 @@ def main():
             logger.info(f"  {name}: {path}")
         return
 
+    # 1. Initialize ROS2
     rclpy.init(args=["--ros-args"] + cli.ros_args)
-    node = rclpy.create_node("teleop")
+    node = TeleopNode(cli)
 
-    # 1. Remove Loguru's default handler
+    # 2. Remove Loguru's default handler
     logger.remove()
 
-    # 2. Add the ROS 2 bridge as a sink
+    # 3. Add the ROS 2 bridge as a sink
     bridge = RosBridgeHandler(node)
     logger.add(bridge.write, format="{message}", level="INFO")
 
-    # 3. Add back a styled console sink for local output
+    # 4. Add back a styled console sink for local output
     logger.add(
         sys.stderr,
         colorize=True,
@@ -389,13 +415,15 @@ def main():
         "xr_state": None,
     }
 
-    if cli.mode == "ik":
-        robot_cls = load_robot_class(cli.robot_class)
-        robot_args = json.loads(cli.robot_args)
+    if node.cli.mode == "ik":
+        robot_cls = load_robot_class(node.cli.robot_class or None)
+        robot_args = node.cli.robot_args_dict
 
         urdf_string = None
-        if not cli.no_urdf_topic:
-            urdf_string = get_urdf_from_topic(node, cli.urdf_topic, cli.urdf_timeout)
+        if not node.cli.no_urdf_topic:
+            urdf_string = get_urdf_from_topic(
+                node, node.cli.urdf_topic, node.cli.urdf_timeout
+            )
 
         if urdf_string:
             robot_args["urdf_string"] = urdf_string
@@ -409,19 +437,25 @@ def main():
         state_container["q"] = np.array(robot.get_default_config())
 
         # ROS2 Pub/Sub for IK
-        ik_pub = node.create_publisher(JointTrajectory, "/joint_trajectory", 10)
+        ik_pub = node.create_publisher(JointTrajectory, node.cli.output_topic, 10)
 
         def joint_state_callback(msg: JointState):
-            # Only update q from robot if not actively engaging IK or if we want to follow real robot
-            # For now, we update q if not active to avoid drift before starting
-            if not state_container.get("active", False):
-                current_q = state_container["q"].copy()
-                actuated_names = robot.actuated_joint_names
-                for i, name in enumerate(actuated_names):
-                    if name in msg.name:
-                        idx = msg.name.index(name)
-                        current_q[i] = msg.position[idx]
-                state_container["q"] = current_q
+            current_q = state_container["q"].copy()
+            actuated_names = robot.actuated_joint_names
+            for i, name in enumerate(actuated_names):
+                if name in msg.name:
+                    idx = msg.name.index(name)
+                    current_q[i] = msg.position[idx]
+            state_container["q"] = current_q
+
+            if ik_worker and ik_worker.teleop and ik_worker.teleop_loop:
+                joint_dict = dict(
+                    zip(actuated_names, [float(val) for val in current_q])
+                )
+                asyncio.run_coroutine_threadsafe(
+                    ik_worker.teleop.publish_joint_state(joint_dict),
+                    ik_worker.teleop_loop,
+                )
 
         node.create_subscription(JointState, "/joint_states", joint_state_callback, 10)
         ik_worker = IKWorker(controller, robot, ik_pub, state_container, node)
@@ -431,13 +465,13 @@ def main():
 
     # Merge topics
     topics = {}
-    if cli.head_topic:
-        topics["head"] = cli.head_topic
-    if cli.wrist_left_topic:
-        topics["wrist_left"] = cli.wrist_left_topic
-    if cli.wrist_right_topic:
-        topics["wrist_right"] = cli.wrist_right_topic
-    topics.update(cli.extra_streams)
+    if node.cli.head_topic:
+        topics["head"] = node.cli.head_topic
+    if node.cli.wrist_left_topic:
+        topics["wrist_left"] = node.cli.wrist_left_topic
+    if node.cli.wrist_right_topic:
+        topics["wrist_right"] = node.cli.wrist_right_topic
+    topics.update(node.cli.extra_streams)
 
     video_sources = {}
     for key, topic in topics.items():
@@ -449,13 +483,13 @@ def main():
     camera_views = {k: {"device": topic} for k, topic in topics.items()}
 
     robot_vis = None
-    if cli.mode == "ik" and robot:
+    if node.cli.mode == "ik" and robot:
         robot_vis = robot.get_vis_config()
 
     settings = TeleopSettings(
-        host=cli.host,
-        port=cli.port,
-        input_mode=cli.input_mode,
+        host=node.cli.host,
+        port=node.cli.port,
+        input_mode=node.cli.input_mode,
         camera_views=camera_views,
         robot_vis=robot_vis,
     )
@@ -464,6 +498,10 @@ def main():
         settings=settings,
         video_sources=video_sources,
     )
+
+    if ik_worker:
+        ik_worker.teleop = teleop
+
     broadcaster = TransformBroadcaster(node)
 
     publishers = {}
@@ -481,13 +519,13 @@ def main():
             return
         msg = PoseStamped()
         msg.header.stamp = stamp
-        msg.header.frame_id = cli.frame_id
+        msg.header.frame_id = node.cli.frame_id
         msg.pose = matrix_to_pose_msg(mat)
         get_publisher(PoseStamped, topic).publish(msg)
 
         tf = TransformStamped()
         tf.header.stamp = tf_stamp  # Use PC timestamp for TF
-        tf.header.frame_id = cli.frame_id
+        tf.header.frame_id = node.cli.frame_id
         tf.child_frame_id = child_frame_id
         tf.transform.translation.x = msg.pose.position.x
         tf.transform.translation.y = msg.pose.position.y
@@ -499,7 +537,7 @@ def main():
         buttons, axes = joy_data
         msg = Joy()
         msg.header.stamp = stamp
-        msg.header.frame_id = cli.frame_id
+        msg.header.frame_id = node.cli.frame_id
         msg.buttons = buttons
         msg.axes = axes
         get_publisher(Joy, topic).publish(msg)
@@ -512,7 +550,7 @@ def main():
 
         pose_array = PoseArray()
         pose_array.header.stamp = stamp
-        pose_array.header.frame_id = cli.frame_id
+        pose_array.header.frame_id = node.cli.frame_id
 
         for joint_name in XR_HAND_JOINTS:
             joint_pose_dict = joints_dict.get(joint_name)
@@ -522,10 +560,10 @@ def main():
             pose_msg = matrix_to_pose_msg(mat)
             pose_array.poses.append(pose_msg)
 
-            if cli.publish_hand_tf:
+            if node.cli.publish_hand_tf:
                 tf = TransformStamped()
                 tf.header.stamp = stamp
-                tf.header.frame_id = cli.frame_id
+                tf.header.frame_id = node.cli.frame_id
                 tf.child_frame_id = f"xr/hand_{handed}/{joint_name}"
                 tf.transform.translation.x = pose_msg.position.x
                 tf.transform.translation.y = pose_msg.position.y
@@ -537,23 +575,8 @@ def main():
 
     event_processor = EventProcessor(EventSettings())
 
-    from teleop_xr.events import ButtonEventType
-
     def publish_button_event(event: ButtonEvent):
         try:
-            # Robot Reset: Double-press on deadman switch (SQUEEZE)
-            if (
-                event.type == ButtonEventType.DOUBLE_PRESS
-                and event.button == XRButton.SQUEEZE
-            ):
-                if cli.mode == "ik" and robot and ik_worker and controller:
-                    default_q = np.array(robot.get_default_config())
-                    state_container["q"] = default_q
-                    controller.reset()
-                    node.get_logger().info(
-                        "Resetting Robot Joint State and IK Snapshots"
-                    )
-
             msg = String()
             msg.data = json.dumps(asdict(event))
             get_publisher(String, f"xr/events/{event.type.value}").publish(msg)
@@ -567,6 +590,14 @@ def main():
 
     def teleop_xr_state_callback(_pose, xr_state):
         try:
+            # Capture the current event loop for ik_worker if not already set
+            if ik_worker and ik_worker.teleop_loop is None:
+                try:
+                    loop = asyncio.get_running_loop()
+                    ik_worker.set_teleop_loop(loop)
+                except RuntimeError:
+                    pass
+
             # Process events
             event_processor.process(_pose, xr_state)
 

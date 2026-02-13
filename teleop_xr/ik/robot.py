@@ -16,6 +16,10 @@ class BaseRobot(ABC):
     to compute kinematics and optimization costs.
     """
 
+    def __init__(self):
+        self.urdf_path: str = ""
+        self.mesh_path: str | None = None
+
     @property
     def orientation(self) -> jaxlie.SO3:
         """
@@ -33,7 +37,13 @@ class BaseRobot(ABC):
         """Rotation from the canonical ROS2 frame to the robot base frame."""
         return self.orientation.inverse()
 
-    @abstractmethod
+    @property
+    def model_scale(self) -> float:
+        """
+        Get the model scale for visualization.
+        """
+        return 1.0
+
     def get_vis_config(self) -> RobotVisConfig | None:
         """
         Get the visualization configuration for this robot.
@@ -45,7 +55,47 @@ class BaseRobot(ABC):
             Subclasses should use `self.orientation` to populate
             `RobotVisConfig.initial_rotation_euler`.
         """
+        if not self.urdf_path:
+            return None
+        return RobotVisConfig(
+            urdf_path=self.urdf_path,
+            mesh_path=self.mesh_path,
+            model_scale=self.model_scale,
+            initial_rotation_euler=[
+                float(x) for x in self.orientation.as_rpy_radians()
+            ],
+        )
+
+    @abstractmethod
+    def _load_default_urdf(self) -> Any:
+        """
+        Load the default URDF for this robot.
+
+        Returns:
+            yourdfpy.URDF: The loaded URDF object.
+        """
         pass  # pragma: no cover
+
+    def _load_urdf(self, urdf_string: str | None = None) -> Any:
+        """
+        Load a URDF from a string or from the default location.
+
+        Args:
+            urdf_string: Optional URDF XML string. If provided, it overrides the default URDF.
+
+        Returns:
+            yourdfpy.URDF: The loaded URDF object.
+        """
+        import yourdfpy
+        from teleop_xr import ram
+
+        if urdf_string is not None:
+            path, mesh = ram.from_string(urdf_string)
+            self.urdf_path = str(path)
+            self.mesh_path = mesh
+            return yourdfpy.URDF.load(self.urdf_path)
+
+        return self._load_default_urdf()
 
     @property
     @abstractmethod

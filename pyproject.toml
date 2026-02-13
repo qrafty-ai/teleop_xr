@@ -68,6 +68,8 @@ ram = [
 ik = [
   "pyroki",
   "ballpark",
+  "jaxlie",
+  "jaxls",
   "spatialmath-python>=1.1.15",
   "viser>=1.0.21",
   "yourdfpy>=0.0.60",

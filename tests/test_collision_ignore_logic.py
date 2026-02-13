@@ -1,14 +1,12 @@
 import pytest
 
 try:
+    import jaxlie  # noqa: F401
+    import jaxls  # noqa: F401
     import pyroki as pk  # noqa: F401
     import yourdfpy  # noqa: F401
-    import jaxls  # noqa: F401
-    import jaxlie  # noqa: F401
 except ImportError:
-    pytest.skip(
-        "pyroki, yourdfpy, jaxls, or jaxlie not installed", allow_module_level=True
-    )
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
 
 import io  # noqa: E402
 

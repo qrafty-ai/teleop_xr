@@ -38,9 +38,17 @@ class RobotVisModule:
                         if not mesh_path_abs.endswith("/"):
                             mesh_path_abs += "/"
 
-                        # Simple string replacement of absolute path prefix
-                        if mesh_path_abs in content:
-                            new_content = content.replace(mesh_path_abs, "")
+                        # Handle both forward and backslashes in URDF
+                        # (Relevant for Windows where raw URDFs might have backslashes)
+                        mesh_path_native = mesh_path_abs.replace("/", os.sep)
+
+                        new_content = content
+                        if mesh_path_abs in new_content:
+                            new_content = new_content.replace(mesh_path_abs, "")
+                        if mesh_path_native in new_content:
+                            new_content = new_content.replace(mesh_path_native, "")
+
+                        if new_content != content:
                             return Response(
                                 content=new_content, media_type="application/xml"
                             )
@@ -50,13 +58,31 @@ class RobotVisModule:
 
             elif "package://" in file_path:
                 clean_path = file_path.split("package://")[-1]
-                if self.config.mesh_path:
-                    full_path = os.path.join(self.config.mesh_path, clean_path)
-                else:
-                    self.logger.warning(
-                        f"Request for package resource '{file_path}' but 'mesh_path' is not configured."
-                    )
-                    full_path = clean_path
+
+                # Try ROS 2 resolution
+                resolved = False
+                try:
+                    from ament_index_python.packages import get_package_share_directory
+
+                    parts = clean_path.split("/")
+                    pkg_name = parts[0]
+                    rel_path = "/".join(parts[1:])
+                    pkg_path = get_package_share_directory(pkg_name)
+                    ros_path = os.path.join(pkg_path, rel_path)
+                    if os.path.exists(ros_path):
+                        full_path = ros_path
+                        resolved = True
+                except Exception:
+                    pass
+
+                if not resolved:
+                    if self.config.mesh_path:
+                        full_path = os.path.join(self.config.mesh_path, clean_path)
+                    else:
+                        self.logger.warning(
+                            f"Request for package resource '{file_path}' but 'mesh_path' is not configured."
+                        )
+                        full_path = clean_path
             else:
                 # Try relative to URDF directory first
                 urdf_dir = os.path.dirname(os.path.abspath(self.config.urdf_path))

@@ -1,5 +1,4 @@
 # pyright: reportCallIssue=false
-import io
 import os
 import sys
 from typing import Any
@@ -17,7 +16,6 @@ import pyroki as pk
 import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
 
@@ -28,37 +26,8 @@ class OpenArmRobot(BaseRobot):
     """
 
     def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
-        self.mesh_path: str | None = None
-
-        if urdf_string:
-            urdf = yourdfpy.URDF.load(io.StringIO(urdf_string))
-            self.urdf_path = ""
-        else:
-            repo_url = "https://github.com/enactic/openarm_description.git"
-            xacro_path = "urdf/robot/v10.urdf.xacro"
-            xacro_args = {
-                "bimanual": "true",
-                "hand": "true",
-                "ros2_control": "false",
-            }
-
-            self.urdf_path = str(
-                ram.get_resource(
-                    repo_url=repo_url,
-                    path_inside_repo=xacro_path,
-                    xacro_args=xacro_args,
-                    resolve_packages=True,
-                    convert_dae_to_glb=True,
-                )
-            )
-
-            repo_path = ram.get_repo(repo_url)
-            self.mesh_path = str(repo_path)
-
-            if not os.path.exists(self.urdf_path):
-                raise FileNotFoundError(f"OpenArm URDF not found at {self.urdf_path}")
-
-            urdf = yourdfpy.URDF.load(self.urdf_path)
+        super().__init__()
+        urdf = self._load_urdf(urdf_string)
 
         self.robot: pk.Robot = pk.Robot.from_urdf(urdf)
         self.robot_coll = pk.collision.RobotCollision.from_urdf(urdf)
@@ -77,23 +46,42 @@ class OpenArmRobot(BaseRobot):
         else:
             raise ValueError(f"Link {self.R_ee} not found in URDF")
 
+    def _load_default_urdf(self) -> yourdfpy.URDF:
+        repo_url = "https://github.com/enactic/openarm_description.git"
+        xacro_path = "urdf/robot/v10.urdf.xacro"
+        xacro_args = {
+            "bimanual": "true",
+            "hand": "true",
+            "ros2_control": "false",
+        }
+
+        self.urdf_path = str(
+            ram.get_resource(
+                repo_url=repo_url,
+                path_inside_repo=xacro_path,
+                xacro_args=xacro_args,
+                resolve_packages=True,
+                convert_dae_to_glb=True,
+            )
+        )
+
+        repo_path = ram.get_repo(repo_url)
+        self.mesh_path = str(repo_path)
+
+        if not os.path.exists(self.urdf_path):
+            raise FileNotFoundError(f"OpenArm URDF not found at {self.urdf_path}")
+
+        return yourdfpy.URDF.load(self.urdf_path)
+
+    @property
+    @override
+    def model_scale(self) -> float:
+        return 1.0
+
     @property
     @override
     def supported_frames(self) -> set[str]:
         return {"left", "right"}
-
-    @override
-    def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.urdf_path:
-            return None
-        return RobotVisConfig(
-            urdf_path=self.urdf_path,
-            mesh_path=self.mesh_path,
-            model_scale=1.0,
-            initial_rotation_euler=[
-                float(x) for x in self.orientation.as_rpy_radians()
-            ],
-        )
 
     @property
     @override

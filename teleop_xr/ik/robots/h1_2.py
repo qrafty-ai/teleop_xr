@@ -16,7 +16,6 @@ import pyroki as pk
 import yourdfpy
 
 from teleop_xr.ik.robot import BaseRobot, Cost
-from teleop_xr.config import RobotVisConfig
 from teleop_xr import ram
 
 
@@ -25,16 +24,9 @@ class UnitreeH1Robot(BaseRobot):
     Unitree H1_2 robot implementation for IK.
     """
 
-    def __init__(self) -> None:
-        # Load URDF from external repository via RAM
-        self.urdf_path = str(
-            ram.get_resource(
-                repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
-                path_inside_repo="assets/h1_2/h1_2.urdf",
-            )
-        )
-        self.mesh_path = os.path.dirname(self.urdf_path)
-        urdf = yourdfpy.URDF.load(self.urdf_path)
+    def __init__(self, urdf_string: str | None = None, **kwargs: Any) -> None:
+        super().__init__()
+        urdf = self._load_urdf(urdf_string)
 
         # Identify leg joints names to freeze
         self.leg_joint_names = [
@@ -67,25 +59,29 @@ class UnitreeH1Robot(BaseRobot):
         self.R_ee_link_idx = self.robot.links.names.index(self.R_ee)
         self.torso_link_idx = self.robot.links.names.index("torso_link")
 
+    def _load_default_urdf(self) -> yourdfpy.URDF:
+        # Load URDF from external repository via RAM
+        self.urdf_path = str(
+            ram.get_resource(
+                repo_url="https://github.com/unitreerobotics/xr_teleoperate.git",
+                path_inside_repo="assets/h1_2/h1_2.urdf",
+            )
+        )
+        self.mesh_path = os.path.dirname(self.urdf_path)
+        return yourdfpy.URDF.load(self.urdf_path)
+
+    @property
+    @override
+    def model_scale(self) -> float:
+        return 0.5
+
     @property
     @override
     def orientation(self) -> jaxlie.SO3:
         return jaxlie.SO3.identity()
 
-    @override
-    def get_vis_config(self) -> RobotVisConfig | None:
-        if not self.urdf_path:
-            return None
-        return RobotVisConfig(
-            urdf_path=self.urdf_path,
-            mesh_path=self.mesh_path,
-            model_scale=0.5,
-            initial_rotation_euler=[
-                float(x) for x in self.orientation.as_rpy_radians()
-            ],
-        )
-
     @property
+    @override
     def joint_var_cls(self) -> Any:
         """
         The jaxls.Var class used for joint configurations.
@@ -93,6 +89,7 @@ class UnitreeH1Robot(BaseRobot):
         return self.robot.joint_var_cls
 
     @property
+    @override
     def actuated_joint_names(self) -> list[str]:
         return list(self.robot.joints.actuated_names)
 
@@ -101,6 +98,7 @@ class UnitreeH1Robot(BaseRobot):
         # Unitree H1 often benefits from slightly amplified motion mapping
         return 1.2
 
+    @override
     def forward_kinematics(self, config: jax.Array) -> dict[str, jaxlie.SE3]:
         """
         Compute the forward kinematics for the given configuration.
@@ -112,9 +110,11 @@ class UnitreeH1Robot(BaseRobot):
             "head": jaxlie.SE3(fk[self.torso_link_idx]),
         }
 
+    @override
     def get_default_config(self) -> jax.Array:
         return jnp.zeros_like(self.robot.joints.lower_limits)
 
+    @override
     def build_costs(
         self,
         target_L: jaxlie.SE3 | None,

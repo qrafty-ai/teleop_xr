@@ -1,0 +1,19 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 0.5% # Very strict on the overall goal
+    patch:
+      default:
+        target: 80%    # Every PR's new code must be at least 80% covered
+        threshold: 0%  # No leniency for new code
+    changes:
+      default:
+        # Detects unexpected coverage drops in files you didn't touch
+        enabled: yes
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: true # Only comment if coverage actually changes

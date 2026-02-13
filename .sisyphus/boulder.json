@@ -1,9 +1,7 @@
 {
-	"active_plan": "/home/cc/codes/teleop_xr-worktrees/feat-windows-path/.sisyphus/plans/windows-path-handling.md",
-	"started_at": "2026-02-12T17:45:40.889Z",
-	"completed_at": "2026-02-12T17:52:00.000Z",
-	"session_ids": ["ses_3ad275ff1fferIQ86WUq8Eio7i"],
-	"plan_name": "windows-path-handling",
-	"agent": "atlas",
+	"active_plan": "/home/cc/codes/teleop_xr-worktrees/feat-urdf_override/.sisyphus/plans/ros2-viz-update.md",
+	"started_at": "2026-02-12T08:00:00.000Z",
+	"session_ids": ["ses_3acbbef92ffeJ0vh4CchP7kikv"],
+	"plan_name": "ros2-viz-update",
 	"status": "completed"
 }

@@ -1,14 +1,12 @@
 import pytest
 
 try:
+    import jaxlie  # noqa: F401
     import jaxls  # noqa: F401
     import pyroki  # noqa: F401
-    import jaxlie  # noqa: F401
     import yourdfpy  # noqa: F401
 except ImportError:
-    pytest.skip(
-        "jaxls, pyroki, jaxlie, or yourdfpy not installed", allow_module_level=True
-    )
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
 
 import numpy as np  # noqa: E402
 import jax.numpy as jnp  # noqa: E402
@@ -29,7 +27,7 @@ def test_base_robot_is_abc():
 
     abstract_methods = BaseRobot.__abstractmethods__
     expected_methods = {
-        "get_vis_config",
+        "_load_default_urdf",
         "joint_var_cls",
         "forward_kinematics",
         "get_default_config",
@@ -37,11 +35,12 @@ def test_base_robot_is_abc():
         "actuated_joint_names",
     }
     assert expected_methods.issubset(abstract_methods)
+    assert "get_vis_config" not in abstract_methods
 
 
 def test_pyroki_solver_instantiation():
     class MockRobot(BaseRobot):
-        def get_vis_config(self):
+        def _load_default_urdf(self):
             return None
 
         @property
@@ -74,7 +73,7 @@ def test_pyroki_solver_instantiation():
 
 def test_ik_controller_instantiation():
     class MockRobot(BaseRobot):
-        def get_vis_config(self):
+        def _load_default_urdf(self):
             return None
 
         @property
@@ -103,7 +102,7 @@ def test_ik_controller_instantiation():
 
 def test_ik_controller_with_filter():
     class MockRobot(BaseRobot):
-        def get_vis_config(self):
+        def _load_default_urdf(self):
             return None
 
         @property
