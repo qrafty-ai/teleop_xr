@@ -1,11 +1,14 @@
 import pytest
 
 try:
-    import ballpark  # noqa: F401
-    import viser  # noqa: F401
+    import jaxlie  # noqa: F401
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
     import yourdfpy  # noqa: F401
+    import viser  # noqa: F401
+    import ballpark  # noqa: F401
 except ImportError:
-    pytest.skip("ballpark, viser, or yourdfpy not installed", allow_module_level=True)
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
 
 from unittest.mock import MagicMock  # noqa: E402
 import numpy as np  # noqa: E402

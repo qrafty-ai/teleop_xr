@@ -1,3 +1,13 @@
+import pytest
+
+try:
+    import jaxlie  # noqa: F401
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
+
 import sys
 import jax.numpy as jnp
 from unittest.mock import MagicMock, patch

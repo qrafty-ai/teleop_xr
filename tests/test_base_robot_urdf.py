@@ -1,5 +1,14 @@
+import pytest
+
+try:
+    import jaxlie
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import yourdfpy  # noqa: F401
+except ImportError:
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
+
 import jax.numpy as jnp
-import jaxlie
 from typing import Any
 from unittest.mock import MagicMock, patch
 from teleop_xr.ik.robot import BaseRobot

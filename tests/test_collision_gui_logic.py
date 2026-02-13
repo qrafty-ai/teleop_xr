@@ -1,11 +1,14 @@
 import pytest
 
 try:
+    import jaxlie  # noqa: F401
+    import jaxls  # noqa: F401
+    import pyroki  # noqa: F401
+    import yourdfpy  # noqa: F401
     import viser  # noqa: F401
     import ballpark  # noqa: F401
-    import yourdfpy  # noqa: F401
 except ImportError:
-    pytest.skip("viser, ballpark, or yourdfpy not installed", allow_module_level=True)
+    pytest.skip("IK dependencies not installed", allow_module_level=True)
 
 import numpy as np  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
@@ -16,7 +19,6 @@ from scripts.configure_sphere_collision import _SpheresGui, BallparkConfig, Sphe
 def mock_gui():
     server = MagicMock()
 
-    # Mock gui components to have a .value attribute
     def mock_component(initial_value=None):
         m = MagicMock()
         m.value = initial_value
