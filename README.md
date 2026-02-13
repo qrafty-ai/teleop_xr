@@ -6,7 +6,9 @@ with low-latency video streaming and full WebXR state tracking. Check the
 [full documentation](https://qrafty-ai.github.io/teleop_xr) for the latest
 guides and API references.
 
-![TeleopXR Cover](./assets/teleop_xr.jpg)
+<div align="center">
+  <img src="./assets/teleop_xr.jpg" alt="TeleopXR Cover">
+</div>
 
 ## Key Features
 
@@ -23,7 +25,9 @@ guides and API references.
   intuitive control through advanced Whole-Body Inverse Kinematics, enabling
   complex coordination with minimal effort.
 
-![ROS 2 Demo](https://qrafty-ai.github.io/teleop_xr/assets/ros2_demo.gif)
+<div align="center">
+    <img src="./assets/ros2_demo.gif" alt="ROS 2 Demo">
+</div>
 
 ---
 
