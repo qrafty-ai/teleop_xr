@@ -1,67 +1,348 @@
 # ROS2 Interface
 
-TeleopXR includes a full-featured ROS2 interface that publishes XR state as ROS topics and subscribes to image topics for video streaming.
+TeleopXR includes a full-featured ROS2 interface that publishes XR state as ROS
+topics, subscribes to image topics for video streaming, and provides real-time
+robot visualization in WebXR.
+
+![ROS2 Demo](./assets/ros2_demo.gif)
+
+## Quick Start
+
+Check out our example ROS2 workspace with a complete MoveIt2 integration:
+
+👉 **[teleop_xr_ros2_example](https://github.com/qrafty-ai/teleop_xr_ros2_example)**
+
+The example includes:
+
+- **Pixi & UV** environment management
+- **Mock hardware** for running without a physical robot
+- **RViz integration** with synchronized robot visualization
+- **Ready-to-run demo** with Franka Panda
 
 ## Running the Node
 
-You can run the ROS2 node using the Python module directly. It supports two primary modes: `teleop` (streaming raw poses) and `ik` (streaming joint trajectories).
+You can run the ROS2 node using the Python module directly. It supports two
+primary modes: `teleop` (streaming raw poses) and `ik` (streaming joint
+trajectories with IK solver).
 
 ```bash
 # 1. Standard Teleop Mode (Default)
+# Streams XR poses and controller states to ROS2 topics
 python -m teleop_xr.ros2 --mode teleop
 
-# 2. IK Mode (with Unitree H1 robot model)
+# 2. IK Mode (with default Unitree H1 robot model)
+# Computes joint trajectories using IK solver
 python -m teleop_xr.ros2 --mode ik
+
+# 3. IK Mode with custom robot (e.g., Franka Panda)
+# Automatically fetches URDF from /robot_description topic
+python -m teleop_xr.ros2 \
+  --mode ik \
+  --robot-class franka_panda
+
+# 4. IK Mode with custom robot class path
+python -m teleop_xr.ros2 \
+  --mode ik \
+  --robot-class teleop_xr.ik.robots.franka:FrankaPandaRobot
 ```
 
 ## Command Line Arguments
 
-*   `--mode`: Operation mode (`teleop` or `ik`). Default is `teleop`.
-*   `--host`: Host address (default: `0.0.0.0`)
-*   `--port`: Port number (default: `4443`)
-*   `--input-mode`: Input mode (`controller`, `hand`, or `auto`).
-*   `--frame-id`: The frame ID for published poses (default: `xr_local`).
-*   `--publish-hand-tf`: If set, publishes TF transforms for individual hand joints.
-*   `--head-topic`: ROS topic for head camera view.
-*   `--wrist-left-topic`: ROS topic for left wrist camera view.
-*   `--wrist-right-topic`: ROS topic for right wrist camera view.
-*   `--extra-streams`: Additional streams in `key=topic` format.
+### Core Settings
+
+- `--mode`: Operation mode (`teleop` or `ik`). Default is `teleop`.
+- `--host`: Host address (default: `0.0.0.0`)
+- `--port`: Port number (default: `4443`)
+- `--input-mode`: Input mode (`controller`, `hand`, or `auto`).
+
+### Robot & IK Settings (for `--mode ik`)
+
+- `--robot-class`: Robot class to load. Can be:
+  - Entry point name (e.g., `franka_panda`, `unitree_h1`)
+  - Fully qualified path (e.g., `teleop_xr.ik.robots.franka:FrankaPandaRobot`)
+  - Default: `None` (uses Unitree H1)
+- `--robot-args`: JSON string of arguments to pass to robot constructor (default:
+  `{}`)
+- `--list-robots`: List all available robots registered via entry points and
+  exit
+- `--urdf-topic`: ROS topic to fetch URDF from (default: `/robot_description`)
+- `--urdf-timeout`: Timeout for fetching URDF in seconds (default: `5.0`)
+- `--no-urdf-topic`: Disable automatic URDF fetching from topic
+- `--output-topic`: ROS topic to publish JointTrajectory messages (default:
+  `/joint_trajectory`)
+
+### Frame & TF Settings
+
+- `--frame-id`: The frame ID for published poses (default: `xr_local`).
+- `--publish-hand-tf`: If set, publishes TF transforms for individual hand
+  joints.
+
+### Video Streaming
+
+- `--head-topic`: ROS topic for head camera view.
+- `--wrist-left-topic`: ROS topic for left wrist camera view.
+- `--wrist-right-topic`: ROS topic for right wrist camera view.
+- `--extra-streams`: Additional streams in `key=topic` format.
+
+### ROS Arguments
+
+- `--ros-args`: Additional ROS2 arguments (e.g., parameter overrides)
 
 ## Published Topics
 
 The node publishes the following topics (namespaced under `xr/`):
 
 ### Poses & Tracking
-*   `xr/head/pose` (`geometry_msgs/PoseStamped`): 6DoF pose of the headset.
-*   `xr/controller_{left|right}/pose` (`geometry_msgs/PoseStamped`): Grip pose of the controllers.
-*   `xr/hand_{left|right}/joints` (`geometry_msgs/PoseArray`): Array of poses for all 25 hand joints.
+
+- `xr/head/pose` (`geometry_msgs/PoseStamped`): 6DoF pose of the headset.
+- `xr/controller_{left|right}/pose` (`geometry_msgs/PoseStamped`): Grip pose of
+  the controllers.
+- `xr/hand_{left|right}/joints` (`geometry_msgs/PoseArray`): Array of poses for
+  all 25 hand joints.
 
 ### Inputs
-*   `xr/controller_{left|right}/joy` (`sensor_msgs/Joy`): Controller button and axis states.
-    *   **Buttons**: Standard WebXR gamepad button mapping (Trigger, Grip, A/B/X/Y, Thumbstick Click).
-    *   **Axes**: Joystick X/Y axes + Analog values for Trigger/Grip.
-*   `xr/controller_{left|right}/joy_touched` (`sensor_msgs/Joy`): Touch/capacitive states for buttons.
+
+- `xr/controller_{left|right}/joy` (`sensor_msgs/Joy`): Controller button and
+  axis states.
+  - **Buttons**: Standard WebXR gamepad button mapping (Trigger, Grip, A/B/X/Y,
+    Thumbstick Click).
+  - **Axes**: Joystick X/Y axes + Analog values for Trigger/Grip.
+- `xr/controller_{left|right}/joy_touched` (`sensor_msgs/Joy`):
+  Touch/capacitive states for buttons.
+- `xr/events/{event_type}` (`std_msgs/String`): Button events (JSON format) for
+  `button_down`, `button_up`, `double_press`, `long_press`.
 
 ### Diagnostics
-*   `xr/fetch_latency_ms` (`std_msgs/Float64`): Latency of fetching XR state on the headset.
+
+- `xr/fetch_latency_ms` (`std_msgs/Float64`): Latency of fetching XR state on the
+  headset.
 
 ### IK Mode Topics (only in `--mode ik`)
-*   `/joint_trajectory` (`trajectory_msgs/JointTrajectory`): Optimized joint configuration commands generated by the IK solver.
-*   `/joint_states` (`sensor_msgs/JointState`): Subscribes to this topic to synchronize the internal robot state when IK is not actively engaged.
+
+- `/joint_trajectory` (`trajectory_msgs/JointTrajectory`): Optimized joint
+  configuration commands generated by the IK solver.
 
 ## Subscribed Topics
 
-### Video
-*   Any topic specified in `--head-topic`, `--wrist-left-topic`, etc.
-*   Supports `sensor_msgs/Image` (raw) and `sensor_msgs/CompressedImage` (compressed).
-*   **Note**: Requires `cv_bridge` for efficient conversion. If `cv_bridge` is missing, it falls back to a basic numpy conversion (supporting `rgb8`, `bgr8`, `mono8`).
+### IK Mode (only in `--mode ik`)
+
+- `/joint_states` (`sensor_msgs/JointState`): Current robot joint states. Used
+  to synchronize the internal robot state when IK is not actively engaged.
+
+### Video Streaming (Subscribed)
+
+- Any topic specified in `--head-topic`, `--wrist-left-topic`,
+  `--wrist-right-topic`, or `--extra-streams`.
+- Supports `sensor_msgs/Image` (raw) and `sensor_msgs/CompressedImage`
+  (compressed).
+- **Note**: Requires `cv_bridge` for efficient conversion. If `cv_bridge` is
+  missing, it falls back to a basic numpy conversion (supporting `rgb8`, `bgr8`,
+  `mono8`).
+
+### URDF Loading (only in `--mode ik`, unless `--no-urdf-topic` is set)
+
+- `/robot_description` (or custom topic via `--urdf-topic`): URDF string for
+  robot model. Automatically fetched on startup with a `TRANSIENT_LOCAL` QoS
+  profile.
 
 ## TF Transforms
 
 The node broadcasts TF transforms for:
-*   `xr/head`
-*   `xr/controller_left/pose`
-*   `xr/controller_right/pose`
-*   `xr/hand_{side}/{joint_name}` (Only if `--publish-hand-tf` is enabled)
 
-All transforms are relative to the frame specified by `--frame-id` (default: `xr_local`).
+- `xr/head`
+- `xr/controller_left/pose`
+- `xr/controller_right/pose`
+- `xr/hand_{side}/{joint_name}` (Only if `--publish-hand-tf` is enabled)
+
+All transforms are relative to the frame specified by `--frame-id` (default:
+`xr_local`).
+
+**Note**: PC timestamps are used for TF publishing (instead of headset
+timestamps) to avoid clock drift issues between the headset and ROS2 system.
+
+## Key Features
+
+### URDF Topic Fetching
+
+The ROS2 node can automatically fetch the robot's URDF from a ROS2 topic
+(default: `/robot_description`). This enables seamless integration with
+MoveIt2 and other ROS2 systems that publish robot descriptions.
+
+**How it works:**
+
+1. On startup, the node subscribes to the URDF topic with a `TRANSIENT_LOCAL`
+   QoS profile
+2. Waits for the URDF string (default timeout: 5 seconds)
+3. Passes the URDF to the robot class, overriding the built-in URDF
+
+**Use cases:**
+
+- **MoveIt2 Integration**: Automatically use the same URDF as your planning
+  pipeline
+- **Custom Robots**: Publish your robot's URDF without modifying TeleopXR
+  code
+- **Dynamic Configuration**: Change robot configuration without rebuilding
+
+**Example:**
+
+```bash
+# Terminal 1: Publish your robot URDF
+ros2 topic pub /robot_description std_msgs/msg/String \
+  "data: '$(cat my_robot.urdf)'" \
+  --qos-durability transient_local
+
+# Terminal 2: Run TeleopXR (will automatically fetch the URDF)
+python -m teleop_xr.ros2 --mode ik --robot-class franka_panda
+```
+
+To disable URDF topic fetching:
+
+```bash
+python -m teleop_xr.ros2 --mode ik --no-urdf-topic
+```
+
+### WebXR Robot Visualization
+
+When running in IK mode, the robot visualization in the WebXR interface is
+automatically synchronized with the robot state:
+
+1. **IK-computed Joint States**: When IK is active (grips engaged), the
+   visualization shows the commanded joint configuration
+2. **Actual Joint States**: When IK is inactive, the visualization shows the
+   actual robot state from `/joint_states`
+
+This provides real-time visual feedback of both the commanded and actual robot
+configuration directly in the VR/AR headset.
+
+### Custom Robot Loading
+
+The node supports loading custom robot classes in multiple ways:
+
+**1. Entry Point Name** (recommended for distributed robots):
+
+```bash
+python -m teleop_xr.ros2 --mode ik --robot-class franka_panda
+```
+
+**2. Fully Qualified Path**:
+
+```bash
+python -m teleop_xr.ros2 --mode ik \
+  --robot-class my_package.robots:MyCustomRobot
+```
+
+**3. List Available Robots**:
+
+```bash
+python -m teleop_xr.ros2 --list-robots
+```
+
+**Passing Robot Arguments:**
+
+```bash
+python -m teleop_xr.ros2 --mode ik \
+  --robot-class franka_panda \
+  --robot-args '{"gripper": true, "collision": true}'
+```
+
+For more details on creating custom robots, see the
+[Custom Robots Guide](custom_robots.md).
+
+## Integration with MoveIt2
+
+The ROS2 node integrates seamlessly with MoveIt2:
+
+1. **Joint Trajectory Output**: Publishes to `/joint_trajectory` (or custom
+   topic via `--output-topic`)
+2. **Joint State Synchronization**: Subscribes to `/joint_states` to track
+   actual robot state
+3. **URDF Synchronization**: Fetches URDF from `/robot_description` (same
+   source as MoveIt)
+4. **WebXR Visualization**: Real-time visualization of both commanded and
+   actual robot state
+
+**Example Integration:**
+
+```bash
+# Terminal 1: Launch MoveIt2 demo
+ros2 launch moveit2_tutorials demo.launch.py
+
+# Terminal 2: Launch TeleopXR
+python -m teleop_xr.ros2 \
+  --mode ik \
+  --robot-class franka_panda \
+  --output-topic /joint_trajectory
+```
+
+See the [example workspace](https://github.com/qrafty-ai/teleop_xr_ros2_example)
+for a complete MoveIt2 integration.
+
+## Coordinate Frame Convention
+
+TeleopXR follows standard ROS2 conventions:
+
+- **Coordinate System**: FLU (Forward-Left-Up)
+- **WebXR to ROS Conversion**: Automatically converts from WebXR RUB
+  (Right-Up-Back) to ROS FLU
+- **Transform Order**: Conversion happens before publishing to ROS topics
+
+## Logging
+
+The ROS2 node uses `loguru` internally but bridges all log messages to ROS2's
+logging system:
+
+- `DEBUG` → `get_logger().debug()`
+- `INFO` → `get_logger().info()`
+- `WARNING` → `get_logger().warn()`
+- `ERROR` → `get_logger().error()`
+- `CRITICAL` → `get_logger().fatal()`
+
+Logs appear in both:
+
+1. ROS2 logging system (viewable with `ros2 topic echo /rosout`)
+2. Styled console output (for local debugging)
+
+## Troubleshooting
+
+### URDF Not Fetched
+
+**Symptom**: `Failed to fetch URDF from topic` warning
+
+**Solutions:**
+
+1. Check if the URDF topic exists: `ros2 topic list | grep robot_description`
+2. Verify the topic has a publisher: `ros2 topic info /robot_description`
+3. Increase timeout: `--urdf-timeout 10.0`
+4. Check QoS settings: The topic should use `TRANSIENT_LOCAL` durability
+
+### `cv_bridge` Not Found
+
+**Symptom**: `cv_bridge not available` error when using compressed images
+
+**Solution:** Install `cv_bridge`:
+
+```bash
+sudo apt install ros-humble-cv-bridge
+```
+
+### IK Not Engaging
+
+**Symptom**: No joint trajectory messages published
+
+**Requirements for IK engagement:**
+
+1. Both controller grips must be **fully pressed** (Deadman Rule)
+2. Controllers must be in a valid IK solution space
+3. Robot must have a valid default configuration
+
+Check the logs for messages like `"IK engagement started"`.
+
+### WebXR Visualization Not Updating
+
+**Symptom**: Robot model in headset doesn't move
+
+**Solutions:**
+
+1. Verify `/joint_states` topic is publishing: `ros2 topic echo /joint_states`
+2. Check that joint names match between robot class and `/joint_states`
+3. Ensure you're in IK mode: `--mode ik`
