@@ -39,7 +39,8 @@ def test_from_string_with_meshes(tmp_path):
 
     assert urdf_path.exists()
     # For a single mesh, we expect the directory of that mesh.
-    assert mesh_path == str(mesh_dir)
+    assert mesh_path is not None
+    assert mesh_path.replace("\\", "/") == mesh_dir.as_posix()
 
 
 def test_from_string_too_generic_prefix(tmp_path):
@@ -84,5 +85,6 @@ def test_from_string_package_uri(tmp_path, monkeypatch):
 
     content = urdf_path.read_text()
     assert "package://" not in content
-    assert str(mesh_file) in content
-    assert mesh_path == str(mesh_dir)
+    assert mesh_file.as_posix() in content
+    assert mesh_path is not None
+    assert mesh_path.replace("\\", "/") == mesh_dir.as_posix()
