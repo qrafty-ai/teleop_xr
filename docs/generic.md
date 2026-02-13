@@ -1,10 +1,14 @@
 # Generic Python API Guide
 
-TeleopXR provides a pure Python API for integrating WebXR teleoperation into your own projects. This guide covers how to retrieve raw state data, handle button events, visualize robot models, and utilize the modular IK stack.
+TeleopXR provides a pure Python API for integrating WebXR teleoperation into
+your own projects. This guide covers how to retrieve raw state data, handle
+button events, visualize robot models, and utilize the modular IK stack.
 
 ## 1. Raw XRState Value Retrieval
 
-To receive real-time data from the XR headset, use the `Teleop` class. The state is delivered as a dictionary, which can be validated into a structured `XRState` object for easy access.
+To receive real-time data from the XR headset, use the `Teleop` class. The
+state is delivered as a dictionary, which can be validated into a structured
+`XRState` object for easy access.
 
 ```python
 import numpy as np
@@ -40,7 +44,8 @@ teleop.run()
 
 ## 2. Button Event System
 
-TeleopXR includes an `EventProcessor` that detects complex interactions like double-presses and long-presses, abstracting away the raw boolean polling.
+TeleopXR includes an `EventProcessor` that detects complex interactions like
+double-presses and long-presses, abstracting away the raw boolean polling.
 
 ```python
 from teleop_xr.events import EventProcessor, EventSettings, XRButton, ButtonEventType
@@ -70,7 +75,9 @@ teleop.run()
 
 ## 3. Robot Model Visualization
 
-You can stream a URDF-based robot model to the WebXR frontend for real-time visualization. This allows the operator to see a "ghost" or "digital twin" of the robot in VR.
+You can stream a URDF-based robot model to the WebXR frontend for real-time
+visualization. This allows the operator to see a "ghost" or "digital twin" of
+the robot in VR.
 
 ```python
 from teleop_xr import Teleop, TeleopSettings
@@ -94,7 +101,10 @@ teleop.run()
 
 ## 4. Camera & Video Streaming
 
-TeleopXR can transmit live camera streams from your robot or workstation into the WebXR scene. Define `VideoStreamConfig` objects for each camera and pass them inside `TeleopSettings.video_config` so the frontend automatically subscribes to the tracks.
+TeleopXR can transmit live camera streams from your robot or workstation into
+the WebXR scene. Define `VideoStreamConfig` objects for each camera and pass
+them inside `TeleopSettings.video_config` so the frontend automatically
+subscribes to the tracks.
 
 ```python
 from teleop_xr import Teleop, TeleopSettings
@@ -105,21 +115,29 @@ stream_configs = [
     VideoStreamConfig(id="hand", device=1, width=1280, height=720, fps=30),
 ]
 
-settings = TeleopSettings(video_config={"streams": [cfg.model_dump() for cfg in stream_configs]})
+settings = TeleopSettings(
+    video_config={"streams": [cfg.model_dump() for cfg in stream_configs]}
+)
 teleop = Teleop(settings=settings)
 teleop.run()
 ```
 
-If you need to feed frames from ROS topics, file playback, or other sources, subclass `ExternalVideoSource` or call `put_frame` on it directly to inject numpy arrays into the stream manager.
+If you need to feed frames from ROS topics, file playback, or other sources,
+subclass `ExternalVideoSource` or call `put_frame` on it directly to inject
+numpy arrays into the stream manager.
 
 ## 5. IK / Teleoperation Algorithm
 
-The modular IK stack allows you to map 6DoF XR poses directly to robot joint configurations using a JAX-powered optimizer.
+The modular IK stack allows you to map 6DoF XR poses directly to robot joint
+configurations using a JAX-powered optimizer.
 
 ### Modular Components
-- **`BaseRobot`**: Abstract class where you define your robot's kinematics and cost functions.
+
+- **`BaseRobot`**: Abstract class where you define your robot's kinematics and
+  cost functions.
 - **`PyrokiSolver`**: High-performance solver that executes the optimization.
-- **`IKController`**: Manages engagement logic (deadman switch) and relative motion snapshots.
+- **`IKController`**: Manages engagement logic (deadman switch) and relative
+  motion snapshots.
 
 ### Implementation Example
 

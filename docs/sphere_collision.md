@@ -1,49 +1,71 @@
 # Sphere-Based Collision Support
 
-TeleopXR uses sphere-based collision checking to provide high-performance, differentiable signed distance fields (SDF) for Inverse Kinematics. This approach is superior to primitive mesh collision (like boxes or capsules) for complex robot geometries as it allows the optimizer to smoothly "push" links away from each other and the world.
+TeleopXR uses sphere-based collision checking to provide high-performance,
+differentiable signed distance fields (SDF) for Inverse Kinematics. This
+approach is superior to primitive mesh collision (like boxes or capsules) for
+complex robot geometries as it allows the optimizer to smoothly "push" links
+away from each other and the world.
 
 ## 1. Generating Collision Data
 
-The `scripts/configure_sphere_collision.py` utility is an interactive GUI built with [Viser](https://github.com/nerfstudio-project/viser) that helps you generate a `collision.json` file for your robot.
+The `scripts/configure_sphere_collision.py` utility is an interactive GUI built
+with [Viser](https://github.com/nerfstudio-project/viser) that helps you
+generate a `collision.json` file for your robot.
 
 ### Running the Script
-Run the script specifying your robot class (as registered in entry points or module path):
+
+Run the script specifying your robot class (as registered in entry points or
+module path):
 
 ```bash
 python scripts/configure_sphere_collision.py --robot-class "my_robot"
 ```
 
 ### Phase 1: Sphere Generation
-In the **Spheres** tab, you configure the volumetric approximation of your robot:
 
-1.  **Allocation**: Choose between **Auto** (distributes spheres based on volume) or **Manual** (fine-tune per-link budgets).
-2.  **Spherize**: Run the generation. This places spheres to cover the collision meshes of each link.
-3.  **Refine**: (Optional) Run the optimization to tighten the sphere coverage and minimize overlaps.
+In the **Spheres** tab, you configure the volumetric approximation of your
+robot:
+
+1. **Allocation**: Choose between **Auto** (distributes spheres based on
+   volume) or **Manual** (fine-tune per-link budgets).
+2. **Spherize**: Run the generation. This places spheres to cover the
+   collision meshes of each link.
+3. **Refine**: (Optional) Run the optimization to tighten the sphere coverage
+   and minimize overlaps.
 
 ![Sphere Generation](./assets/collision_sphere.jpg)
 
 ### Phase 2: Collision Pair Calculation
-Once spheres are generated, move to the **Collision** tab to identify which link pairs should be checked for collision.
 
-1.  **Settings**:
-    *   **Samples**: Number of random configurations to test (default 1000).
-    *   **Threshold**: Minimum clearance margin (default 0.01m).
-    *   **Threads**: Number of parallel processes for calculation.
-2.  **Calculation**: Click **Calculate Ignore Pairs**. The script identifies pairs that:
-    *   **Always collide**: Structural components or adjacent links that provide no useful signal.
-    *   **Never collide**: Links that, within their joint limits, never come close enough to touch.
-3.  **Manual Overrides**: You can manually disable collision checking for specific links if you know they are safe (e.g., small decorative parts).
+Once spheres are generated, move to the **Collision** tab to identify which
+link pairs should be checked for collision.
+
+1. **Settings**:
+    - **Samples**: Number of random configurations to test (default 1000).
+    - **Threshold**: Minimum clearance margin (default 0.01m).
+    - **Threads**: Number of parallel processes for calculation.
+2. **Calculation**: Click **Calculate Ignore Pairs**. The script identifies
+    pairs that:
+    - **Always collide**: Structural components or adjacent links that
+      provide no useful signal.
+    - **Never collide**: Links that, within their joint limits, never come
+      close enough to touch.
+3. **Manual Overrides**: You can manually disable collision checking for
+    specific links if you know they are safe (e.g., small decorative parts).
 
 ![Ignore Pair Calculation](./assets/collision_ignore.jpg)
 
 ### Export
-Enter the desired filename (default `collision.json`) and click **Export to JSON**. Save this file in your robot's asset directory.
+
+Enter the desired filename (default `collision.json`) and click **Export to
+JSON**. Save this file in your robot's asset directory.
 
 ---
 
 ## 2. Integrating with Robot Class
 
-To use the generated data in the IK solver, update your robot class (inheriting from `BaseRobot`) to load and pass the data to `pyroki`.
+To use the generated data in the IK solver, update your robot class (inheriting
+from `BaseRobot`) to load and pass the data to `pyroki`.
 
 ### Implementation Example (`TeaArmRobot`)
 
@@ -110,6 +132,10 @@ class MyRobot(BaseRobot):
 ```
 
 ### Key Components
-*   **`from_sphere_decomposition`**: Tells `pyroki` to use your custom spheres for SDF calculation.
-*   **`user_ignore_pairs`**: Provides the list of links to exclude from collision checks, significantly improving performance.
-*   **`ignore_immediate_adjacents`**: When `True`, automatically ignores parent-child link pairs defined in the URDF.
+
+- **`from_sphere_decomposition`**: Tells `pyroki` to use your custom spheres
+  for SDF calculation.
+- **`user_ignore_pairs`**: Provides the list of links to exclude from
+  collision checks, significantly improving performance.
+- **`ignore_immediate_adjacents`**: When `True`, automatically ignores
+  parent-child link pairs defined in the URDF.
