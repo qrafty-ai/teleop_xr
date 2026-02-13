@@ -69,11 +69,11 @@ sys.modules["tf2_ros"] = MagicMock()
 sys.modules["builtin_interfaces.msg"] = MagicMock()
 sys.modules["cv_bridge"] = MagicMock()
 
-import importlib
-import teleop_xr.ros2.__main__ as ros2_main
+import importlib  # noqa: E402
+import teleop_xr.ros2.__main__ as ros2_main  # noqa: E402
 
 importlib.reload(ros2_main)
-from teleop_xr.ros2.__main__ import (
+from teleop_xr.ros2.__main__ import (  # noqa: E402
     RosBridgeHandler,
     pose_dict_to_matrix,
     matrix_to_pose_msg,
@@ -86,7 +86,7 @@ from teleop_xr.ros2.__main__ import (
     TeleopNode,
     main,
 )
-from teleop_xr.messages import XRState
+from teleop_xr.messages import XRState  # noqa: E402
 
 
 def test_ros_bridge_handler():

@@ -127,4 +127,3 @@ jobs:
         uses: astral-sh/setup-uv@v5
       - name: Publish
         run: uv publish
-
