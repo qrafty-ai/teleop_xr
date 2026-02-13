@@ -5,8 +5,6 @@ import threading
 import json
 import sys
 import numpy as np
-import jax
-import jax.numpy as jnp
 import tyro
 from loguru import logger as loguru_logger
 from dataclasses import dataclass, field
@@ -26,10 +24,6 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.common_cli import CommonCLI
 from teleop_xr.messages import XRState
 from teleop_xr.camera_views import build_camera_views_config
-from teleop_xr.ik.robot import BaseRobot
-from teleop_xr.ik.loader import load_robot_class, list_available_robots
-from teleop_xr.ik.solver import PyrokiSolver
-from teleop_xr.ik.controller import IKController
 from teleop_xr.events import (
     EventProcessor,
     EventSettings,
@@ -260,8 +254,8 @@ def generate_ik_status_table(
     solve_time: float,
     parse_time: float,
     xr_state: XRState | None,
-    controller: IKController,
-    robot: BaseRobot,
+    controller: Any,  # IKController - typing changed to avoid import
+    robot: Any,  # BaseRobot - typing changed to avoid import
     current_q: np.ndarray,
 ) -> Panel:
     table = Table(box=box.ROUNDED, expand=True)
@@ -277,6 +271,9 @@ def generate_ik_status_table(
     if active and xr_state:
         curr_poses = controller._get_device_poses(xr_state)
         snap_poses = controller.snapshot_xr
+
+        # Import jax.numpy locally since this is only called in IK mode
+        import jax.numpy as jnp
 
         current_fk = robot.forward_kinematics(jnp.array(current_q))
 
@@ -351,8 +348,8 @@ class IKWorker(threading.Thread):
 
     def __init__(
         self,
-        controller: IKController,
-        robot: BaseRobot,
+        controller: Any,  # IKController - typing changed to avoid import
+        robot: Any,  # BaseRobot - typing changed to avoid import
         teleop: Teleop,
         state_container: dict,
         logger: logging.Logger,
@@ -441,17 +438,34 @@ class IKWorker(threading.Thread):
 
 
 def main():
-    jax.config.update("jax_platform_name", "cpu")
-
     cli = tyro.cli(DemoCLI)
 
+    # Configure JAX only if in IK mode
+    if cli.mode == "ik":
+        try:
+            import jax
+            jax.config.update("jax_platform_name", "cpu")
+        except ImportError:
+            print(
+                "Error: JAX is required for IK mode. Install with: pip install 'teleop-xr[ik]'",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     if cli.list_robots:
-        robots = list_available_robots()
-        loguru_logger.info("Available robots (via entry points):")
-        if not robots:
-            loguru_logger.info("  None")
-        for name, path in robots.items():
-            loguru_logger.info(f"  {name}: {path}")
+        try:
+            from teleop_xr.ik.loader import list_available_robots
+            robots = list_available_robots()
+            loguru_logger.info("Available robots (via entry points):")
+            if not robots:
+                loguru_logger.info("  None")
+            for name, path in robots.items():
+                loguru_logger.info(f"  {name}: {path}")
+        except ImportError:
+            loguru_logger.error(
+                "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
+            )
+            sys.exit(1)
         return
 
     log_queue: Deque[str] = deque(maxlen=50)
@@ -511,6 +525,17 @@ def main():
 
     robot_vis = None
     if cli.mode == "ik":
+        # Import IK modules only when needed
+        try:
+            from teleop_xr.ik.loader import load_robot_class
+            from teleop_xr.ik.solver import PyrokiSolver
+            from teleop_xr.ik.controller import IKController
+        except ImportError as e:
+            logger.error(
+                f"IK dependencies not installed: {e}. Install with: pip install 'teleop-xr[ik]'"
+            )
+            sys.exit(1)
+
         robot_cls = load_robot_class(cli.robot_class)
         robot_args = json.loads(cli.robot_args)
         logger.info(f"Initializing {robot_cls.__name__} with args: {robot_args}")

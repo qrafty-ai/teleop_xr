@@ -8,7 +8,6 @@ from dataclasses import asdict
 import cv2
 import numpy as np
 import tyro
-import jax
 from loguru import logger
 from teleop_xr import Teleop
 from teleop_xr.video_stream import ExternalVideoSource
@@ -16,10 +15,6 @@ from teleop_xr.config import TeleopSettings
 from teleop_xr.ros2.cli import Ros2CLI
 from teleop_xr.messages import XRState
 from teleop_xr.events import EventProcessor, EventSettings, ButtonEvent
-from teleop_xr.ik.robot import BaseRobot
-from teleop_xr.ik.loader import load_robot_class, list_available_robots
-from teleop_xr.ik.solver import PyrokiSolver
-from teleop_xr.ik.controller import IKController
 import transforms3d as t3d
 
 try:
@@ -326,16 +321,33 @@ class IKWorker(threading.Thread):
 
 
 def main():
-    jax.config.update("jax_platform_name", "cpu")
     cli = tyro.cli(Ros2CLI)
 
+    # Configure JAX only if in IK mode
+    if cli.mode == "ik":
+        try:
+            import jax
+            jax.config.update("jax_platform_name", "cpu")
+        except ImportError:
+            logger.error(
+                "JAX is required for IK mode. Install with: pip install 'teleop-xr[ik]'"
+            )
+            sys.exit(1)
+
     if cli.list_robots:
-        robots = list_available_robots()
-        logger.info("Available robots (via entry points):")
-        if not robots:
-            logger.info("  None")
-        for name, path in robots.items():
-            logger.info(f"  {name}: {path}")
+        try:
+            from teleop_xr.ik.loader import list_available_robots
+            robots = list_available_robots()
+            logger.info("Available robots (via entry points):")
+            if not robots:
+                logger.info("  None")
+            for name, path in robots.items():
+                logger.info(f"  {name}: {path}")
+        except ImportError:
+            logger.error(
+                "IK dependencies not installed. Install with: pip install 'teleop-xr[ik]'"
+            )
+            sys.exit(1)
         return
 
     # 1. Initialize ROS2
@@ -369,6 +381,17 @@ def main():
     }
 
     if node.cli.mode == "ik":
+        # Import IK modules only when needed
+        try:
+            from teleop_xr.ik.loader import load_robot_class
+            from teleop_xr.ik.solver import PyrokiSolver
+            from teleop_xr.ik.controller import IKController
+        except ImportError as e:
+            node.get_logger().error(
+                f"IK dependencies not installed: {e}. Install with: pip install 'teleop-xr[ik]'"
+            )
+            sys.exit(1)
+
         robot_cls = load_robot_class(node.cli.robot_class or None)
         robot_args = node.cli.robot_args_dict
 
