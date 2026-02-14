@@ -116,7 +116,7 @@ Quest VR headset lacks accessible browser console. Debugging:
 Lightweight package: URDF/mesh files fetched on-demand from GitHub.
 - **Module**: `teleop_xr/ram.py`
 - **Usage**: `get_resource("franka/panda.urdf")` → caches to `~/.cache/teleop_xr/`
-- **Custom Robots**: Use `assets/` subfolder (e.g., `teaarm/collision.json`)
+- **Custom Robots**: Use `assets/` subfolder (e.g., `custom_robot/collision.json`)
 
 ### UIKitML
 Custom markup for VR panels (XML-like, compiled to JSON).

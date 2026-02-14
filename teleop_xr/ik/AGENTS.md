@@ -3,7 +3,7 @@
 JAX-powered IK solver using pyroki and jaxls for real-time robot control.
 
 ## OVERVIEW
-Translates XR controller poses into robot joint configurations via relative-motion IK. Supports multiple robots (Franka, H1, TeaArm) with pluggable cost functions.
+Translates XR controller poses into robot joint configurations via relative-motion IK. Supports multiple robots (Franka, H1, OpenArm) with pluggable cost functions.
 
 ## STRUCTURE
 ```
@@ -15,7 +15,7 @@ ik/
 └── robots/           # Robot implementations
     ├── franka.py
     ├── h1_2.py
-    ├── teaarm.py
+    ├── openarm.py
     └── assets/       # Robot-specific configs
 ```
 

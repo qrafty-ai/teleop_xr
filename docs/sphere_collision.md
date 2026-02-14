@@ -67,9 +67,9 @@ JSON**. Save this file in your robot's asset directory.
 To use the generated data in the IK solver, update your robot class (inheriting
 from `BaseRobot`) to load and pass the data to `pyroki`.
 
-### Implementation Example (`TeaArmRobot`)
+### Implementation Example
 
-The following pattern is used in `teleop_xr/ik/robots/teaarm.py`:
+The following pattern can be used in your robot class:
 
 ```python
 import os

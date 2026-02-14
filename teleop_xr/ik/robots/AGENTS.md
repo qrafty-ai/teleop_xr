@@ -10,11 +10,8 @@ Each robot inherits `BaseRobot` and defines its URDF, joints, and IK costs. Asse
 robots/
 ├── franka.py         # Franka Panda (7-DOF arm)
 ├── h1_2.py           # Unitree H1 humanoid
-├── teaarm.py         # Custom TeaArm
 ├── openarm.py        # OpenArm
-└── assets/
-    └── teaarm/       # TeaArm-specific collision config
-        └── collision.json
+└── assets/           # Robot-specific assets
 ```
 
 ## WHERE TO LOOK
