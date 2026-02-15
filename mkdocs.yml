@@ -57,6 +57,7 @@ nav:
   - Interfaces:
     - Generic Python API: generic.md
     - ROS2 Interface: ros2.md
+    - dora-rs Interface: dora.md
     - Custom Robots:
         - Setup: custom_robots.md
         - Sphere Collision: sphere_collision.md

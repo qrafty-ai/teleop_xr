@@ -100,8 +100,8 @@ The demo supports two operation modes:
 ## 📖 Documentation
 
 For detailed guides on integrating TeleopXR into your own projects, including
-the **Generic Python API** and **ROS2 Interface**, visit the official
-[documentation site](https://qrafty-ai.github.io/teleop_xr/generic/).
+the **Generic Python API**, **ROS2 Interface**, and **dora-rs Interface**,
+visit the official [documentation site](https://qrafty-ai.github.io/teleop_xr/generic/).
 
 ## Development
 
