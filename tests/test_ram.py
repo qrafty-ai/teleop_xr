@@ -117,6 +117,64 @@ def test_process_xacro(temp_git_repo):
     assert "package://" not in urdf_xml
 
 
+def test_process_xacro_resolves_relative_mesh_paths(tmp_path):
+    repo_root = tmp_path / "repo"
+    urdf_dir = repo_root / "urdf"
+    mesh_dir = repo_root / "meshes"
+    urdf_dir.mkdir(parents=True)
+    mesh_dir.mkdir(parents=True)
+
+    xacro_path = urdf_dir / "rel_mesh.xacro"
+    xacro_path.write_text(
+        """<robot xmlns:xacro=\"http://www.ros.org/wiki/xacro\" name=\"r\">
+  <link name=\"base\">
+    <visual>
+      <geometry>
+        <mesh filename=\"../meshes/base.stl\"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>"""
+    )
+
+    urdf_xml = ram.process_xacro(xacro_path, repo_root=repo_root)
+    assert "../meshes/base.stl" not in urdf_xml
+    assert (repo_root / "meshes" / "base.stl").resolve().as_posix() in urdf_xml
+
+
+def test_get_resource_xacro_resolves_relative_mesh_paths(temp_git_repo, mock_cache_dir):
+    urdf_dir = temp_git_repo / "urdf"
+    mesh_dir = temp_git_repo / "meshes"
+    urdf_dir.mkdir(exist_ok=True)
+    mesh_dir.mkdir(exist_ok=True)
+
+    xacro_path = urdf_dir / "rel_mesh.xacro"
+    xacro_path.write_text(
+        """<robot xmlns:xacro=\"http://www.ros.org/wiki/xacro\" name=\"r\">
+  <link name=\"base\">
+    <visual>
+      <geometry>
+        <mesh filename=\"../meshes/base.stl\"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>"""
+    )
+
+    with git.Repo(temp_git_repo) as repo:
+        repo.index.add(["urdf/rel_mesh.xacro"])
+        repo.index.commit("Add rel mesh xacro")
+
+    result = ram.get_resource(
+        repo_url=temp_git_repo.as_uri(),
+        path_inside_repo="urdf/rel_mesh.xacro",
+        cache_dir=mock_cache_dir,
+    )
+    text = result.read_text()
+    assert "../meshes/base.stl" not in text
+    assert "/meshes/base.stl" in text
+
+
 def test_get_cache_root():
     """Test get_cache_root returns the default path."""
     cache_root = ram.get_cache_root()
