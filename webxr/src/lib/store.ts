@@ -29,6 +29,15 @@ export type TeleopTelemetry = {
 
 export type ConnectionStatus = "connected" | "disconnected" | "connecting";
 
+export type TeleopLifecycle =
+	| "disconnected"
+	| "connecting"
+	| "connected"
+	| "loading_robot"
+	| "ready"
+	| "reconnecting"
+	| "error";
+
 export type AppState = {
 	cameraConfig: CameraConfig;
 	availableCameras: string[];
@@ -38,6 +47,7 @@ export type AppState = {
 	robotResetTrigger: number;
 	teleopTelemetry: TeleopTelemetry;
 	connectionStatus: ConnectionStatus;
+	teleopLifecycle: TeleopLifecycle;
 	getCameraEnabled: (key: string) => boolean;
 	setCameraEnabled: (key: string, enabled: boolean) => void;
 	toggleAllCameras: (enabled: boolean) => void;
@@ -48,6 +58,7 @@ export type AppState = {
 	setRobotResetTrigger: (trigger: number) => void;
 	setTeleopTelemetry: (telemetry: TeleopTelemetry) => void;
 	setConnectionStatus: (status: ConnectionStatus) => void;
+	setTeleopLifecycle: (status: TeleopLifecycle) => void;
 };
 
 const defaultTeleopSettings: TeleopSettings = {
@@ -85,6 +96,7 @@ export const useAppStore = create<AppState>()(
 			robotResetTrigger: 0,
 			teleopTelemetry: defaultTeleopTelemetry,
 			connectionStatus: "disconnected",
+			teleopLifecycle: "disconnected",
 			getCameraEnabled: (key) => get().cameraConfig[key] !== false,
 			setCameraEnabled: (key, enabled) => {
 				set((state) => ({
@@ -125,6 +137,9 @@ export const useAppStore = create<AppState>()(
 			},
 			setConnectionStatus: (status) => {
 				set({ connectionStatus: status });
+			},
+			setTeleopLifecycle: (status) => {
+				set({ teleopLifecycle: status });
 			},
 		}),
 		{

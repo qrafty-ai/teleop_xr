@@ -11,13 +11,11 @@ import {
 	AxesHelper,
 	DirectionalLight,
 	Group,
-	Light,
 	LoadingManager,
 	Mesh,
 	type Object3D,
 	SRGBColorSpace,
 	Texture,
-	Camera as ThreeCamera,
 	Vector3,
 } from "three";
 import { ColladaLoader, GLTFLoader, STLLoader } from "three-stdlib";
@@ -139,6 +137,9 @@ export class RobotModelSystem extends createSystem({}) {
 		model_scale?: number;
 		initial_rotation_euler?: number[];
 	}) {
+		useAppStore.getState().setTeleopLifecycle("loading_robot");
+		this.setLoadingVisible(true);
+
 		console.log(
 			"[RobotModelSystem] Loading robot from",
 			data.urdf_url,
@@ -200,8 +201,6 @@ export class RobotModelSystem extends createSystem({}) {
 				);
 			});
 
-			this.setLoadingVisible(true);
-
 			if (this.robotEntity && typeof this.robotEntity.destroy === "function") {
 				this.robotEntity.destroy();
 				this.robotEntity = null;
@@ -248,6 +247,7 @@ export class RobotModelSystem extends createSystem({}) {
 			const robotObject = this.robotEntity?.object3D;
 			if (!robotObject) {
 				console.warn("[RobotModelSystem] Robot entity has no object3D");
+				useAppStore.getState().setTeleopLifecycle("error");
 				return;
 			}
 			const robotObject3D: Object3D = robotObject;
@@ -270,7 +270,10 @@ export class RobotModelSystem extends createSystem({}) {
 			}
 
 			console.log("[RobotModelSystem] Robot model loaded and added to scene");
+			useAppStore.getState().setTeleopLifecycle("ready");
 		} catch (error: unknown) {
+			this.setLoadingVisible(false);
+			useAppStore.getState().setTeleopLifecycle("error");
 			if (error instanceof Error) {
 				console.error(
 					"[RobotModelSystem] Failed to load robot:",

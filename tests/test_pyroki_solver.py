@@ -27,3 +27,6 @@ def test_pyroki_solver_warmup_handles_robot_errors():
 
     solver = PyrokiSolver(cast(Any, DummyRobot()))
     assert solver.robot is not None
+    assert solver.warmup_complete is False
+    assert solver.warmup_error is not None
+    assert solver.warmed_target_patterns == tuple()
