@@ -58,7 +58,7 @@ const lifecycleDisplay: Record<TeleopLifecycle, LifecycleDisplay> = {
 class WristConnectionStatusPanel {
 	public entity: XRTransformEntity;
 	public handedness: "right" = "right";
-	public anchorOffset = new Vector3(0.18, 0.12, -0.1);
+	public anchorOffset = new Vector3(0.08, -0.1, -0.035);
 
 	private canvas: HTMLCanvasElement;
 	private context: CanvasRenderingContext2D;
