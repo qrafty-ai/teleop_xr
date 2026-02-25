@@ -20,6 +20,7 @@ export default defineConfig({
 				"src/xr/robot_system.ts", // Complex ECS robot system
 				"src/xr/teleop_system.ts", // Complex ECS teleop system
 				"src/xr/controller_camera_system.ts", // Complex ECS controller system
+				"src/xr/connection_hud_system.ts",
 				"src/xr/camera_settings_system.ts", // Small ECS system
 				"src/xr/video.ts", // Complex WebRTC video client
 				"src/xr/console_stream.ts", // Console streaming infrastructure
