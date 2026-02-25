@@ -30,7 +30,8 @@ from teleop_xr.ik.robot import BaseRobot, RobotVisConfig
 When using the ROS2 interface or the demo, you can specify your custom robot:
 
 - `--robot-class`: The robot specification. Can be an entry point name (e.g.,
-  `franka`, `h1`) or a full module path (`my_package.robots:MyRobot`).
+  `h1`, `franka`, `openarm`, `so101`, `teaarm`) or a full module path
+  (`my_package.robots:MyRobot`).
 - `--robot-args`: A JSON string of arguments passed to the robot constructor.
 - `--list-robots`: Lists all registered robots.
 
@@ -59,7 +60,8 @@ def __init__(self, urdf_string: str | None = None, **kwargs):
 When using the ROS2 interface or the demo, you can specify your custom robot:
 
 - **`--robot-class`**: The robot specification. Can be an entry point name
-  (e.g., `franka`, `h1`) or a full module path (`my_package.robots:MyRobot`).
+  (e.g., `h1`, `franka`, `openarm`, `so101`, `teaarm`) or a full module path
+  (`my_package.robots:MyRobot`).
 - **`--robot-args`**: A JSON string of arguments passed to the robot
   constructor.
 - **`--list-robots`**: Lists all registered robots.

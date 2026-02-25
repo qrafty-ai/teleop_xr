@@ -74,6 +74,12 @@ pip install "teleop-xr[ik]@git+https://github.com/qrafty-ai/teleop_xr"
 python -m teleop_xr.demo
 ```
 
+### Usage
+
+1. Open the displayed URL (`https://<ip>:4443`) in your headset.
+2. Enter VR mode.
+3. Observe the live state data and event logs in your terminal.
+
 ### Modes
 
 The demo supports two operation modes:
@@ -91,11 +97,21 @@ The demo supports two operation modes:
   python -m teleop_xr.demo --mode ik
   ```
 
-### Usage
+### Supported Robots (IK)
 
-1. Open the displayed URL (`https://<ip>:4443`) in your headset.
-2. Enter VR mode.
-3. Observe the live state data and event logs in your terminal.
+TeleopXR currently includes the following built-in robot classes:
+
+- `h1` - Unitree H1 whole-body model for bimanual teleoperation.
+- `franka` - Franka Emika Panda single-arm manipulator.
+- `so101` - [SO101](https://huggingface.co/docs/lerobot/so101) single-arm model
+  with relaxed 5-DOF IK.
+- `openarm` - [OpenArm](https://openarm.dev/) bimanual configuration from
+  `openarm_description`.
+- `teaarm` - Custom openarm extension with [waist
+  joints](https://github.com/qrafty-ai/hardware_designs/tree/main/openarm_waist).
+
+Use `--list-robots` to show all currently registered robots in your
+environment.
 
 ## 📖 Documentation
 
