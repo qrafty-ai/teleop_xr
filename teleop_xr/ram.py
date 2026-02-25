@@ -154,7 +154,8 @@ def _replace_relative_mesh_paths(urdf_content: str, base_dir: Path) -> str:
             return match.group(0)
 
         if re.match(r"^[A-Za-z]:[\\/]", raw_path):
-            return f"filename={quote}{raw_path.replace('\\\\', '/')}{quote}"
+            normalized_raw_path = raw_path.replace("\\", "/")
+            return f"filename={quote}{normalized_raw_path}{quote}"
 
         path_obj = Path(raw_path)
         if path_obj.is_absolute():
