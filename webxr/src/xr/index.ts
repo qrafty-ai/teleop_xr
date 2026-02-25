@@ -32,6 +32,7 @@ import {
 	isViewEnabled,
 	onCameraViewsChanged,
 } from "./camera_views";
+import { ConnectionHudSystem } from "./connection_hud_system";
 import { initConsoleStream } from "./console_stream";
 import { ControllerCameraPanelSystem } from "./controller_camera_system";
 import { GlobalRefs } from "./global_refs";
@@ -381,6 +382,7 @@ export const initWorld = async (
 	world.registerSystem(TeleopSystem);
 	world.registerSystem(RobotModelSystem);
 	world.registerSystem(ControllerCameraPanelSystem);
+	world.registerSystem(ConnectionHudSystem);
 	world.registerSystem(CameraSettingsSystem);
 	world.registerSystem(CameraPanelSystem);
 	world.registerSystem(PanelHoverSystem);

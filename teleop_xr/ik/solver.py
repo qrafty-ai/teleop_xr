@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import jaxls
 import jaxlie
 from typing import Callable
+from loguru import logger
 from teleop_xr.ik.robot import BaseRobot
 
 
@@ -20,6 +21,9 @@ class PyrokiSolver:
         [jaxlie.SE3 | None, jaxlie.SE3 | None, jaxlie.SE3 | None, jnp.ndarray],
         jnp.ndarray,
     ]
+    warmup_complete: bool
+    warmup_error: str | None
+    warmed_target_patterns: tuple[tuple[bool, bool, bool], ...]
 
     def __init__(self, robot: BaseRobot):
         """
@@ -29,6 +33,9 @@ class PyrokiSolver:
             robot: The robot model providing kinematic info and costs.
         """
         self.robot = robot
+        self.warmup_complete = False
+        self.warmup_error = None
+        self.warmed_target_patterns = tuple()
 
         # JIT compile the solve function
         self._jit_solve = jax.jit(self._solve_internal)
@@ -116,12 +123,35 @@ class PyrokiSolver:
             q_dummy = self.robot.get_default_config()
             target_dummy = jaxlie.SE3.identity()
 
-            self.solve(target_dummy, target_dummy, target_dummy, q_dummy)
+            warmup_inputs = (
+                (target_dummy, target_dummy, target_dummy),
+                (target_dummy, None, None),
+                (None, target_dummy, None),
+                (None, None, target_dummy),
+                (target_dummy, target_dummy, None),
+                (target_dummy, None, target_dummy),
+                (None, target_dummy, target_dummy),
+                (None, None, None),
+            )
 
-            self.solve(target_dummy, None, None, q_dummy)
-            self.solve(None, target_dummy, None, q_dummy)
-            self.solve(None, None, target_dummy, q_dummy)
-        except Exception:
+            for target_L, target_R, target_Head in warmup_inputs:
+                warmed = self.solve(target_L, target_R, target_Head, q_dummy)
+                jax.block_until_ready(warmed)
+
+            self.warmed_target_patterns = tuple(
+                (
+                    target_L is not None,
+                    target_R is not None,
+                    target_Head is not None,
+                )
+                for target_L, target_R, target_Head in warmup_inputs
+            )
+            self.warmup_complete = True
+            self.warmup_error = None
+        except Exception as exc:
             # Warmup might fail if robot is a mock or not fully implemented yet.
-            # We don't want to crash during initialization in that case.
-            pass
+            # Keep initialization resilient, but expose failure explicitly.
+            self.warmup_complete = False
+            self.warmup_error = str(exc)
+            self.warmed_target_patterns = tuple()
+            logger.warning(f"[PyrokiSolver] Warmup failed: {exc}")

@@ -1,6 +1,7 @@
 import { createSystem, Quaternion, Vector3, Visibility } from "@iwsdk/core";
 import { getClientId } from "../client_id";
 import {
+	type TeleopLifecycle,
 	type TeleopSettings,
 	type TeleopTelemetry,
 	useAppStore,
@@ -26,6 +27,8 @@ export class TeleopSystem extends createSystem({}) {
 	private menuButtonState = false;
 	public inputMode: string | null = null;
 	private clientId = getClientId();
+	private reconnectTimer: number | null = null;
+	private reconnectAttempt = 0;
 
 	init() {
 		this.connectWS();
@@ -39,22 +42,30 @@ export class TeleopSystem extends createSystem({}) {
 
 	connectWS() {
 		useAppStore.getState().setConnectionStatus("connecting");
+		this.setLifecycle(
+			this.reconnectAttempt > 0 ? "reconnecting" : "connecting",
+		);
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const wsUrl = `${protocol}//${window.location.host}/ws`;
 
 		this.ws = new WebSocket(wsUrl);
 
 		this.ws.onopen = () => {
-			this.updateStatus("Connected", true);
+			this.reconnectAttempt = 0;
+			this.clearReconnectTimer();
+			this.updateStatus(true);
+			this.setLifecycle("connected");
 		};
 
 		this.ws.onclose = () => {
-			this.updateStatus("Disconnected", false);
-			setTimeout(() => this.connectWS(), 3000);
+			this.updateStatus(false);
+			this.setLifecycle("reconnecting");
+			this.scheduleReconnect();
 		};
 
 		this.ws.onerror = (error) => {
 			console.error("WS Error", error);
+			this.setLifecycle("error");
 		};
 
 		this.ws.onmessage = (event) => {
@@ -77,6 +88,7 @@ export class TeleopSystem extends createSystem({}) {
 					useAppStore.getState().setAvailableCameras(availableCameraKeys);
 					setCameraViewsConfig(cameraViews);
 				} else if (message.type === "robot_config") {
+					this.setLifecycle("loading_robot");
 					const robotSystem = this.world.getSystem(RobotModelSystem);
 					if (robotSystem) {
 						robotSystem.onRobotConfig(message.data);
@@ -93,7 +105,33 @@ export class TeleopSystem extends createSystem({}) {
 		};
 	}
 
-	updateStatus(_text: string, connected: boolean) {
+	private scheduleReconnect() {
+		if (this.reconnectTimer !== null) {
+			return;
+		}
+
+		const delayMs = Math.min(3000 * 2 ** this.reconnectAttempt, 15000);
+		this.reconnectAttempt += 1;
+
+		this.reconnectTimer = window.setTimeout(() => {
+			this.reconnectTimer = null;
+			this.connectWS();
+		}, delayMs);
+	}
+
+	private clearReconnectTimer() {
+		if (this.reconnectTimer === null) {
+			return;
+		}
+		window.clearTimeout(this.reconnectTimer);
+		this.reconnectTimer = null;
+	}
+
+	private setLifecycle(lifecycle: TeleopLifecycle) {
+		useAppStore.getState().setTeleopLifecycle(lifecycle);
+	}
+
+	updateStatus(connected: boolean) {
 		useAppStore
 			.getState()
 			.setConnectionStatus(connected ? "connected" : "disconnected");

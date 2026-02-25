@@ -1,9 +1,16 @@
 import { createSystem } from "@iwsdk/core";
 import { type Object3D, Vector3 } from "three";
-import type { ControllerCameraPanel, DraggablePanel } from "./panels";
+
+type AnchoredPanel = {
+	entity: {
+		object3D?: Object3D | null;
+	};
+	handedness?: "left" | "right";
+	anchorOffset?: Vector3;
+};
 
 type ControllerCameraPanelRef = {
-	panel: ControllerCameraPanel | DraggablePanel; // ControllerCameraPanel instance
+	panel: AnchoredPanel;
 	controllerObject: Object3D | null; // raySpace Object3D
 	getControllerObject?: () => Object3D | undefined; // Getter for dynamic raySpace resolution
 };
@@ -15,18 +22,15 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 	private tempHeadPosition = new Vector3();
 
 	// Offset above controller (15cm up, 5cm forward)
-	private offset = new Vector3(0, 0.15, -0.05);
+	private defaultOffset = new Vector3(0, 0.15, -0.05);
 
-	registerPanel(
-		panel: ControllerCameraPanel | DraggablePanel,
-		controllerObject: Object3D,
-	) {
+	registerPanel(panel: AnchoredPanel, controllerObject: Object3D) {
 		this.panels.push({ panel, controllerObject });
 	}
 
 	registerPanelWithGetter(
-		panel: ControllerCameraPanel | DraggablePanel,
-		getControllerObject: () => Object3D,
+		panel: AnchoredPanel,
+		getControllerObject: () => Object3D | undefined,
 	) {
 		this.panels.push({ panel, controllerObject: null, getControllerObject });
 	}
@@ -41,11 +45,7 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 
 		for (const ref of this.panels) {
 			const { panel, getControllerObject } = ref;
-			// biome-ignore lint/suspicious/noExplicitAny: Accessing potential handedness
-			const handedness = (panel as any)?.handedness as
-				| "left"
-				| "right"
-				| undefined;
+			const handedness = panel.handedness;
 
 			// Resolve controller object based on primary/secondary controller spaces
 			let controllerObject: Object3D | null | undefined;
@@ -81,7 +81,7 @@ export class ControllerCameraPanelSystem extends createSystem({}) {
 
 			// Apply offset in WORLD space (not controller space)
 			// This keeps the panel stable when controller rotates
-			this.tempPosition.add(this.offset);
+			this.tempPosition.add(panel.anchorOffset ?? this.defaultOffset);
 
 			// Set panel position
 			panel.entity.object3D.position.copy(this.tempPosition);
