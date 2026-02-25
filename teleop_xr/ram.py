@@ -145,6 +145,27 @@ def _replace_package_uris(urdf_content: str, repo_root: Path) -> str:
     return re.sub(r"package://([^/]+)/(.*)", resolve_uri, urdf_content)
 
 
+def _replace_relative_mesh_paths(urdf_content: str, base_dir: Path) -> str:
+    def resolve_relative(match: re.Match[str]) -> str:
+        quote = match.group(1)
+        raw_path = match.group(2)
+
+        if "://" in raw_path:
+            return match.group(0)
+
+        if re.match(r"^[A-Za-z]:[\\/]", raw_path):
+            return f"filename={quote}{raw_path.replace('\\\\', '/')}{quote}"
+
+        path_obj = Path(raw_path)
+        if path_obj.is_absolute():
+            return f"filename={quote}{path_obj.as_posix()}{quote}"
+
+        resolved = (base_dir / path_obj).resolve().as_posix()
+        return f"filename={quote}{resolved}{quote}"
+
+    return re.sub(r"filename\s*=\s*([\"'])([^\"']+)\1", resolve_relative, urdf_content)
+
+
 def _convert_dae_to_glb(dae_path: Path) -> Path:
     """Convert a .dae file to .glb and return the new path."""
     glb_path = dae_path.with_suffix(".glb")
@@ -237,6 +258,8 @@ def process_xacro(
     with _ram_repo_context(repo_root):
         doc: Any = xacro.process_file(str(xacro_path), mappings=mappings)
         urdf_xml = doc.toprettyxml(indent="  ")
+
+    urdf_xml = _replace_relative_mesh_paths(urdf_xml, xacro_path.parent)
 
     if resolve_packages:
         # Also use context here for better package:// resolution
