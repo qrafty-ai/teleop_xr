@@ -221,9 +221,19 @@ class Teleop:
         # This caches JIT compilation results to disk, surviving process restarts
         # First run: ~1-3 sec warmup; Subsequent runs: ~100-300ms cache load
         try:
+            import jax
             from jax.experimental.compilation_cache import compilation_cache
 
             compilation_cache.set_cache_dir(_JAX_CACHE_DIR)
+
+            # Enable additional XLA caching for faster recompilation
+            # "all" enables: kernel cache + per-fusion autotune cache
+            jax.config.update("jax_persistent_cache_enable_xla_caches", "all")
+
+            # Lower caching thresholds for development workflows
+            # Cache entries regardless of compilation time/size
+            jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+            jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
         except Exception as e:
             logging.getLogger("teleop").warning(
                 f"Failed to initialize JAX compilation cache: {e}"
