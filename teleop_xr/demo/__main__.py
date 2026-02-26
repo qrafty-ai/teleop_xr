@@ -10,6 +10,7 @@ from loguru import logger as loguru_logger
 from dataclasses import dataclass, field
 from typing import Any, Deque, Optional, Union, Dict, Literal, TYPE_CHECKING
 from collections import deque
+from pathlib import Path
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -36,6 +37,31 @@ from teleop_xr.events import (
 if TYPE_CHECKING:
     from teleop_xr.ik.robot import BaseRobot
     from teleop_xr.ik.controller import IKController
+
+
+def _init_jax_cache():
+    """Initialize JAX persistent compilation cache early, before any JIT compilation."""
+    try:
+        import platformdirs
+
+        cache_dir = str(
+            Path(platformdirs.user_cache_dir(appname="teleop_xr", appauthor="qrafty"))
+            / "jax"
+        )
+    except ImportError:
+        cache_dir = str(Path.home() / ".cache" / "teleop_xr" / "jax")
+
+    try:
+        from jax.experimental.compilation_cache import compilation_cache
+
+        compilation_cache.set_cache_dir(cache_dir)
+        logging.info(f"JAX compilation cache enabled at {cache_dir}")
+    except Exception as e:
+        logging.warning(f"Failed to initialize JAX compilation cache: {e}")
+
+
+# Initialize JAX cache at module import time, before any IK code runs
+_init_jax_cache()
 
 
 # Maximum number of events to display in the event log

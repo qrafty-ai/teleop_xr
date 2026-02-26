@@ -6,6 +6,7 @@ import time
 import logging
 import json
 from typing import Callable, List, Optional, Dict, Any
+from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -25,6 +26,18 @@ from teleop_xr.video_stream import (
 from teleop_xr.camera_views import build_video_streams
 from teleop_xr.config import TeleopSettings
 from teleop_xr.robot_vis import RobotVisModule
+
+# Platform-aware cache directory for JAX compilation cache
+try:
+    import platformdirs
+
+    _JAX_CACHE_DIR = str(
+        Path(platformdirs.user_cache_dir(appname="teleop_xr", appauthor="qrafty"))
+        / "jax"
+    )
+except ImportError:
+    # Fallback to simple cache path if platformdirs not available
+    _JAX_CACHE_DIR = str(Path.home() / ".cache" / "teleop_xr" / "jax")
 
 TF_RUB2FLU = np.array([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 TF_RUB2FLU_ROT = TF_RUB2FLU[:3, :3]
@@ -204,6 +217,18 @@ class Teleop:
         settings: TeleopSettings,
         video_sources: Optional[dict[str, VideoSource]] = None,
     ):
+        # Initialize JAX persistent compilation cache (if not already initialized)
+        # This caches JIT compilation results to disk, surviving process restarts
+        # First run: ~1-3 sec warmup; Subsequent runs: ~100-300ms cache load
+        try:
+            from jax.experimental.compilation_cache import compilation_cache
+
+            compilation_cache.set_cache_dir(_JAX_CACHE_DIR)
+        except Exception as e:
+            logging.getLogger("teleop").warning(
+                f"Failed to initialize JAX compilation cache: {e}"
+            )
+
         self.__logger = logging.getLogger("teleop")
         self.__logger.setLevel(logging.INFO)
         if not self.__logger.handlers:
