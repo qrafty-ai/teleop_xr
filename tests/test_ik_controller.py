@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 
 try:
@@ -55,13 +57,23 @@ class DummyRobot(BaseRobot):
         return []
 
 
-class DummySolver(PyrokiSolver):
+class DummySolver:
     def __init__(self, out: np.ndarray):
         # We don't call super().__init__ because we don't want to trigger _warmup
         self.out = out
 
     def solve(self, target_L, target_R, target_Head, q_current):
         return jnp.asarray(self.out)
+
+
+class MissingFrameRobot(DummyRobot):
+    def forward_kinematics(self, config: jnp.ndarray) -> dict[str, jaxlie.SE3]:
+        ident = jaxlie.SE3.identity()
+        return {"left": ident, "head": ident}
+
+
+def _as_solver(solver: DummySolver) -> PyrokiSolver:
+    return cast(PyrokiSolver, cast(object, solver))
 
 
 def _pose(x: float, y: float, z: float) -> XRPose:
@@ -83,7 +95,9 @@ def test_ik_controller_deadman_and_step_transitions():
     robot = DummyRobot()
     solver = DummySolver(np.array([1.0, 2.0]))
     controller = IKController(
-        robot=robot, solver=solver, filter_weights=np.array([0.5, 0.5])
+        robot=robot,
+        solver=_as_solver(solver),
+        filter_weights=np.array([0.5, 0.5]),
     )
 
     left = XRInputSource(
@@ -190,7 +204,7 @@ def test_ik_controller_no_solver():
 def test_ik_controller_no_filter():
     robot = DummyRobot()
     solver = DummySolver(np.array([5.0, 6.0]))
-    controller = IKController(robot=robot, solver=solver)
+    controller = IKController(robot=robot, solver=_as_solver(solver))
 
     left = XRInputSource(
         role=XRDeviceRole.CONTROLLER,
@@ -259,7 +273,7 @@ def test_ik_controller_unsupported_frame_warning():
 def test_ik_controller_step_noop_outside_teleop_mode():
     robot = DummyRobot()
     solver = DummySolver(np.array([7.0, 8.0]))
-    controller = IKController(robot=robot, solver=solver)
+    controller = IKController(robot=robot, solver=_as_solver(solver))
     controller.set_mode(ControlMode.EE_DELTA)
 
     left = XRInputSource(
@@ -285,7 +299,7 @@ def test_ik_controller_step_noop_outside_teleop_mode():
 def test_ik_controller_submit_ee_delta_requires_mode_switch():
     robot = DummyRobot()
     solver = DummySolver(np.array([2.0, 3.0]))
-    controller = IKController(robot=robot, solver=solver)
+    controller = IKController(robot=robot, solver=_as_solver(solver))
     q0 = np.array([0.0, 0.0])
     command = EEDeltaCommand.model_validate(
         {
@@ -308,7 +322,7 @@ def test_ik_controller_submit_ee_delta_requires_mode_switch():
 def test_ik_controller_submit_ee_delta_rejects_unsupported_frame():
     robot = DummyRobot()
     solver = DummySolver(np.array([1.0, 1.0]))
-    controller = IKController(robot=robot, solver=solver)
+    controller = IKController(robot=robot, solver=_as_solver(solver))
     controller.set_mode(ControlMode.EE_DELTA)
 
     with patch.object(
@@ -326,3 +340,81 @@ def test_ik_controller_submit_ee_delta_rejects_unsupported_frame():
                 },
                 np.array([0.0, 0.0]),
             )
+
+
+def test_ik_controller_set_mode_noop_keeps_state():
+    robot = DummyRobot()
+    controller = IKController(robot=robot, filter_weights=np.array([0.5, 0.5]))
+    assert controller.filter is not None
+
+    controller.active = True
+    ident = jaxlie.SE3.identity()
+    controller.snapshot_xr = {"left": ident}
+    controller.snapshot_robot = {"left": ident}
+    controller.filter.add_data(np.array([0.1, 0.2]))
+
+    controller.set_mode(ControlMode.TELEOP)
+
+    assert controller.active is True
+    assert "left" in controller.snapshot_xr
+    assert "left" in controller.snapshot_robot
+    assert len(controller.filter._data_queue) == 1
+
+
+def test_ik_controller_set_mode_switch_resets_state_and_filter():
+    robot = DummyRobot()
+    controller = IKController(robot=robot, filter_weights=np.array([0.5, 0.5]))
+    assert controller.filter is not None
+
+    controller.active = True
+    ident = jaxlie.SE3.identity()
+    controller.snapshot_xr = {"left": ident}
+    controller.snapshot_robot = {"left": ident}
+    controller.filter.add_data(np.array([0.3, 0.4]))
+
+    controller.set_mode(ControlMode.EE_DELTA)
+
+    assert controller.get_mode() == ControlMode.EE_DELTA
+    assert controller.active is False
+    assert controller.snapshot_xr == {}
+    assert controller.snapshot_robot == {}
+    assert len(controller.filter._data_queue) == 0
+
+
+def test_ik_controller_submit_ee_delta_no_solver_returns_current():
+    robot = DummyRobot()
+    controller = IKController(robot=robot)
+    controller.set_mode(ControlMode.EE_DELTA)
+    q0 = np.array([1.0, 2.0])
+
+    out = controller.submit_ee_delta(
+        {
+            "frame": "right",
+            "delta_pose": {
+                "position": {"x": 0.01, "y": 0.0, "z": 0.0},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            },
+        },
+        q0,
+    )
+
+    np.testing.assert_allclose(out, q0)
+
+
+def test_ik_controller_submit_ee_delta_missing_fk_frame_raises():
+    robot = MissingFrameRobot()
+    solver = DummySolver(np.array([1.0, 2.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    controller.set_mode(ControlMode.EE_DELTA)
+
+    with pytest.raises(ValueError, match="missing from forward kinematics"):
+        controller.submit_ee_delta(
+            {
+                "frame": "right",
+                "delta_pose": {
+                    "position": {"x": 0.01, "y": 0.0, "z": 0.0},
+                    "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                },
+            },
+            np.array([0.0, 0.0]),
+        )
