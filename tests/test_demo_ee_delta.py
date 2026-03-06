@@ -23,7 +23,7 @@ class DummyController:
         self.mode_history.append(self.mode)
 
     def submit_ee_delta(self, command, q_current):
-        assert command.frame == "right"
+        assert command["frame"] == "right"
         return np.array(q_current) + 1.0
 
 
