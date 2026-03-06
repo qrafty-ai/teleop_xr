@@ -4,6 +4,8 @@ import asyncio
 import threading
 import json
 import sys
+import os
+import select
 import numpy as np
 import tyro
 from loguru import logger as loguru_logger
@@ -32,6 +34,13 @@ from teleop_xr.events import (
     ButtonEventType,
     XRButton,
 )
+
+if sys.platform != "win32":
+    import termios as _termios
+    import tty as _tty
+else:
+    _termios = None
+    _tty = None
 
 if TYPE_CHECKING:
     from teleop_xr.ik.robot import BaseRobot
@@ -193,7 +202,7 @@ def generate_state_table(xr_state: Optional[XRState] = None) -> Table:
     return table
 
 
-def generate_event_panel(event_log: deque) -> Panel:
+def generate_event_panel(event_log: deque[ButtonEvent]) -> Panel:
     """Generate a rich panel showing recent button events."""
     if not event_log:
         content = Text(
@@ -325,7 +334,10 @@ def generate_ik_controls_panel() -> Panel:
     text.append(" to engage IK control\n", style="dim")
     text.append("• Double-click ", style="dim")
     text.append("DEADMAN (Grip)", style="bold magenta")
-    text.append(" to reset joints", style="dim")
+    text.append(" to reset joints\n", style="dim")
+    text.append("• Press ", style="dim")
+    text.append("D", style="bold cyan")
+    text.append(" to run right EE delta demo", style="dim")
 
     return Panel(
         text,
@@ -356,7 +368,7 @@ class IKWorker(threading.Thread):
         controller: "IKController",
         robot: "BaseRobot",
         teleop: Teleop,
-        state_container: dict,
+        state_container: dict[str, Any],
         logger: logging.Logger,
     ):
         super().__init__(daemon=True)
@@ -440,6 +452,84 @@ class IKWorker(threading.Thread):
 
             except Exception as e:
                 self.logger.error(f"Error in IK Worker: {e}")
+
+
+class TerminalKeyReader:
+    def __init__(self, enabled: bool):
+        self.enabled = enabled and sys.stdin.isatty() and sys.platform != "win32"
+        self._fd: Optional[int] = None
+        self._old_settings = None
+
+    def __enter__(self):
+        if not self.enabled:
+            return self
+        fd = sys.stdin.fileno()
+        self._fd = fd
+        assert _termios is not None
+        assert _tty is not None
+        self._old_settings = _termios.tcgetattr(fd)
+        _tty.setcbreak(fd)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        fd = self._fd
+        old_settings = self._old_settings
+        if not self.enabled or fd is None or old_settings is None:
+            return
+        assert _termios is not None
+        _termios.tcsetattr(fd, _termios.TCSADRAIN, old_settings)
+
+    def poll_key(self) -> Optional[str]:
+        fd = self._fd
+        if not self.enabled or fd is None:
+            return None
+        ready, _, _ = select.select([sys.stdin], [], [], 0.0)
+        if not ready:
+            return None
+        data = os.read(fd, 1)
+        if not data:
+            return None
+        return data.decode("utf-8", errors="ignore")
+
+
+def run_right_ee_delta_demo(
+    controller: "IKController",
+    robot: "BaseRobot",
+    teleop: Teleop,
+    q_current: np.ndarray,
+    teleop_loop: Optional[asyncio.AbstractEventLoop],
+    logger: logging.Logger,
+) -> np.ndarray:
+    original_mode = controller.get_mode()
+    original_mode_value = getattr(original_mode, "value", original_mode)
+    q_next = np.array(q_current)
+    try:
+        controller.set_mode("ee_delta")
+        logger.info("EE delta demo started")
+        for step_idx in range(40):
+            phase = (2.0 * np.pi * step_idx) / 40.0
+            command: dict[str, object] = {
+                "frame": "right",
+                "delta_pose": {
+                    "position": {"x": float(0.003 * np.sin(phase)), "y": 0.0, "z": 0.0},
+                    "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                },
+            }
+            q_next = np.array(controller.submit_ee_delta(command, q_next))
+            joint_dict = {
+                name: float(val)
+                for name, val in zip(robot.actuated_joint_names, q_next)
+            }
+            if teleop_loop and teleop_loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    teleop.publish_joint_state(joint_dict),
+                    teleop_loop,
+                )
+            time.sleep(0.03)
+        logger.info("EE delta demo finished")
+        return q_next
+    finally:
+        controller.set_mode(original_mode_value)
 
 
 def main():
@@ -605,6 +695,9 @@ def main():
         ik_worker = IKWorker(controller, robot, teleop, state_container, logger)
         ik_worker.start()
 
+    if controller is not None:
+        teleop.bind_control_mode_provider(lambda: controller.get_mode().value)
+
     # --- Teleop Callback ---
     def on_xr_update(_pose: np.ndarray, message: dict[str, Any]):
         try:
@@ -674,30 +767,69 @@ def main():
         # Wait a bit for startup
         time.sleep(0.5)
 
-        with Live(layout, refresh_per_second=10, console=console):
-            while t.is_alive():
-                # Common: Update State Table
-                layout["left"].update(generate_state_table(state_container["xr_state"]))
+        ee_demo_lock = threading.Lock()
+        ee_demo_running = False
 
-                if cli.mode == "ik" and controller and robot:
-                    layout["status"].update(
-                        generate_ik_status_table(
-                            state_container["active"],
-                            state_container["solve_time"],
-                            state_container["parse_time"],
-                            state_container["xr_state"],
-                            controller,
-                            robot,
-                            state_container.get("q", np.array([])),
-                        )
+        with TerminalKeyReader(enabled=True) as key_reader:
+            with Live(layout, refresh_per_second=10, console=console):
+                while t.is_alive():
+                    # Common: Update State Table
+                    layout["left"].update(
+                        generate_state_table(state_container["xr_state"])
                     )
-                    layout["controls"].update(generate_ik_controls_panel())
-                    layout["logs"].update(generate_log_panel(log_queue))
-                else:
-                    layout["events"].update(generate_event_panel(event_log))
-                    layout["help"].update(generate_help_panel())
 
-                time.sleep(0.1)
+                    if cli.mode == "ik" and controller and robot:
+                        layout["status"].update(
+                            generate_ik_status_table(
+                                state_container["active"],
+                                state_container["solve_time"],
+                                state_container["parse_time"],
+                                state_container["xr_state"],
+                                controller,
+                                robot,
+                                state_container.get("q", np.array([])),
+                            )
+                        )
+                        layout["controls"].update(generate_ik_controls_panel())
+                        layout["logs"].update(generate_log_panel(log_queue))
+
+                        key = key_reader.poll_key()
+                        if key and key.lower() == "d" and ik_worker is not None:
+                            with ee_demo_lock:
+                                if ee_demo_running:
+                                    logger.info("EE delta demo is already running")
+                                else:
+                                    ee_demo_running = True
+
+                                    def _run_demo() -> None:
+                                        nonlocal ee_demo_running
+                                        try:
+                                            current_q = np.array(
+                                                state_container.get("q", np.array([]))
+                                            )
+                                            if current_q.size == 0:
+                                                return
+                                            result_q = run_right_ee_delta_demo(
+                                                controller,
+                                                robot,
+                                                teleop,
+                                                current_q,
+                                                ik_worker.teleop_loop,
+                                                logger,
+                                            )
+                                            state_container["q"] = result_q
+                                        finally:
+                                            with ee_demo_lock:
+                                                ee_demo_running = False
+
+                                    threading.Thread(
+                                        target=_run_demo, daemon=True
+                                    ).start()
+                    else:
+                        layout["events"].update(generate_event_panel(event_log))
+                        layout["help"].update(generate_help_panel())
+
+                    time.sleep(0.1)
 
     except KeyboardInterrupt:
         logger.info("Shutting down...")

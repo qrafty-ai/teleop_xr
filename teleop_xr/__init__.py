@@ -241,6 +241,7 @@ class Teleop:
         self.__controller_ws: Optional[WebSocket] = None
         self.__controller_last_seen_s: float = 0.0
         self.__ws_client_ids: dict[WebSocket, str] = {}
+        self.__control_mode_provider: Optional[Callable[[], str]] = None
 
         self.__video_streams: list[VideoStreamConfig] = []
         self.__video_sources: dict[str, VideoSource] = video_sources or {}
@@ -273,6 +274,14 @@ class Teleop:
         - pose (np.ndarray): A 4x4 transformation matrix representing the pose.
         """
         self.__pose = pose
+
+    def bind_control_mode_provider(self, provider: Callable[[], str]) -> None:
+        self.__control_mode_provider = provider
+
+    def __is_teleop_mode_enabled(self) -> bool:
+        if self.__control_mode_provider is None:
+            return True
+        return self.__control_mode_provider() == "teleop"
 
     def __convert_pose_to_ros(self, pose: dict[str, Any] | None) -> None:
         if not pose or "position" not in pose or "orientation" not in pose:
@@ -686,6 +695,20 @@ class Teleop:
                         continue
 
                     if msg_type == "xr_state":
+                        if not self.__is_teleop_mode_enabled():
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "deny",
+                                        "data": {
+                                            "reason": "teleop_disabled",
+                                            "controller_client_id": self.__controller_client_id,
+                                        },
+                                    }
+                                )
+                            )
+                            continue
+
                         if not isinstance(client_id, str) or not client_id:
                             await websocket.send_text(
                                 json.dumps(
