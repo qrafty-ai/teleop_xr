@@ -1,5 +1,5 @@
 import logging
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock
 
@@ -215,12 +215,6 @@ def test_main_ik_tui_keybinding_runs_ee_demo(monkeypatch):
         def get_vis_config(self):
             return None
 
-    monkeypatch.setattr(
-        "teleop_xr.ik.loader.load_robot_class",
-        lambda _robot_class: FakeRobot,
-    )
-    monkeypatch.setattr("teleop_xr.ik.solver.PyrokiSolver", lambda _robot: object())
-
     class FakeController:
         def __init__(self, _robot, _solver):
             self._mode = SimpleNamespace(value="teleop")
@@ -228,7 +222,20 @@ def test_main_ik_tui_keybinding_runs_ee_demo(monkeypatch):
         def get_mode(self):
             return self._mode
 
-    monkeypatch.setattr("teleop_xr.ik.controller.IKController", FakeController)
+    fake_ik_pkg = ModuleType("teleop_xr.ik")
+    fake_ik_loader = ModuleType("teleop_xr.ik.loader")
+    fake_ik_solver = ModuleType("teleop_xr.ik.solver")
+    fake_ik_controller = ModuleType("teleop_xr.ik.controller")
+    setattr(fake_ik_loader, "load_robot_class", lambda _robot_class: FakeRobot)
+    setattr(fake_ik_solver, "PyrokiSolver", lambda _robot: object())
+    setattr(fake_ik_controller, "IKController", FakeController)
+
+    monkeypatch.setitem(demo_main.sys.modules, "teleop_xr.ik", fake_ik_pkg)
+    monkeypatch.setitem(demo_main.sys.modules, "teleop_xr.ik.loader", fake_ik_loader)
+    monkeypatch.setitem(demo_main.sys.modules, "teleop_xr.ik.solver", fake_ik_solver)
+    monkeypatch.setitem(
+        demo_main.sys.modules, "teleop_xr.ik.controller", fake_ik_controller
+    )
 
     class FakeTeleop:
         def __init__(self, settings):
