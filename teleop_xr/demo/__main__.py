@@ -202,7 +202,7 @@ def generate_state_table(xr_state: Optional[XRState] = None) -> Table:
     return table
 
 
-def generate_event_panel(event_log: deque) -> Panel:
+def generate_event_panel(event_log: deque[ButtonEvent]) -> Panel:
     """Generate a rich panel showing recent button events."""
     if not event_log:
         content = Text(
@@ -368,7 +368,7 @@ class IKWorker(threading.Thread):
         controller: "IKController",
         robot: "BaseRobot",
         teleop: Teleop,
-        state_container: dict,
+        state_container: dict[str, Any],
         logger: logging.Logger,
     ):
         super().__init__(daemon=True)
@@ -500,23 +500,21 @@ def run_right_ee_delta_demo(
     teleop_loop: Optional[asyncio.AbstractEventLoop],
     logger: logging.Logger,
 ) -> np.ndarray:
-    from teleop_xr.ik.commands import DeltaPose, EEDeltaCommand
-    from teleop_xr.ik.control_mode import ControlMode
-
     original_mode = controller.get_mode()
+    original_mode_value = getattr(original_mode, "value", original_mode)
     q_next = np.array(q_current)
     try:
-        controller.set_mode(ControlMode.EE_DELTA)
+        controller.set_mode("ee_delta")
         logger.info("EE delta demo started")
         for step_idx in range(40):
             phase = (2.0 * np.pi * step_idx) / 40.0
-            command = EEDeltaCommand(
-                frame="right",
-                delta_pose=DeltaPose(
-                    position={"x": float(0.003 * np.sin(phase)), "y": 0.0, "z": 0.0},
-                    orientation={"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
-                ),
-            )
+            command: dict[str, object] = {
+                "frame": "right",
+                "delta_pose": {
+                    "position": {"x": float(0.003 * np.sin(phase)), "y": 0.0, "z": 0.0},
+                    "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                },
+            }
             q_next = np.array(controller.submit_ee_delta(command, q_next))
             joint_dict = {
                 name: float(val)
@@ -531,7 +529,7 @@ def run_right_ee_delta_demo(
         logger.info("EE delta demo finished")
         return q_next
     finally:
-        controller.set_mode(original_mode)
+        controller.set_mode(original_mode_value)
 
 
 def main():
