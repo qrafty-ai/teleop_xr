@@ -26,5 +26,14 @@ Example:
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.solver import PyrokiSolver
 from teleop_xr.ik.controller import IKController
+from teleop_xr.ik.control_mode import ControlMode
+from teleop_xr.ik.commands import EEDeltaCommand, DeltaPose
 
-__all__ = ["BaseRobot", "PyrokiSolver", "IKController"]
+__all__ = [
+    "BaseRobot",
+    "PyrokiSolver",
+    "IKController",
+    "ControlMode",
+    "EEDeltaCommand",
+    "DeltaPose",
+]

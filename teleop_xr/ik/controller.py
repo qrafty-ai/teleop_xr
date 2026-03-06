@@ -6,6 +6,8 @@ from teleop_xr.utils.filter import WeightedMovingFilter
 from teleop_xr.messages import XRState, XRDeviceRole, XRHandedness, XRPose
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.solver import PyrokiSolver
+from teleop_xr.ik.commands import EEDeltaCommand
+from teleop_xr.ik.control_mode import ControlMode
 
 
 class IKController:
@@ -24,6 +26,7 @@ class IKController:
     snapshot_robot: dict[str, jaxlie.SE3]
     filter: WeightedMovingFilter | None
     _warned_unsupported: set[str]
+    _mode: ControlMode
 
     def __init__(
         self,
@@ -43,6 +46,7 @@ class IKController:
         self.solver = solver
         self.active = False
         self._warned_unsupported = set()
+        self._mode = ControlMode.TELEOP
 
         # Snapshots
         self.snapshot_xr = {}
@@ -56,6 +60,99 @@ class IKController:
             self.filter = WeightedMovingFilter(
                 filter_weights, data_size=len(default_config)
             )
+
+    def get_mode(self) -> ControlMode:
+        return self._mode
+
+    def set_mode(self, mode: ControlMode | str) -> None:
+        next_mode = ControlMode(mode)
+        if next_mode == self._mode:
+            return
+
+        self._mode = next_mode
+        self.active = False
+        self.snapshot_xr = {}
+        self.snapshot_robot = {}
+        if self.filter is not None:
+            self.filter.reset()
+
+    def _delta_pose_to_se3(self, command: EEDeltaCommand) -> jaxlie.SE3:
+        pose = command.delta_pose
+        translation = jnp.array(
+            [
+                pose.position.get("x", 0.0),
+                pose.position.get("y", 0.0),
+                pose.position.get("z", 0.0),
+            ]
+        )
+        rotation = jaxlie.SO3(
+            wxyz=jnp.array(
+                [
+                    pose.orientation.get("w", 1.0),
+                    pose.orientation.get("x", 0.0),
+                    pose.orientation.get("y", 0.0),
+                    pose.orientation.get("z", 0.0),
+                ]
+            )
+        )
+        return jaxlie.SE3.from_rotation_and_translation(rotation, translation)
+
+    def _compose_delta_target(
+        self, current: jaxlie.SE3, delta: jaxlie.SE3
+    ) -> jaxlie.SE3:
+        t_new = current.translation() + delta.translation()
+        q_new = delta.rotation() @ current.rotation()
+        return jaxlie.SE3.from_rotation_and_translation(q_new, t_new)
+
+    def submit_ee_delta(
+        self, command: EEDeltaCommand | dict[str, object], q_current: np.ndarray
+    ) -> np.ndarray:
+        if self._mode != ControlMode.EE_DELTA:
+            raise RuntimeError("ee_delta command rejected while not in ee_delta mode")
+
+        if self.solver is None:
+            return q_current
+
+        ee_command = (
+            command
+            if isinstance(command, EEDeltaCommand)
+            else EEDeltaCommand.model_validate(command)
+        )
+        if ee_command.frame not in self.robot.supported_frames:
+            raise ValueError(
+                f"Frame '{ee_command.frame}' is not supported by robot frames {self.robot.supported_frames}"
+            )
+
+        current_fk = self.robot.forward_kinematics(jnp.asarray(q_current))
+        if ee_command.frame not in current_fk:
+            raise ValueError(
+                f"Frame '{ee_command.frame}' missing from forward kinematics"
+            )
+
+        targets: dict[str, jaxlie.SE3 | None] = {
+            "left": current_fk.get("left"),
+            "right": current_fk.get("right"),
+            "head": current_fk.get("head"),
+        }
+        delta = self._delta_pose_to_se3(ee_command)
+        targets[ee_command.frame] = self._compose_delta_target(
+            current_fk[ee_command.frame], delta
+        )
+
+        new_config_jax = self.solver.solve(
+            targets["left"],
+            targets["right"],
+            targets["head"],
+            jnp.asarray(q_current),
+        )
+        new_config = np.array(new_config_jax)
+
+        if self.filter is not None:
+            self.filter.add_data(new_config)
+            if self.filter.data_ready():
+                return self.filter.filtered_data
+
+        return new_config
 
     def xr_pose_to_se3(self, pose: XRPose) -> jaxlie.SE3:
         """
@@ -178,6 +275,9 @@ class IKController:
         Returns:
             np.ndarray: The new (possibly filtered) joint configuration.
         """
+        if self._mode != ControlMode.TELEOP:
+            return q_current
+
         is_deadman_active = self._check_deadman(state)
         curr_xr_poses = self._get_device_poses(state)
 

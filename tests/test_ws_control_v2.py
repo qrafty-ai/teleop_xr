@@ -6,7 +6,10 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="Fragile networking tests on Windows CI"
 )
 
-from fastapi.testclient import TestClient  # noqa: E402
+pytest.importorskip("uvicorn")
+fastapi_testclient = pytest.importorskip("fastapi.testclient")
+TestClient = fastapi_testclient.TestClient
+
 from teleop_xr import Teleop  # noqa: E402
 from teleop_xr.config import TeleopSettings  # noqa: E402
 
@@ -44,3 +47,16 @@ def test_ws_control_claim_deny_and_disconnect_release():
         assert status3["type"] == "control_status"
         assert status3["data"]["in_control"] is True
         assert status3["data"]["controller_client_id"] == "c2"
+
+
+def test_ws_xr_state_denied_when_teleop_mode_disabled():
+    teleop: Any = Teleop(TeleopSettings())
+    teleop.bind_control_mode_provider(lambda: "ee_delta")
+    client = TestClient(teleop._Teleop__app)
+
+    with client.websocket_connect("/ws") as ws:
+        assert ws.receive_json()["type"] == "config"
+        ws.send_json({"type": "xr_state", "client_id": "c1", "data": {"devices": []}})
+        deny = ws.receive_json()
+        assert deny["type"] == "deny"
+        assert deny["data"]["reason"] == "teleop_disabled"
