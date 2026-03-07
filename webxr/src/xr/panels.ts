@@ -26,6 +26,7 @@ import {
 	PlaneGeometry,
 	VideoTexture,
 } from "three";
+import { useAppStore } from "../lib/store";
 import { GlobalRefs } from "./global_refs";
 
 type MaterialWithMap = Material & {
@@ -436,5 +437,39 @@ export class PanelHoverSystem extends createSystem({
 				mat.color.setRGB(origR, origG, origB);
 			}
 		});
+	}
+}
+
+export class PanelDragLockSystem extends createSystem({
+	handles: {
+		required: [PanelHandle],
+	},
+}) {
+	update() {
+		const teleopEngaged = useAppStore.getState().teleopEngaged;
+
+		for (const entity of this.queries.handles.entities) {
+			const hasGrab = entity.hasComponent(DistanceGrabbable);
+			const hasInteractable = entity.hasComponent(Interactable);
+
+			if (teleopEngaged) {
+				if (hasGrab) {
+					entity.removeComponent(DistanceGrabbable);
+				}
+				if (hasInteractable) {
+					entity.removeComponent(Interactable);
+				}
+				continue;
+			}
+
+			if (!hasInteractable) {
+				entity.addComponent(Interactable);
+			}
+			if (!hasGrab) {
+				entity.addComponent(DistanceGrabbable, {
+					movementMode: MovementMode.MoveFromTarget,
+				});
+			}
+		}
 	}
 }

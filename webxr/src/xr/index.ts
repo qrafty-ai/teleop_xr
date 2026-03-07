@@ -41,6 +41,7 @@ import {
 	CameraPanel,
 	CameraPanelSystem,
 	ControllerCameraPanel,
+	PanelDragLockSystem,
 	PanelHoverSystem,
 } from "./panels";
 import { RobotModelSystem } from "./robot_system";
@@ -384,6 +385,7 @@ export const initWorld = async (
 	world.registerSystem(CameraSettingsSystem);
 	world.registerSystem(CameraPanelSystem);
 	world.registerSystem(PanelHoverSystem);
+	world.registerSystem(PanelDragLockSystem);
 
 	// Register controller panels with their raySpaces once XR session starts
 	// The system will handle waiting for raySpaces to be available
