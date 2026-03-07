@@ -10,7 +10,7 @@ import numpy as np
 import tyro
 from loguru import logger as loguru_logger
 from dataclasses import dataclass, field
-from typing import Any, Deque, Optional, Union, Dict, Literal, TYPE_CHECKING
+from typing import Any, Deque, Optional, Union, Dict, Literal, TYPE_CHECKING, cast
 from collections import deque
 
 from rich.console import Console, Group
@@ -338,6 +338,9 @@ def generate_ik_controls_panel() -> Panel:
     text.append("• Press ", style="dim")
     text.append("D", style="bold cyan")
     text.append(" to run right EE delta demo", style="dim")
+    text.append("\n• Press ", style="dim")
+    text.append("A", style="bold cyan")
+    text.append(" to run right EE absolute demo", style="dim")
 
     return Panel(
         text,
@@ -527,6 +530,63 @@ def run_right_ee_delta_demo(
                 )
             time.sleep(0.03)
         logger.info("EE delta demo finished")
+        return q_next
+    finally:
+        controller.set_mode(original_mode_value)
+
+
+def run_right_ee_absolute_demo(
+    controller: "IKController",
+    robot: "BaseRobot",
+    teleop: Teleop,
+    q_current: np.ndarray,
+    teleop_loop: Optional[asyncio.AbstractEventLoop],
+    logger: logging.Logger,
+) -> np.ndarray:
+    original_mode = controller.get_mode()
+    original_mode_value = getattr(original_mode, "value", original_mode)
+    q_next = np.array(q_current)
+    try:
+        controller.set_mode("ee_absolute")
+        logger.info("EE absolute demo started")
+        current_fk = robot.forward_kinematics(cast(Any, q_next))
+        if "right" not in current_fk:
+            raise ValueError("Frame 'right' missing from forward kinematics")
+
+        base_pose = current_fk["right"]
+        base_position = np.asarray(base_pose.translation(), dtype=float)
+        base_orientation = np.asarray(base_pose.rotation().wxyz, dtype=float)
+
+        for step_idx in range(40):
+            phase = (2.0 * np.pi * step_idx) / 40.0
+            command: dict[str, object] = {
+                "frame": "right",
+                "target_pose": {
+                    "position": {
+                        "x": float(base_position[0] + 0.03 * np.sin(phase)),
+                        "y": float(base_position[1]),
+                        "z": float(base_position[2]),
+                    },
+                    "orientation": {
+                        "w": float(base_orientation[0]),
+                        "x": float(base_orientation[1]),
+                        "y": float(base_orientation[2]),
+                        "z": float(base_orientation[3]),
+                    },
+                },
+            }
+            q_next = np.array(controller.submit_ee_absolute(command, q_next))
+            joint_dict = {
+                name: float(val)
+                for name, val in zip(robot.actuated_joint_names, q_next)
+            }
+            if teleop_loop and teleop_loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    teleop.publish_joint_state(joint_dict),
+                    teleop_loop,
+                )
+            time.sleep(0.03)
+        logger.info("EE absolute demo finished")
         return q_next
     finally:
         controller.set_mode(original_mode_value)
@@ -745,12 +805,14 @@ def main():
     layout = Layout()
 
     if cli.mode == "ik":
-        # Split: Left (State), Right (Top: IK Status, Middle: Controls, Bottom: Logs)
         layout.split_row(Layout(name="left", ratio=1), Layout(name="right", ratio=1))
+        layout["left"].split_column(
+            Layout(name="state", ratio=2),
+            Layout(name="logs", ratio=3),
+        )
         layout["right"].split_column(
             Layout(name="status", ratio=2),
-            Layout(name="controls", size=5),
-            Layout(name="logs", ratio=3),
+            Layout(name="controls", size=6),
         )
     else:
         # Split: Left (State), Right (Top: Events, Bottom: Legend)
@@ -774,9 +836,14 @@ def main():
             with Live(layout, refresh_per_second=10, console=console):
                 while t.is_alive():
                     # Common: Update State Table
-                    layout["left"].update(
-                        generate_state_table(state_container["xr_state"])
-                    )
+                    if cli.mode == "ik":
+                        layout["state"].update(
+                            generate_state_table(state_container["xr_state"])
+                        )
+                    else:
+                        layout["left"].update(
+                            generate_state_table(state_container["xr_state"])
+                        )
 
                     if cli.mode == "ik" and controller and robot:
                         layout["status"].update(
@@ -794,12 +861,13 @@ def main():
                         layout["logs"].update(generate_log_panel(log_queue))
 
                         key = key_reader.poll_key()
-                        if key and key.lower() == "d" and ik_worker is not None:
+                        if key and key.lower() in {"d", "a"} and ik_worker is not None:
                             with ee_demo_lock:
                                 if ee_demo_running:
-                                    logger.info("EE delta demo is already running")
+                                    logger.info("EE demo is already running")
                                 else:
                                     ee_demo_running = True
+                                    demo_key = key.lower()
 
                                     def _run_demo() -> None:
                                         nonlocal ee_demo_running
@@ -809,14 +877,24 @@ def main():
                                             )
                                             if current_q.size == 0:
                                                 return
-                                            result_q = run_right_ee_delta_demo(
-                                                controller,
-                                                robot,
-                                                teleop,
-                                                current_q,
-                                                ik_worker.teleop_loop,
-                                                logger,
-                                            )
+                                            if demo_key == "d":
+                                                result_q = run_right_ee_delta_demo(
+                                                    controller,
+                                                    robot,
+                                                    teleop,
+                                                    current_q,
+                                                    ik_worker.teleop_loop,
+                                                    logger,
+                                                )
+                                            else:
+                                                result_q = run_right_ee_absolute_demo(
+                                                    controller,
+                                                    robot,
+                                                    teleop,
+                                                    current_q,
+                                                    ik_worker.teleop_loop,
+                                                    logger,
+                                                )
                                             state_container["q"] = result_q
                                         finally:
                                             with ee_demo_lock:

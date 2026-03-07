@@ -15,3 +15,8 @@ class DeltaPose(BaseModel):
 class EEDeltaCommand(BaseModel):
     frame: Literal["left", "right", "head"] = "right"
     delta_pose: DeltaPose = Field(default_factory=DeltaPose)
+
+
+class EEAbsoluteCommand(BaseModel):
+    frame: Literal["left", "right", "head"] = "right"
+    target_pose: DeltaPose
