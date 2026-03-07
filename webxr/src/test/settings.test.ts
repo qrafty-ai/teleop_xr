@@ -29,6 +29,7 @@ describe("useAppStore", () => {
 			},
 			connectionStatus: "disconnected",
 			teleopLifecycle: "disconnected",
+			teleopEngaged: false,
 		});
 	});
 
@@ -41,6 +42,7 @@ describe("useAppStore", () => {
 		expect(state.robotResetTrigger).toBe(0);
 		expect(state.connectionStatus).toBe("disconnected");
 		expect(state.teleopLifecycle).toBe("disconnected");
+		expect(state.teleopEngaged).toBe(false);
 	});
 
 	it("should update advancedSettings via setAdvancedSettings", () => {
@@ -160,5 +162,13 @@ describe("useAppStore", () => {
 
 		useAppStore.getState().setTeleopLifecycle("ready");
 		expect(useAppStore.getState().teleopLifecycle).toBe("ready");
+	});
+
+	it("should update teleop engaged state", () => {
+		useAppStore.getState().setTeleopEngaged(true);
+		expect(useAppStore.getState().teleopEngaged).toBe(true);
+
+		useAppStore.getState().setTeleopEngaged(false);
+		expect(useAppStore.getState().teleopEngaged).toBe(false);
 	});
 });

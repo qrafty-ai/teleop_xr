@@ -26,7 +26,12 @@ import {
 	PlaneGeometry,
 	VideoTexture,
 } from "three";
+import { useAppStore } from "../lib/store";
 import { GlobalRefs } from "./global_refs";
+
+type MaterialWithMap = Material & {
+	map?: { dispose: () => void };
+};
 
 export const CameraPanelInfo = createComponent("CameraPanelInfo", {
 	label: { type: Types.String, default: "" },
@@ -168,34 +173,12 @@ export class CameraPanel extends DraggablePanel {
 	}
 
 	dispose() {
-		if (this.videoElement) {
-			this.videoElement.pause();
-			this.videoElement.srcObject = null;
-			this.videoElement.remove();
-			this.videoElement = null;
-		}
-
-		if (this.videoMesh) {
-			this.videoMesh.geometry.dispose();
-			if (Array.isArray(this.videoMesh.material)) {
-				this.videoMesh.material.forEach((m) => {
-					m.dispose();
-				});
-			} else {
-				(this.videoMesh.material as Material).dispose();
-			}
-			if (this.panelEntity?.object3D) {
-				this.panelEntity.object3D.remove(this.videoMesh);
-			}
-			this.videoMesh = null;
-		}
-
-		this._hasVideoTrack = false;
+		this.clearVideoTrack();
 		super.dispose();
 	}
 
 	setVideoTrack(track: MediaStreamTrack) {
-		if (this.videoMesh) return; // Already set
+		this.clearVideoTrack();
 
 		this._hasVideoTrack = true;
 		const stream = new MediaStream([track]);
@@ -225,6 +208,36 @@ export class CameraPanel extends DraggablePanel {
 		if (this.panelEntity.object3D) {
 			this.panelEntity.object3D.add(this.videoMesh);
 		}
+	}
+
+	private clearVideoTrack() {
+		if (this.videoElement) {
+			this.videoElement.pause();
+			this.videoElement.srcObject = null;
+			this.videoElement.remove();
+			this.videoElement = null;
+		}
+
+		if (this.videoMesh) {
+			this.videoMesh.geometry.dispose();
+			if (Array.isArray(this.videoMesh.material)) {
+				this.videoMesh.material.forEach((material) => {
+					const texturedMaterial = material as MaterialWithMap;
+					texturedMaterial.map?.dispose();
+					texturedMaterial.dispose();
+				});
+			} else {
+				const material = this.videoMesh.material as MaterialWithMap;
+				material.map?.dispose();
+				material.dispose();
+			}
+			if (this.panelEntity?.object3D) {
+				this.panelEntity.object3D.remove(this.videoMesh);
+			}
+			this.videoMesh = null;
+		}
+
+		this._hasVideoTrack = false;
 	}
 }
 
@@ -268,7 +281,7 @@ export class ControllerCameraPanel {
 	}
 
 	setVideoTrack(track: MediaStreamTrack) {
-		if (this.videoMesh) return; // Already set
+		this.clearVideoTrack();
 
 		this._hasVideoTrack = true;
 		if (this.entity.object3D) {
@@ -295,6 +308,39 @@ export class ControllerCameraPanel {
 		this.videoMesh.renderOrder = 1;
 		if (this.entity.object3D) {
 			this.entity.object3D.add(this.videoMesh);
+		}
+	}
+
+	private clearVideoTrack() {
+		if (this.videoElement) {
+			this.videoElement.pause();
+			this.videoElement.srcObject = null;
+			this.videoElement.remove();
+			this.videoElement = null;
+		}
+
+		if (this.videoMesh) {
+			this.videoMesh.geometry.dispose();
+			if (Array.isArray(this.videoMesh.material)) {
+				this.videoMesh.material.forEach((material) => {
+					const texturedMaterial = material as MaterialWithMap;
+					texturedMaterial.map?.dispose();
+					texturedMaterial.dispose();
+				});
+			} else {
+				const material = this.videoMesh.material as MaterialWithMap;
+				material.map?.dispose();
+				material.dispose();
+			}
+			if (this.entity.object3D) {
+				this.entity.object3D.remove(this.videoMesh);
+			}
+			this.videoMesh = null;
+		}
+
+		this._hasVideoTrack = false;
+		if (this.entity.object3D) {
+			this.entity.object3D.visible = false;
 		}
 	}
 }
@@ -391,5 +437,39 @@ export class PanelHoverSystem extends createSystem({
 				mat.color.setRGB(origR, origG, origB);
 			}
 		});
+	}
+}
+
+export class PanelDragLockSystem extends createSystem({
+	handles: {
+		required: [PanelHandle],
+	},
+}) {
+	update() {
+		const teleopEngaged = useAppStore.getState().teleopEngaged;
+
+		for (const entity of this.queries.handles.entities) {
+			const hasGrab = entity.hasComponent(DistanceGrabbable);
+			const hasInteractable = entity.hasComponent(Interactable);
+
+			if (teleopEngaged) {
+				if (hasGrab) {
+					entity.removeComponent(DistanceGrabbable);
+				}
+				if (hasInteractable) {
+					entity.removeComponent(Interactable);
+				}
+				continue;
+			}
+
+			if (!hasInteractable) {
+				entity.addComponent(Interactable);
+			}
+			if (!hasGrab) {
+				entity.addComponent(DistanceGrabbable, {
+					movementMode: MovementMode.MoveFromTarget,
+				});
+			}
+		}
 	}
 }

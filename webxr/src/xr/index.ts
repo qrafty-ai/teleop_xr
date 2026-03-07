@@ -41,6 +41,7 @@ import {
 	CameraPanel,
 	CameraPanelSystem,
 	ControllerCameraPanel,
+	PanelDragLockSystem,
 	PanelHoverSystem,
 } from "./panels";
 import { RobotModelSystem } from "./robot_system";
@@ -354,23 +355,21 @@ export const initWorld = async (
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const videoWsUrl = `${protocol}//${window.location.host}/ws`;
 
-	let trackCount = 0;
 	// Assign to a variable that can be cleaned up
 	const videoClient = new VideoClient(
 		videoWsUrl,
 		(_stats) => {},
-		(track, trackId) => {
+		(track, trackId, trackIndex) => {
 			console.log(
-				`[Video] New track received. ID: ${trackId}, Index: ${trackCount}, ConfigReceived: ${configReceived}`,
+				`[Video] New track received. ID: ${trackId}, Index: ${trackIndex}, ConfigReceived: ${configReceived}`,
 			);
 
 			if (!configReceived) {
-				pendingTracks.push({ track, trackId, index: trackCount });
-				console.log(`[Video] Queued track ${trackCount} (awaiting config)`);
+				pendingTracks.push({ track, trackId, index: trackIndex });
+				console.log(`[Video] Queued track ${trackIndex} (awaiting config)`);
 			} else {
-				assignTrackToPanel(track, trackId, trackCount);
+				assignTrackToPanel(track, trackId, trackIndex);
 			}
-			trackCount++;
 		},
 	);
 
@@ -386,6 +385,7 @@ export const initWorld = async (
 	world.registerSystem(CameraSettingsSystem);
 	world.registerSystem(CameraPanelSystem);
 	world.registerSystem(PanelHoverSystem);
+	world.registerSystem(PanelDragLockSystem);
 
 	// Register controller panels with their raySpaces once XR session starts
 	// The system will handle waiting for raySpaces to be available

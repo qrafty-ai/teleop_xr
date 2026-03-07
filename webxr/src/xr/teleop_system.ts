@@ -60,6 +60,7 @@ export class TeleopSystem extends createSystem({}) {
 		this.ws.onclose = () => {
 			this.updateStatus(false);
 			this.setLifecycle("reconnecting");
+			useAppStore.getState().setTeleopEngaged(false);
 			this.scheduleReconnect();
 		};
 
@@ -226,6 +227,7 @@ export class TeleopSystem extends createSystem({}) {
 		const input = (this as any).input ?? this.world.input;
 
 		const appState = useAppStore.getState();
+		appState.setTeleopEngaged(this.isTeleopEngaged(input));
 		const { speed, turnSpeed, precisionMode } = appState.teleopSettings;
 		const teleopSettings: TeleopSettings = {
 			speed,
@@ -266,6 +268,21 @@ export class TeleopSystem extends createSystem({}) {
 	) {
 		const latencyMsValue = Number.isFinite(latency) ? latency : 0;
 		setTeleopTelemetry({ fps, latencyMs: latencyMsValue });
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny: legacy
+	private isTeleopEngaged(input: any): boolean {
+		const leftButtons = input?.gamepads?.left?.gamepad?.buttons;
+		const rightButtons = input?.gamepads?.right?.gamepad?.buttons;
+
+		const leftSqueezed = Boolean(
+			leftButtons?.length > 1 && leftButtons[1]?.pressed,
+		);
+		const rightSqueezed = Boolean(
+			rightButtons?.length > 1 && rightButtons[1]?.pressed,
+		);
+
+		return leftSqueezed && rightSqueezed;
 	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: legacy
