@@ -62,9 +62,13 @@ class IKController:
             )
 
     def get_mode(self) -> ControlMode:
+        """Return the active IK control mode."""
+
         return self._mode
 
     def set_mode(self, mode: ControlMode | str) -> None:
+        """Switch control modes and clear teleop/controller state for the new mode."""
+
         next_mode = ControlMode(mode)
         if next_mode == self._mode:
             return
@@ -106,6 +110,8 @@ class IKController:
     def submit_ee_delta(
         self, command: EEDeltaCommand | dict[str, object], q_current: np.ndarray
     ) -> np.ndarray:
+        """Apply a relative end-effector command while in `ee_delta` mode."""
+
         if self._mode != ControlMode.EE_DELTA:
             raise RuntimeError("ee_delta command rejected while not in ee_delta mode")
 
@@ -156,6 +162,8 @@ class IKController:
     def submit_ee_absolute(
         self, command: EEAbsoluteCommand | dict[str, object], q_current: np.ndarray
     ) -> np.ndarray:
+        """Apply an absolute end-effector target while in `ee_absolute` mode."""
+
         if self._mode != ControlMode.EE_ABSOLUTE:
             raise RuntimeError(
                 "ee_absolute command rejected while not in ee_absolute mode"

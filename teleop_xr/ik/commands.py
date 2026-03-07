@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 
 class DeltaPose(BaseModel):
+    """Pose payload used by explicit end-effector command modes."""
+
     position: dict[str, float] = Field(
         default_factory=lambda: {"x": 0.0, "y": 0.0, "z": 0.0}
     )
@@ -13,10 +15,14 @@ class DeltaPose(BaseModel):
 
 
 class EEDeltaCommand(BaseModel):
+    """Relative end-effector command for `ee_delta` mode."""
+
     frame: Literal["left", "right", "head"] = "right"
     delta_pose: DeltaPose = Field(default_factory=DeltaPose)
 
 
 class EEAbsoluteCommand(BaseModel):
+    """Absolute end-effector target command for `ee_absolute` mode."""
+
     frame: Literal["left", "right", "head"] = "right"
     target_pose: DeltaPose
