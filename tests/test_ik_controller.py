@@ -18,7 +18,7 @@ from loguru import logger  # noqa: E402
 from teleop_xr.ik.robot import BaseRobot  # noqa: E402
 from teleop_xr.ik.solver import PyrokiSolver  # noqa: E402
 from teleop_xr.ik.controller import IKController  # noqa: E402
-from teleop_xr.ik.commands import EEDeltaCommand  # noqa: E402
+from teleop_xr.ik.commands import EEAbsoluteCommand, EEDeltaCommand  # noqa: E402
 from teleop_xr.ik.control_mode import ControlMode  # noqa: E402
 from teleop_xr.messages import (  # noqa: E402
     XRButtonState,
@@ -296,6 +296,32 @@ def test_ik_controller_step_noop_outside_teleop_mode():
     assert controller.active is False
 
 
+def test_ik_controller_step_noop_outside_teleop_mode_ee_absolute():
+    robot = DummyRobot()
+    solver = DummySolver(np.array([7.0, 8.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+
+    left = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.LEFT,
+        gripPose=_pose(0.0, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    right = XRInputSource(
+        role=XRDeviceRole.CONTROLLER,
+        handedness=XRHandedness.RIGHT,
+        gripPose=_pose(0.1, 0.0, 0.0),
+        gamepad=_deadman_gamepad(True),
+    )
+    state = XRState(timestamp_unix_ms=1.0, devices=[left, right])
+    q0 = np.array([0.0, 0.0])
+
+    out = controller.step(state, q0)
+    np.testing.assert_allclose(out, q0)
+    assert controller.active is False
+
+
 def test_ik_controller_submit_ee_delta_requires_mode_switch():
     robot = DummyRobot()
     solver = DummySolver(np.array([2.0, 3.0]))
@@ -413,6 +439,91 @@ def test_ik_controller_submit_ee_delta_missing_fk_frame_raises():
                 "frame": "right",
                 "delta_pose": {
                     "position": {"x": 0.01, "y": 0.0, "z": 0.0},
+                    "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                },
+            },
+            np.array([0.0, 0.0]),
+        )
+
+
+def test_ik_controller_submit_ee_absolute_requires_mode_switch():
+    robot = DummyRobot()
+    solver = DummySolver(np.array([2.0, 3.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    q0 = np.array([0.0, 0.0])
+    command = EEAbsoluteCommand.model_validate(
+        {
+            "frame": "right",
+            "target_pose": {
+                "position": {"x": 0.3, "y": 0.1, "z": 0.2},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            },
+        }
+    )
+
+    with pytest.raises(RuntimeError):
+        controller.submit_ee_absolute(command, q0)
+
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+    out = controller.submit_ee_absolute(command, q0)
+    np.testing.assert_allclose(out, [2.0, 3.0])
+
+
+def test_ik_controller_submit_ee_absolute_rejects_unsupported_frame():
+    robot = DummyRobot()
+    solver = DummySolver(np.array([1.0, 1.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+
+    with patch.object(
+        DummyRobot, "supported_frames", new_callable=PropertyMock
+    ) as mock_frames:
+        mock_frames.return_value = {"left"}
+        with pytest.raises(ValueError):
+            controller.submit_ee_absolute(
+                {
+                    "frame": "right",
+                    "target_pose": {
+                        "position": {"x": 0.3, "y": 0.1, "z": 0.2},
+                        "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                    },
+                },
+                np.array([0.0, 0.0]),
+            )
+
+
+def test_ik_controller_submit_ee_absolute_no_solver_returns_current():
+    robot = DummyRobot()
+    controller = IKController(robot=robot)
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+    q0 = np.array([1.0, 2.0])
+
+    out = controller.submit_ee_absolute(
+        {
+            "frame": "right",
+            "target_pose": {
+                "position": {"x": 0.3, "y": 0.1, "z": 0.2},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            },
+        },
+        q0,
+    )
+
+    np.testing.assert_allclose(out, q0)
+
+
+def test_ik_controller_submit_ee_absolute_missing_fk_frame_raises():
+    robot = MissingFrameRobot()
+    solver = DummySolver(np.array([1.0, 2.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+
+    with pytest.raises(ValueError, match="missing from forward kinematics"):
+        controller.submit_ee_absolute(
+            {
+                "frame": "right",
+                "target_pose": {
+                    "position": {"x": 0.3, "y": 0.1, "z": 0.2},
                     "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
                 },
             },

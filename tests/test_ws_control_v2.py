@@ -49,9 +49,10 @@ def test_ws_control_claim_deny_and_disconnect_release():
         assert status3["data"]["controller_client_id"] == "c2"
 
 
-def test_ws_xr_state_denied_when_teleop_mode_disabled():
+@pytest.mark.parametrize("mode", ["ee_delta", "ee_absolute"])
+def test_ws_xr_state_denied_when_teleop_mode_disabled(mode: str):
     teleop: Any = Teleop(TeleopSettings())
-    teleop.bind_control_mode_provider(lambda: "ee_delta")
+    teleop.bind_control_mode_provider(lambda: mode)
     client = TestClient(teleop._Teleop__app)
 
     with client.websocket_connect("/ws") as ws:

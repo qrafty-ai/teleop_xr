@@ -6,7 +6,7 @@ from teleop_xr.utils.filter import WeightedMovingFilter
 from teleop_xr.messages import XRState, XRDeviceRole, XRHandedness, XRPose
 from teleop_xr.ik.robot import BaseRobot
 from teleop_xr.ik.solver import PyrokiSolver
-from teleop_xr.ik.commands import EEDeltaCommand
+from teleop_xr.ik.commands import DeltaPose, EEDeltaCommand, EEAbsoluteCommand
 from teleop_xr.ik.control_mode import ControlMode
 
 
@@ -62,9 +62,13 @@ class IKController:
             )
 
     def get_mode(self) -> ControlMode:
+        """Return the active IK control mode."""
+
         return self._mode
 
     def set_mode(self, mode: ControlMode | str) -> None:
+        """Switch control modes and clear teleop/controller state for the new mode."""
+
         next_mode = ControlMode(mode)
         if next_mode == self._mode:
             return
@@ -76,8 +80,7 @@ class IKController:
         if self.filter is not None:
             self.filter.reset()
 
-    def _delta_pose_to_se3(self, command: EEDeltaCommand) -> jaxlie.SE3:
-        pose = command.delta_pose
+    def _pose_to_se3(self, pose: DeltaPose) -> jaxlie.SE3:
         translation = jnp.array(
             [
                 pose.position.get("x", 0.0),
@@ -107,6 +110,8 @@ class IKController:
     def submit_ee_delta(
         self, command: EEDeltaCommand | dict[str, object], q_current: np.ndarray
     ) -> np.ndarray:
+        """Apply a relative end-effector command while in `ee_delta` mode."""
+
         if self._mode != ControlMode.EE_DELTA:
             raise RuntimeError("ee_delta command rejected while not in ee_delta mode")
 
@@ -134,10 +139,61 @@ class IKController:
             "right": current_fk.get("right"),
             "head": current_fk.get("head"),
         }
-        delta = self._delta_pose_to_se3(ee_command)
+        delta = self._pose_to_se3(ee_command.delta_pose)
         targets[ee_command.frame] = self._compose_delta_target(
             current_fk[ee_command.frame], delta
         )
+
+        new_config_jax = self.solver.solve(
+            targets["left"],
+            targets["right"],
+            targets["head"],
+            jnp.asarray(q_current),
+        )
+        new_config = np.array(new_config_jax)
+
+        if self.filter is not None:
+            self.filter.add_data(new_config)
+            if self.filter.data_ready():
+                return self.filter.filtered_data
+
+        return new_config
+
+    def submit_ee_absolute(
+        self, command: EEAbsoluteCommand | dict[str, object], q_current: np.ndarray
+    ) -> np.ndarray:
+        """Apply an absolute end-effector target while in `ee_absolute` mode."""
+
+        if self._mode != ControlMode.EE_ABSOLUTE:
+            raise RuntimeError(
+                "ee_absolute command rejected while not in ee_absolute mode"
+            )
+
+        if self.solver is None:
+            return q_current
+
+        ee_command = (
+            command
+            if isinstance(command, EEAbsoluteCommand)
+            else EEAbsoluteCommand.model_validate(command)
+        )
+        if ee_command.frame not in self.robot.supported_frames:
+            raise ValueError(
+                f"Frame '{ee_command.frame}' is not supported by robot frames {self.robot.supported_frames}"
+            )
+
+        current_fk = self.robot.forward_kinematics(jnp.asarray(q_current))
+        if ee_command.frame not in current_fk:
+            raise ValueError(
+                f"Frame '{ee_command.frame}' missing from forward kinematics"
+            )
+
+        targets: dict[str, jaxlie.SE3 | None] = {
+            "left": current_fk.get("left"),
+            "right": current_fk.get("right"),
+            "head": current_fk.get("head"),
+        }
+        targets[ee_command.frame] = self._pose_to_se3(ee_command.target_pose)
 
         new_config_jax = self.solver.solve(
             targets["left"],

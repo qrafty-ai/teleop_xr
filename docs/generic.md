@@ -126,20 +126,35 @@ If you need to feed frames from ROS topics, file playback, or other sources,
 subclass `ExternalVideoSource` or call `put_frame` on it directly to inject
 numpy arrays into the stream manager.
 
-## 5. IK / Teleoperation Algorithm
+## 5. IK Control Stack
 
-The modular IK stack allows you to map 6DoF XR poses directly to robot joint
-configurations using a JAX-powered optimizer.
+The modular IK stack maps 6DoF XR poses and explicit end-effector commands to
+robot joint configurations using a JAX-powered optimizer.
 
 ### Modular Components
 
 - **`BaseRobot`**: Abstract class where you define your robot's kinematics and
   cost functions.
 - **`PyrokiSolver`**: High-performance solver that executes the optimization.
-- **`IKController`**: Manages engagement logic (deadman switch) and relative
-  motion snapshots.
+- **`IKController`**: Owns teleop engagement, mode switching, relative-motion
+  snapshots, and explicit end-effector command execution.
 
-### Implementation Example
+### Control Modes
+
+`IKController` exposes three control modes:
+
+- **`teleop`**: The default live XR path. `controller.step(...)` applies the
+  deadman rule and relative-motion teleoperation snapshots.
+- **`ee_delta`**: Accepts explicit relative end-effector deltas through
+  `controller.submit_ee_delta(...)`.
+- **`ee_absolute`**: Accepts explicit absolute end-effector targets through
+  `controller.submit_ee_absolute(...)`.
+
+When `Teleop.bind_control_mode_provider(...)` is connected to the controller,
+non-`teleop` modes intentionally block live XR teleop input so scripted
+commands do not race with headset updates.
+
+### Teleop Example
 
 ```python
 import numpy as np
@@ -159,12 +174,48 @@ q_current = robot.get_default_config()
 def teleop_loop(xr_state):
     global q_current
 
-    # IKController handles relative motion and deadman logic
-    # Returns optimized joint positions (q)
     q_new = controller.step(xr_state, q_current)
 
     q_current = q_new
     send_to_hardware(q_current)
+```
+
+### Explicit Command Example
+
+```python
+import numpy as np
+from teleop_xr.ik import (
+    ControlMode,
+    EEAbsoluteCommand,
+    EEDeltaCommand,
+    IKController,
+)
+
+controller.set_mode(ControlMode.EE_DELTA)
+q_current = controller.submit_ee_delta(
+    EEDeltaCommand(
+        frame="right",
+        delta_pose={
+            "position": {"x": 0.02, "y": 0.0, "z": 0.0},
+            "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+        },
+    ),
+    q_current,
+)
+
+controller.set_mode(ControlMode.EE_ABSOLUTE)
+q_current = controller.submit_ee_absolute(
+    EEAbsoluteCommand(
+        frame="right",
+        target_pose={
+            "position": {"x": 0.45, "y": -0.10, "z": 0.80},
+            "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+        },
+    ),
+    q_current,
+)
+
+controller.set_mode(ControlMode.TELEOP)
 ```
 
 For a full reference of classes and methods, please refer to the [API Reference](api.md).
