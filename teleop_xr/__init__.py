@@ -357,6 +357,10 @@ class Teleop:
         if not sources and self.__video_streams:
             sources = build_sources(self.__video_streams)
 
+        existing_session = self.__video_sessions.pop(websocket, None)
+        if existing_session is not None:
+            await existing_session.close()
+
         manager = VideoStreamManager(sources)
         self.__video_sessions[websocket] = manager
         offer = await manager.create_offer()

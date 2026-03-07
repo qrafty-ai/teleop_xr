@@ -14,22 +14,34 @@ export type VideoStats = {
 };
 
 export class VideoClient {
-	private ws: WebSocket;
+	private ws: WebSocket | null = null;
 	private pc: RTCPeerConnection | null = null;
 	private statsTimer: number | null = null;
 	private clientId = getClientId();
 	private controlPollTimer: number | null = null;
 	private waitingForOffer = false;
+	private reconnectTimer: number | null = null;
+	private reconnectAttempt = 0;
 
 	constructor(
-		url: string,
+		private url: string,
 		private onStats: (stats: VideoStats) => void,
-		private onTrack?: (track: MediaStreamTrack, trackId: string) => void,
+		private onTrack?: (
+			track: MediaStreamTrack,
+			trackId: string,
+			trackIndex: number,
+		) => void,
 	) {
-		this.ws = new WebSocket(url);
+		this.connectWebSocket();
+	}
+
+	private connectWebSocket() {
+		this.ws = new WebSocket(this.url);
 		this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
 		this.ws.onopen = () => {
-			console.log(`[VideoClient] WebSocket connected. URL: ${url}`);
+			console.log(`[VideoClient] WebSocket connected. URL: ${this.url}`);
+			this.reconnectAttempt = 0;
+			this.clearReconnectTimer();
 			this.waitingForOffer = false;
 			this.sendControlCheck();
 			this.startControlPolling();
@@ -41,6 +53,10 @@ export class VideoClient {
 			console.warn(
 				`[VideoClient] WebSocket closed: ${event.code} ${event.reason}`,
 			);
+			this.waitingForOffer = false;
+			this.closePeerConnection();
+			this.stopControlPolling();
+			this.scheduleReconnect();
 		};
 	}
 
@@ -60,11 +76,15 @@ export class VideoClient {
 			if (inControl) {
 				this.stopControlPolling();
 				if (!this.pc && !this.waitingForOffer) {
+					const ws = this.ws;
+					if (!ws || ws.readyState !== WebSocket.OPEN) {
+						return;
+					}
 					console.log(
 						`[VideoClient] In control, requesting video. ClientID: ${this.clientId}`,
 					);
 					this.waitingForOffer = true;
-					this.ws.send(
+					ws.send(
 						JSON.stringify({
 							type: "video_request",
 							client_id: this.clientId,
@@ -80,7 +100,25 @@ export class VideoClient {
 		if (msg.type === "video_offer") {
 			console.log("[VideoClient] Received video offer");
 			this.waitingForOffer = false;
+			this.closePeerConnection();
 			this.pc = new RTCPeerConnection();
+			let trackIndex = 0;
+			this.pc.onconnectionstatechange = () => {
+				const state = this.pc?.connectionState;
+				if (
+					state === "failed" ||
+					state === "disconnected" ||
+					state === "closed"
+				) {
+					console.warn(`[VideoClient] Peer connection state changed: ${state}`);
+					this.closePeerConnection();
+					if (this.ws?.readyState === WebSocket.OPEN) {
+						this.waitingForOffer = false;
+						this.sendControlCheck();
+						this.startControlPolling();
+					}
+				}
+			};
 			this.pc.ontrack = (event) => {
 				console.log(
 					"[VideoClient] ontrack event:",
@@ -105,7 +143,8 @@ export class VideoClient {
 
 					if (trackId) {
 						console.log(`[VideoClient] Notifying onTrack with ID: ${trackId}`);
-						this.onTrack(event.track, trackId);
+						this.onTrack(event.track, trackId, trackIndex);
+						trackIndex += 1;
 					} else {
 						console.warn("[VideoClient] Could not determine track ID");
 					}
@@ -113,7 +152,11 @@ export class VideoClient {
 			};
 			this.pc.onicecandidate = (e) => {
 				if (e.candidate) {
-					this.ws.send(
+					const ws = this.ws;
+					if (!ws || ws.readyState !== WebSocket.OPEN) {
+						return;
+					}
+					ws.send(
 						JSON.stringify({
 							type: "video_ice",
 							client_id: this.clientId,
@@ -128,7 +171,11 @@ export class VideoClient {
 				);
 				const answer = await this.pc.createAnswer();
 				await this.pc.setLocalDescription(answer);
-				this.ws.send(
+				const ws = this.ws;
+				if (!ws || ws.readyState !== WebSocket.OPEN) {
+					return;
+				}
+				ws.send(
 					JSON.stringify({
 						type: "video_answer",
 						client_id: this.clientId,
@@ -164,7 +211,7 @@ export class VideoClient {
 	}
 
 	private sendControlCheck() {
-		if (this.ws.readyState !== WebSocket.OPEN) {
+		if (this.ws?.readyState !== WebSocket.OPEN) {
 			return;
 		}
 		this.ws.send(
@@ -185,6 +232,28 @@ export class VideoClient {
 			this.pc.close();
 			this.pc = null;
 		}
+	}
+
+	private scheduleReconnect() {
+		if (this.reconnectTimer !== null) {
+			return;
+		}
+
+		const delayMs = Math.min(3000 * 2 ** this.reconnectAttempt, 15000);
+		this.reconnectAttempt += 1;
+
+		this.reconnectTimer = window.setTimeout(() => {
+			this.reconnectTimer = null;
+			this.connectWebSocket();
+		}, delayMs);
+	}
+
+	private clearReconnectTimer() {
+		if (this.reconnectTimer === null) {
+			return;
+		}
+		window.clearTimeout(this.reconnectTimer);
+		this.reconnectTimer = null;
 	}
 
 	private startStats() {
