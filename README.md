@@ -21,9 +21,9 @@ guides and API references.
 - **🤖 Robot Visualization**: Benefit from real-time 3D visualization of the
   robot model, ensuring your digital twin is always perfectly synchronized
   with the physical robot's state.
-- **🕹️ Realtime Teleoperation based on Whole-Body IK**: Achieve precise and
-  intuitive control through advanced Whole-Body Inverse Kinematics, enabling
-  complex coordination with minimal effort.
+- **🕹️ Realtime IK Control for Teleop and Scripts**: Use the same Whole-Body
+  IK stack for live XR teleoperation, relative end-effector deltas, and
+  absolute scripted end-effector targets.
 
 <p align="center">
   <img src="./assets/ros2_demo.gif" alt="ROS 2 Demo">
@@ -96,6 +96,24 @@ The demo supports two operation modes:
   ```bash
   python -m teleop_xr.demo --mode ik
   ```
+
+#### IK Control Modes
+
+When you run the demo in IK mode, `IKController` supports three control paths:
+
+- `teleop`: default grip-driven XR teleoperation using relative motion
+  snapshots.
+- `ee_delta`: explicit end-effector delta commands for scripted relative motion.
+- `ee_absolute`: explicit end-effector target poses for scripted absolute
+  motion.
+
+The built-in IK demo exposes the scripted paths directly in the TUI:
+
+- `D`: run the right-arm `ee_delta` demo.
+- `A`: run the right-arm `ee_absolute` demo.
+
+While an explicit command mode is active, live XR teleop input is gated off so
+scripted motion and headset updates do not compete for control.
 
 ### Supported Robots (IK)
 
