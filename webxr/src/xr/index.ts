@@ -104,7 +104,7 @@ export const initWorld = async (
 			},
 		},
 		features: {
-			locomotion: true, // Enable locomotion to ensure Player rig is initialized
+			locomotion: false,
 			grabbing: true,
 			physics: false,
 			sceneUnderstanding: true,
