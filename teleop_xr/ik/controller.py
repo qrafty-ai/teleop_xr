@@ -164,6 +164,23 @@ class IKController:
     ) -> np.ndarray:
         """Apply an absolute end-effector target while in `ee_absolute` mode."""
 
+        ee_command = (
+            command
+            if isinstance(command, EEAbsoluteCommand)
+            else EEAbsoluteCommand.model_validate(command)
+        )
+
+        return self.submit_ee_absolute_targets(
+            {ee_command.frame: ee_command.target_pose}, q_current
+        )
+
+    def submit_ee_absolute_targets(
+        self,
+        target_poses: dict[str, DeltaPose | dict[str, object]],
+        q_current: np.ndarray,
+    ) -> np.ndarray:
+        """Apply multiple absolute end-effector targets while in `ee_absolute` mode."""
+
         if self._mode != ControlMode.EE_ABSOLUTE:
             raise RuntimeError(
                 "ee_absolute command rejected while not in ee_absolute mode"
@@ -172,28 +189,28 @@ class IKController:
         if self.solver is None:
             return q_current
 
-        ee_command = (
-            command
-            if isinstance(command, EEAbsoluteCommand)
-            else EEAbsoluteCommand.model_validate(command)
-        )
-        if ee_command.frame not in self.robot.supported_frames:
-            raise ValueError(
-                f"Frame '{ee_command.frame}' is not supported by robot frames {self.robot.supported_frames}"
-            )
-
         current_fk = self.robot.forward_kinematics(jnp.asarray(q_current))
-        if ee_command.frame not in current_fk:
-            raise ValueError(
-                f"Frame '{ee_command.frame}' missing from forward kinematics"
-            )
 
         targets: dict[str, jaxlie.SE3 | None] = {
             "left": current_fk.get("left"),
             "right": current_fk.get("right"),
             "head": current_fk.get("head"),
         }
-        targets[ee_command.frame] = self._pose_to_se3(ee_command.target_pose)
+
+        for frame, target_pose in target_poses.items():
+            if frame not in self.robot.supported_frames:
+                raise ValueError(
+                    f"Frame '{frame}' is not supported by robot frames {self.robot.supported_frames}"
+                )
+            if frame not in current_fk:
+                raise ValueError(f"Frame '{frame}' missing from forward kinematics")
+
+            pose = (
+                target_pose
+                if isinstance(target_pose, DeltaPose)
+                else DeltaPose.model_validate(target_pose)
+            )
+            targets[frame] = self._pose_to_se3(pose)
 
         new_config_jax = self.solver.solve(
             targets["left"],
