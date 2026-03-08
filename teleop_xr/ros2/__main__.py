@@ -131,10 +131,10 @@ except ImportError as exc:
         "_DummyTime",
         (),
         {
-            "__init__": lambda self, **kwargs: setattr(
-                self, "sec", kwargs.get("sec", 0)
+            "__init__": lambda self, **kwargs: (
+                setattr(self, "sec", kwargs.get("sec", 0))
+                or setattr(self, "nanosec", kwargs.get("nanosec", 0))
             )
-            or setattr(self, "nanosec", kwargs.get("nanosec", 0))
         },
     )
     HAS_CV_BRIDGE = False
@@ -235,6 +235,45 @@ def matrix_to_pose_msg(mat):
         float(quat[3]),
     )
     return pose
+
+
+def pose_msg_to_dict(pose: Any) -> dict[str, dict[str, float]]:
+    return {
+        "position": {
+            "x": float(pose.position.x),
+            "y": float(pose.position.y),
+            "z": float(pose.position.z),
+        },
+        "orientation": {
+            "w": float(pose.orientation.w),
+            "x": float(pose.orientation.x),
+            "y": float(pose.orientation.y),
+            "z": float(pose.orientation.z),
+        },
+    }
+
+
+def supported_absolute_frames(robot: "BaseRobot") -> list[str]:
+    return [frame for frame in ("left", "right") if frame in robot.supported_frames]
+
+
+def pose_array_to_absolute_targets(
+    robot: "BaseRobot", msg: Any
+) -> dict[str, dict[str, dict[str, float]]]:
+    frames = supported_absolute_frames(robot)
+    if not frames:
+        raise ValueError("Robot does not support left or right end-effectors")
+    if not msg.poses:
+        raise ValueError("PoseArray command is empty")
+    if len(frames) > 1 and len(msg.poses) < len(frames):
+        raise ValueError(
+            f"Expected {len(frames)} poses for frames {frames}, received {len(msg.poses)}"
+        )
+
+    targets: dict[str, dict[str, dict[str, float]]] = {}
+    for frame, pose in zip(frames, msg.poses):
+        targets[frame] = pose_msg_to_dict(pose)
+    return targets
 
 
 def ms_to_time(ms):
@@ -386,7 +425,15 @@ class IKWorker(threading.Thread):
         self.latest_xr_state = state
         self.new_state_event.set()
 
+    def update_absolute_targets(
+        self, targets: dict[str, dict[str, dict[str, float]]]
+    ) -> None:
+        self.state_container["ee_absolute_targets"] = targets
+        self.new_state_event.set()
+
     def run(self):
+        from teleop_xr.ik.control_mode import ControlMode
+
         while self.running:
             # Wait for new data
             if not self.new_state_event.wait(timeout=0.1):
@@ -397,15 +444,41 @@ class IKWorker(threading.Thread):
 
             # Grab the latest state (atomic assignment in Python)
             state = self.latest_xr_state
-            if state is None:
+            if (
+                state is None
+                and self.state_container.get("ee_absolute_targets") is None
+            ):
                 continue
 
             try:
                 current_config = self.state_container["q"]
                 was_active = self.controller.active
+                deadman_active = bool(self.state_container.get("deadman_active", False))
 
                 t0 = time.perf_counter()
-                new_config = np.array(self.controller.step(state, current_config))
+                if deadman_active:
+                    self.state_container["ee_absolute_targets"] = None
+                    if self.controller.get_mode() != ControlMode.TELEOP:
+                        self.controller.set_mode(ControlMode.TELEOP)
+                    if state is None:
+                        self.state_container["solve_time"] = 0.0
+                        self.state_container["active"] = self.controller.active
+                        continue
+                    new_config = np.array(self.controller.step(state, current_config))
+                else:
+                    if self.controller.get_mode() != ControlMode.EE_ABSOLUTE:
+                        self.controller.set_mode(ControlMode.EE_ABSOLUTE)
+                    targets = self.state_container.get("ee_absolute_targets")
+                    if targets is None:
+                        self.state_container["solve_time"] = 0.0
+                        self.state_container["active"] = self.controller.active
+                        continue
+                    self.state_container["ee_absolute_targets"] = None
+                    new_config = np.array(
+                        self.controller.submit_ee_absolute_targets(
+                            targets, current_config
+                        )
+                    )
                 dt = time.perf_counter() - t0
 
                 self.state_container["solve_time"] = dt
@@ -505,7 +578,10 @@ def main():
         robot = robot_cls(**robot_args)
         solver = PyrokiSolver(robot)
         controller = IKController(robot, solver)
+        controller.set_mode("ee_absolute")
         state_container["q"] = np.array(robot.get_default_config())
+        state_container["deadman_active"] = False
+        state_container["ee_absolute_targets"] = None
 
         # ROS2 Pub/Sub for IK
         ik_pub = node.create_publisher(JointTrajectory, node.cli.output_topic, 10)
@@ -529,6 +605,20 @@ def main():
                 )
 
         node.create_subscription(JointState, "/joint_states", joint_state_callback, 10)
+
+        def ee_absolute_callback(msg: PoseArray):
+            try:
+                if state_container.get("deadman_active", False):
+                    return
+                targets = pose_array_to_absolute_targets(robot, msg)
+                if ik_worker is not None:
+                    ik_worker.update_absolute_targets(targets)
+            except ValueError as exc:
+                node.get_logger().warning(f"ee_absolute command rejected: {exc}")
+
+        node.create_subscription(
+            PoseArray, node.cli.ee_absolute_topic, ee_absolute_callback, 10
+        )
         ik_worker = IKWorker(controller, robot, ik_pub, state_container, node)
         ik_worker.start()
     else:
@@ -676,6 +766,8 @@ def main():
             xr_data = xr_state.get("data", xr_state)
             state = XRState.model_validate(xr_data)
             state_container["xr_state"] = state
+            if controller is not None:
+                state_container["deadman_active"] = controller._check_deadman(state)
 
             if ik_worker:
                 ik_worker.update_state(state)

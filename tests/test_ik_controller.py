@@ -529,3 +529,26 @@ def test_ik_controller_submit_ee_absolute_missing_fk_frame_raises():
             },
             np.array([0.0, 0.0]),
         )
+
+
+def test_ik_controller_submit_ee_absolute_targets_updates_multiple_frames():
+    robot = DummyRobot()
+    solver = DummySolver(np.array([4.0, 5.0]))
+    controller = IKController(robot=robot, solver=_as_solver(solver))
+    controller.set_mode(ControlMode.EE_ABSOLUTE)
+
+    out = controller.submit_ee_absolute_targets(
+        {
+            "left": {
+                "position": {"x": 0.1, "y": 0.0, "z": 0.2},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            },
+            "right": {
+                "position": {"x": 0.3, "y": -0.1, "z": 0.4},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            },
+        },
+        np.array([0.0, 0.0]),
+    )
+
+    np.testing.assert_allclose(out, [4.0, 5.0])

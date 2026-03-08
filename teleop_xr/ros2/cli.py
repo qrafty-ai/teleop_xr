@@ -32,6 +32,7 @@ class Ros2CLI(CommonCLI):
     urdf_timeout: float = 5.0
     no_urdf_topic: bool = False
     output_topic: str = "/joint_trajectory"
+    ee_absolute_topic: str = "/teleop_xr/ee_absolute"
 
     ros_args: List[str] = field(default_factory=list)
 

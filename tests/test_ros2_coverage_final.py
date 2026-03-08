@@ -1,4 +1,5 @@
 import pytest
+from typing import Any, cast
 
 try:
     import jaxlie  # noqa: F401
@@ -87,6 +88,9 @@ from teleop_xr.ros2.__main__ import (  # noqa: E402
     RosBridgeHandler,
     pose_dict_to_matrix,
     matrix_to_pose_msg,
+    pose_msg_to_dict,
+    supported_absolute_frames,
+    pose_array_to_absolute_targets,
     ms_to_time,
     get_urdf_from_topic,
     ROSImageToVideoSource,
@@ -96,6 +100,7 @@ from teleop_xr.ros2.__main__ import (  # noqa: E402
     TeleopNode,
     main,
 )
+from teleop_xr.ik.control_mode import ControlMode  # noqa: E402
 from teleop_xr.messages import XRState  # noqa: E402
 
 
@@ -134,6 +139,85 @@ def test_pose_helpers():
         msg = matrix_to_pose_msg(mat)
         assert msg == mock_pose
         assert msg.position.x == 1.0
+
+
+def test_pose_msg_to_dict():
+    pose = MockMsg(
+        position=MockMsg(x=1.0, y=2.0, z=3.0),
+        orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+    )
+
+    out = pose_msg_to_dict(pose)
+
+    assert out["position"]["x"] == 1.0
+    assert out["orientation"]["w"] == 1.0
+
+
+def test_supported_absolute_frames_prefers_left_then_right():
+    robot = MagicMock()
+    robot.supported_frames = {"right", "left", "head"}
+
+    assert supported_absolute_frames(robot) == ["left", "right"]
+
+
+def test_pose_array_to_absolute_targets_dual_arm_mapping():
+    robot = MagicMock()
+    robot.supported_frames = {"left", "right"}
+    msg = MockMsg(
+        poses=[
+            MockMsg(
+                position=MockMsg(x=1.0, y=0.0, z=0.0),
+                orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+            ),
+            MockMsg(
+                position=MockMsg(x=2.0, y=0.0, z=0.0),
+                orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+            ),
+        ]
+    )
+
+    targets = pose_array_to_absolute_targets(robot, msg)
+
+    assert targets["left"]["position"]["x"] == 1.0
+    assert targets["right"]["position"]["x"] == 2.0
+
+
+def test_pose_array_to_absolute_targets_single_arm_uses_first_pose():
+    robot = MagicMock()
+    robot.supported_frames = {"right"}
+    msg = MockMsg(
+        poses=[
+            MockMsg(
+                position=MockMsg(x=3.0, y=0.0, z=0.0),
+                orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+            ),
+            MockMsg(
+                position=MockMsg(x=4.0, y=0.0, z=0.0),
+                orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+            ),
+        ]
+    )
+
+    targets = pose_array_to_absolute_targets(robot, msg)
+
+    assert list(targets) == ["right"]
+    assert targets["right"]["position"]["x"] == 3.0
+
+
+def test_pose_array_to_absolute_targets_rejects_incomplete_dual_arm_message():
+    robot = MagicMock()
+    robot.supported_frames = {"left", "right"}
+    msg = MockMsg(
+        poses=[
+            MockMsg(
+                position=MockMsg(x=1.0, y=0.0, z=0.0),
+                orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="Expected 2 poses"):
+        pose_array_to_absolute_targets(robot, msg)
 
 
 def test_ms_to_time():
@@ -229,10 +313,10 @@ def test_ik_worker(mock_duration, mock_point_cls, mock_traj_cls):
     robot = MagicMock()
     robot.actuated_joint_names = ["j1"]
     publisher = MagicMock()
-    state_container = {"q": np.zeros(1)}
+    state_container = {"q": np.zeros(1), "deadman_active": True}
     node = MockNode()
 
-    worker = IKWorker(controller, robot, publisher, state_container, node)
+    worker = IKWorker(cast(Any, controller), robot, publisher, state_container, node)
 
     state = XRState(timestamp_unix_ms=1000, devices=[])
     worker.update_state(state)
@@ -253,6 +337,64 @@ def test_ik_worker(mock_duration, mock_point_cls, mock_traj_cls):
         worker.run()
 
     assert state_container["q"][0] == 0.1
+    assert publisher.publish.called
+
+
+@patch("teleop_xr.ros2.__main__.JointTrajectory")
+@patch("teleop_xr.ros2.__main__.JointTrajectoryPoint")
+@patch("teleop_xr.ros2.__main__.Duration")
+def test_ik_worker_absolute_command_path(mock_duration, mock_point_cls, mock_traj_cls):
+    class FakeController:
+        def __init__(self):
+            self.active = False
+            self.mode = ControlMode.TELEOP
+            self.targets = None
+
+        def get_mode(self):
+            return self.mode
+
+        def set_mode(self, mode):
+            self.mode = ControlMode(mode)
+
+        def step(self, state, q_current):
+            return q_current
+
+        def submit_ee_absolute_targets(self, targets, q_current):
+            self.targets = targets
+            return np.array([0.2])
+
+    controller = FakeController()
+    robot = MagicMock()
+    robot.actuated_joint_names = ["j1"]
+    publisher = MagicMock()
+    state_container = {
+        "q": np.zeros(1),
+        "deadman_active": False,
+        "ee_absolute_targets": {
+            "right": {
+                "position": {"x": 0.1, "y": 0.0, "z": 0.0},
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+            }
+        },
+    }
+    node = MockNode()
+
+    worker = IKWorker(cast(Any, controller), robot, publisher, state_container, node)
+    worker.new_state_event.set()
+
+    with patch.object(worker.new_state_event, "wait", side_effect=[True, False]):
+
+        def stop_running(*args, **kwargs):
+            worker.running = False
+            return True
+
+        worker.new_state_event.wait = stop_running
+        worker.run()
+
+    assert controller.mode == ControlMode.EE_ABSOLUTE
+    assert controller.targets is not None
+    assert cast(np.ndarray, state_container["q"])[0] == 0.2
+    assert state_container["ee_absolute_targets"] is None
     assert publisher.publish.called
 
 
@@ -299,6 +441,7 @@ def test_main_ik_mode(
     mock_robot.actuated_joint_names = ["j1"]
     mock_robot.get_default_config.return_value = [0.0]
     mock_robot.get_vis_config.return_value = None
+    mock_robot.supported_frames = {"right"}
     mock_load_robot.return_value = mock_robot_cls
     mock_get_urdf.return_value = "<robot/>"
 
@@ -314,12 +457,15 @@ def test_main_ik_mode(
 
             call_args_list = node.create_subscription.call_args_list
             joint_state_cb = None
+            ee_absolute_cb = None
             for call_args in call_args_list:
                 if call_args[0][1] == "/joint_states":
                     joint_state_cb = call_args[0][2]
-                    break
+                if call_args[0][1] == cli.ee_absolute_topic:
+                    ee_absolute_cb = call_args[0][2]
 
             assert joint_state_cb is not None
+            assert ee_absolute_cb is not None
 
             worker_inst = mock_ik_worker.return_value
             worker_inst.teleop = mock_teleop_inst
@@ -331,6 +477,17 @@ def test_main_ik_mode(
             ) as mock_run:
                 joint_state_cb(msg)
                 assert mock_run.called
+
+            ee_absolute_msg = MockMsg(
+                poses=[
+                    MockMsg(
+                        position=MockMsg(x=0.5, y=0.0, z=0.0),
+                        orientation=MockMsg(w=1.0, x=0.0, y=0.0, z=0.0),
+                    )
+                ]
+            )
+            ee_absolute_cb(ee_absolute_msg)
+            worker_inst.update_absolute_targets.assert_called_once()
 
 
 @patch("teleop_xr.ros2.__main__.Teleop")

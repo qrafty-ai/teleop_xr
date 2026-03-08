@@ -70,6 +70,8 @@ python -m teleop_xr.ros2 \
 - `--no-urdf-topic`: Disable automatic URDF fetching from topic
 - `--output-topic`: ROS topic to publish JointTrajectory messages (default:
   `/joint_trajectory`)
+- `--ee-absolute-topic`: ROS topic to subscribe for absolute end-effector targets
+  as `geometry_msgs/PoseArray` (default: `/teleop_xr/ee_absolute`)
 
 ### Frame & TF Settings
 
@@ -128,6 +130,10 @@ The node publishes the following topics (namespaced under `xr/`):
 
 - `/joint_states` (`sensor_msgs/JointState`): Current robot joint states. Used
   to synchronize the internal robot state when IK is not actively engaged.
+- `/teleop_xr/ee_absolute` (`geometry_msgs/PoseArray`): Absolute end-effector
+  targets used when the deadman switch is not engaged. Pose ordering is `left`
+  first, `right` second. If the robot supports only one end-effector, only the
+  first pose is applied.
 
 ### Video Streaming (Subscribed)
 
