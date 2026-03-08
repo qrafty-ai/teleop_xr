@@ -76,6 +76,7 @@ def test_teleop_node_params():
     assert node.cli.urdf_topic == "/robot_description"
     assert node.cli.urdf_timeout == 5.0
     assert node.cli.no_urdf_topic is False
+    assert node.cli.ee_absolute_topic == "/teleop_xr/ee_absolute"
 
     node.destroy_node()
 
