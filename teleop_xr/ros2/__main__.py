@@ -7,8 +7,10 @@ import time
 import sys
 import asyncio
 import types
+import logging
 from typing import Any, Optional, TYPE_CHECKING
 from dataclasses import asdict
+from pathlib import Path
 import cv2
 import numpy as np
 import tyro
@@ -28,6 +30,44 @@ import transforms3d as t3d
 if TYPE_CHECKING:
     from teleop_xr.ik.robot import BaseRobot
     from teleop_xr.ik.controller import IKController
+
+
+def _init_jax_cache():
+    """Initialize JAX persistent compilation cache early, before any JIT compilation."""
+    try:
+        import platformdirs
+
+        cache_dir = str(
+            Path(platformdirs.user_cache_dir(appname="teleop_xr", appauthor="qrafty"))
+            / "jax"
+        )
+    except ImportError:
+        cache_dir = str(Path.home() / ".cache" / "teleop_xr" / "jax")
+
+    try:
+        import jax
+        from jax.experimental.compilation_cache import compilation_cache
+
+        # Set cache directory
+        compilation_cache.set_cache_dir(cache_dir)
+
+        # Enable additional XLA caching for faster recompilation
+        # "all" enables: kernel cache + per-fusion autotune cache
+        jax.config.update("jax_persistent_cache_enable_xla_caches", "all")
+
+        # Lower caching thresholds for development workflows
+        # Cache entries regardless of compilation time/size
+        jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+        jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
+
+        logging.info(f"JAX compilation cache enabled at {cache_dir}")
+        logging.info("XLA additional caching: all features enabled")
+    except Exception as e:
+        logging.warning(f"Failed to initialize JAX compilation cache: {e}")
+
+
+# Initialize JAX cache at module import time, before any IK code runs
+_init_jax_cache()
 
 
 def list_available_robots() -> dict[str, str]:
